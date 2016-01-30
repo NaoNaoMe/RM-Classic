@@ -5,11 +5,10 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-
-using System.IO.Ports;
-
-using System.Xml.Serialization;
 using System.IO;
+using System.IO.Ports;
+using System.Xml.Serialization;
+
 
 namespace rmApplication
 {
@@ -45,10 +44,11 @@ namespace rmApplication
 			WrTrg
 		}
 
+		private AutoCompleteStringCollection AutoCompleteSourceForVariant;
 
-		private const int COLUMN_NUM = 32;							//表示行数の規定
-		private const int SELECT_NUM = 32;							//選択できる最大
-		private const int MAX_TOTAL_SIZE = 128;						//ログデータ最大サイズ
+		private const int COLUMN_NUM = 32;
+		private const int SELECT_NUM = 32;
+		private const int MAX_TOTAL_SIZE = 128;
 
 		private bool CommActiveFlg;
 		private bool CustomizingModeFlg;
@@ -182,6 +182,8 @@ namespace rmApplication
 			dutVerViewControl.Label =		"DUT     Version:";
 			targetVerViewControl.Label =	"Target  Version:";
 			settingVerViewControl.Label =	"Setting Version:";
+
+			AutoCompleteSourceForVariant = new AutoCompleteStringCollection();
 
 		}
 
@@ -1011,6 +1013,24 @@ namespace rmApplication
 
 							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = result.Address;
 
+							if (dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value == null)
+							{
+								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = "0";
+
+							}
+
+							if (dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Type].Value == null)
+							{
+								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Type].Value = numeralSystem.HEX;
+
+							}
+
+						}
+						else
+						{
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value = false;
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = null;
+
 						}
 
 					}
@@ -1052,7 +1072,7 @@ namespace rmApplication
 						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value = false;
 					}
 
-					if (cnt >= SELECT_NUM)
+					if (cnt > SELECT_NUM)
 					{
 						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value = false;
 					}
@@ -1060,6 +1080,30 @@ namespace rmApplication
 
 				}
 			}
+		}
+
+
+		private void dataGridView1_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+		{
+			DataGridView dgv = (DataGridView)sender;
+
+			if (e.Control is TextBox)
+			{
+				TextBox tb = (TextBox)e.Control;
+
+				if (dgv.CurrentCell.OwningColumn.Name == DgvRowName.Variant.ToString())
+				{
+					tb.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+
+					tb.AutoCompleteSource = AutoCompleteSource.CustomSource;
+					tb.AutoCompleteCustomSource = this.AutoCompleteSourceForVariant;
+				}
+				else
+				{
+					tb.AutoCompleteMode = AutoCompleteMode.None;
+				}
+			}
+
 		}
 
 
@@ -1458,6 +1502,14 @@ namespace rmApplication
 
 					string path = ofd.FileName;
 
+					var sr = new StreamReader(path, Encoding.GetEncoding("utf-8"));
+
+					string wholeText = sr.ReadToEnd();
+					string[] textArray = wholeText.Replace("\r\n", "\n").Split('\n');
+
+					sr.Close();
+
+
 					DateTime date;
 
 					if (File.Exists(path))
@@ -1475,25 +1527,25 @@ namespace rmApplication
 
 					if (ret == false)
 					{
-						ret = ReadElfMap.Interpret(path, MapList);
+						ret = ReadElfMap.Interpret(textArray, MapList);
 
 					}
 
 					if (ret == false)
 					{
-						ret = IarMap.Interpret(path, MapList);
+						ret = IarMap.Interpret(textArray, MapList);
 
 					}
 
 					if (ret == false)
 					{
-						ret = KeilMap.Interpret(path, MapList);
+						ret = KeilMap.Interpret(textArray, MapList);
 
 					}
 
 					if (ret == false)
 					{
-						ret = RmAddressMap.Interpret(path, MapList);
+						ret = RmAddressMap.Interpret(textArray, MapList);
 
 					}
 
@@ -1505,6 +1557,16 @@ namespace rmApplication
 						reviseAddressAndSizeFromMapFile();
 
 						this.dataGridView1.Refresh();
+
+						List<string> variantList = new List<string>();
+
+						foreach(var factor in MapList.Factor)
+						{
+							variantList.Add(factor.VariableName);
+
+						}
+
+						AutoCompleteSourceForVariant.AddRange(variantList.ToArray());
 
 					}
 					else
@@ -1533,7 +1595,7 @@ namespace rmApplication
 		{
 			SaveFileDialog sfd = new SaveFileDialog();
 
-			sfd.Title = "Save File";
+			sfd.Title = "Save View File";
 			//sfd.InitialDirectory = @"D:\";
 			sfd.FileName = "test.xml";
 			sfd.Filter =
@@ -1559,6 +1621,61 @@ namespace rmApplication
 				serializer.Serialize(fs, MainViewSetting);
 
 				fs.Close();
+
+			}
+			else
+			{
+
+			}
+
+			sfd.Dispose();
+
+		}
+
+		private void saveMapFileToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			if( MapList == null )
+			{
+				return;
+				
+			}
+			
+			SaveFileDialog sfd = new SaveFileDialog();
+
+			sfd.Title = "Save Map File";
+			//sfd.InitialDirectory = @"D:\";
+			sfd.FileName = "test.map";
+			sfd.Filter =
+				"Map File(*.map)|*.map|All Files(*.*)|*.*";
+			sfd.FilterIndex = 1;
+			sfd.RestoreDirectory = true;
+			sfd.ShowHelp = true;
+			sfd.CreatePrompt = true;
+
+			if (sfd.ShowDialog() == DialogResult.OK)
+			{
+				List<string> textList = new List<string>();
+
+				bool ret = RmAddressMap.Convert(textList, MapList);
+				
+				if( ret == true )
+				{
+					System.IO.StreamWriter sw = new System.IO.StreamWriter(
+						sfd.FileName,
+						false,
+						System.Text.Encoding.GetEncoding("utf-8"));
+
+					foreach (var item in textList)
+					{
+						sw.WriteLine(item);
+
+					}
+
+					sw.Close();
+					
+				}
+				
+
 
 			}
 			else
@@ -1641,6 +1758,7 @@ namespace rmApplication
 			DumpFormInstance.Show();
 
 		}
+
 	}
 
 }

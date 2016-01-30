@@ -2,22 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;
 using System.Text.RegularExpressions;
 
 namespace rmApplication
 {
 	public class IarMap
 	{
-		public static bool Interpret( string path, MapInfo.List mapList )
+		public static bool Interpret( string[] textArray, MapInfo.List mapList )
 		{
-			var sr = new StreamReader(path, Encoding.GetEncoding("utf-8"));
-
-			string wholeText = sr.ReadToEnd();
-			string[] textArray = wholeText.Replace("\r\n", "\n").Split('\n');
-
-			sr.Close();
-
 			int foundIndex = 0;
 
 			string searchWord = "IAR ELF Linker";

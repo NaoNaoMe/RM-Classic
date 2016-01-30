@@ -2,25 +2,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.IO;
 using System.Text.RegularExpressions;
 
 namespace rmApplication
 {
 	public class RmAddressMap
 	{
-		public static bool Interpret( string path, MapInfo.List mapList )
+		private static string RmVersion = "RM Address Map V1.00";
+		
+		public static bool Interpret( string[] textArray, MapInfo.List mapList )
 		{
-			var sr = new StreamReader(path, Encoding.GetEncoding("utf-8"));
-
-			string wholeText = sr.ReadToEnd();
-			string[] textArray = wholeText.Replace("\r\n", "\n").Split('\n');
-
-			sr.Close();
-
 			int foundIndex = 0;
 
-			string searchWord = "RM Address Map V1.00";
+			string searchWord = RmVersion;
 			bool detectFlg = false;
 
 			foundIndex = textArray[0].IndexOf(searchWord);
@@ -33,11 +27,9 @@ namespace rmApplication
 
 			if (detectFlg == true)
 			{
-				for (int i = 0; i < textArray.Length; i++)
+				for (int i = 1; i < textArray.Length; i++)
 				{
-					var modifiedLine = Regex.Replace(textArray[i], @" +", " ");
-
-					string[] splitLine = modifiedLine.Split(' ');
+					string[] splitLine = textArray[i].Split(' ');
 
 					if (splitLine.Length == 3)
 					{
@@ -65,6 +57,44 @@ namespace rmApplication
 
 			return ret;
 		}
+		
+		public static bool Convert( List<string> textList, MapInfo.List mapList )
+		{
+			bool ret = false;
+			
+			if( ( textList == null ) ||
+				( mapList == null ) )
+			{
+				return ret;
+				
+			}
+
+			textList.Add("//" + RmVersion);
+
+			foreach (var item in mapList.Factor)
+			{
+				if ( (item.VariableName != "") &&
+					(item.Address != "") &&
+					(item.Size != "") )
+				{
+					var tmpAddress = item.Address;
+
+					textList.Add( item.VariableName + " " + tmpAddress + " " + item.Size );
+
+				}
+
+			}
+
+			if (textList.Count != 0)
+			{
+				ret = true;
+
+			}
+
+			return ret;
+			
+		}
+		
 		
 	}
 	
