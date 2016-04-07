@@ -5,24 +5,30 @@ using System.Text;
 
 namespace rmApplication
 {
-	public class MapInfo
+	public class MapFactor
 	{
-		public class Factor
+		public string VariableName { set; get; }
+
+		public string Address { set; get; }
+
+		public string Size { set; get; }
+
+		public MapFactor()
 		{
-			public string VariableName { set; get; }
-
-			public string Address { set; get; }
-
-			public string Size { set; get; }
-
+			VariableName = "";
+			Address = "0x00000000";
+			Size = "1";
+			
 		}
 
-		public class List
+		public MapFactor( MapFactor data )
 		{
-			public List<Factor> Factor { get; set; }
-
+			VariableName = data.VariableName;
+			Address = data.Address;
+			Size = data.Size;
+			
 		}
 
 	}
-	
+
 }

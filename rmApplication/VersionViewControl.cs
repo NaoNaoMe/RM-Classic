@@ -45,6 +45,20 @@ namespace rmApplication
 			}
 		}
 
+		[Browsable(true)]
+		[Description("textEnabled")]
+		public bool TextEnabled
+		{
+			get
+			{
+				return textBox.Enabled;
+			}
+			set
+			{
+				textBox.Enabled = value;
+			}
+		}
+
 
 	}
 }

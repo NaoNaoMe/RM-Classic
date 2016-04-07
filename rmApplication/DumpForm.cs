@@ -17,11 +17,11 @@ namespace rmApplication
 			Type
 		}
 
-		private MainForm mf;
+		private SubViewControl SubViewCtrl;
 
-		public DumpForm(MainForm f1)
+		public DumpForm(SubViewControl tmp)
 		{
-			mf = f1;
+			SubViewCtrl = tmp;
 			InitializeComponent();
 
 			dataGridView1.Rows.Add();
@@ -37,15 +37,15 @@ namespace rmApplication
 		}
 
 
-		private void variantTextBox_KeyDown(object sender, KeyEventArgs e)
+		private void variableTextBox_KeyDown(object sender, KeyEventArgs e)
 		{
 			if (e.KeyCode == Keys.Enter)
 			{
-				if (mf.MapList != null)
+				if (SubViewCtrl.myComponents.MapList != null)
 				{
-					string tmp_variant = variantTextBox.Text;
+					string tmpVariable = variableTextBox.Text;
 
-					MapInfo.Factor result = mf.MapList.Factor.Find(item => item.VariableName == tmp_variant);
+					MapFactor result = SubViewCtrl.myComponents.MapList.Find(item => item.VariableName == tmpVariable);
 
 					if (result != null)
 					{
@@ -65,7 +65,7 @@ namespace rmApplication
 			string address = addressTextBox.Text;
 			string size = sizeTextBox.Text;
 
-			bool flg = mf.CommResource_CheckState();
+			bool flg = SubViewCtrl.commResource_CheckState();
 
 			if (flg == false)
 			{
@@ -75,10 +75,9 @@ namespace rmApplication
 
 			dumpTextBox.Text = "";
 
-			CommProtocol.readDumpData(address, size);
+			SubViewCtrl.myCommProtocol.readDumpData(address, size);
 
-			CommProtocol.setLogModeStart();
-
+			SubViewCtrl.myCommProtocol.setLogModeStart();
 		}
 
 
@@ -291,16 +290,33 @@ namespace rmApplication
 
 				}
 
-				if (dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value == null)
+				if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value as string) == false)
 				{
-					dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = "1";
+					int num = 1;
+					string str = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value.ToString();
+
+					if (TypeConvert.IsNumeric(str) == true)
+					{
+						num = int.Parse(str);
+
+						if ((num != 1) &&
+							(num != 2) &&
+							(num != 4))
+						{
+							num = 1;
+
+						}
+
+					}
+					
+					dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = num;
 
 				}
-
 
 			}
 
 		}
+
 
 		private void copyToClipBoardButton_Click(object sender, EventArgs e)
 		{
@@ -364,7 +380,7 @@ namespace rmApplication
 
 			sb.Append(header);
 
-			foreach (string tmp in strings)
+			foreach (var tmp in strings)
 			{
 				sb.Append(tmp);
 

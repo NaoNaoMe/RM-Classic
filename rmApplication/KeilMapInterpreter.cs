@@ -8,7 +8,7 @@ namespace rmApplication
 {
 	public class KeilMap
 	{
-		public static bool Interpret( string[] textArray, MapInfo.List mapList )
+		public static bool Interpret(string[] textArray, List<MapFactor> mapList)
 		{
 			int foundIndex = 0;
 
@@ -58,13 +58,13 @@ namespace rmApplication
 
 						if (splitLine.Length == 6)
 						{
-							MapInfo.Factor data = new MapInfo.Factor();
+							var data = new MapFactor();
 
 							data.VariableName = splitLine[1];
 							data.Address = splitLine[2];
 							data.Size = splitLine[4];
 
-							mapList.Factor.Add(data);
+							mapList.Add(data);
 
 						}
 
@@ -76,7 +76,7 @@ namespace rmApplication
 
 			bool ret = false;
 
-			if (mapList.Factor.Count != 0)
+			if (mapList.Count != 0)
 			{
 				ret = true;
 

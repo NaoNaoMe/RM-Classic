@@ -40,7 +40,7 @@
 			this.sizeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.typeColumn = new System.Windows.Forms.DataGridViewButtonColumn();
 			this.label3 = new System.Windows.Forms.Label();
-			this.variantTextBox = new System.Windows.Forms.TextBox();
+			this.variableTextBox = new System.Windows.Forms.TextBox();
 			this.copyToClipBoardButton = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
@@ -118,7 +118,7 @@
 			// splitContainer1.Panel1
 			// 
 			this.splitContainer1.Panel1.Controls.Add(this.copyToClipBoardButton);
-			this.splitContainer1.Panel1.Controls.Add(this.variantTextBox);
+			this.splitContainer1.Panel1.Controls.Add(this.variableTextBox);
 			this.splitContainer1.Panel1.Controls.Add(this.label3);
 			this.splitContainer1.Panel1.Controls.Add(this.makeButton);
 			this.splitContainer1.Panel1.Controls.Add(this.dumpTextBox);
@@ -184,16 +184,16 @@
 			this.label3.Name = "label3";
 			this.label3.Size = new System.Drawing.Size(42, 12);
 			this.label3.TabIndex = 8;
-			this.label3.Text = "Variant";
+			this.label3.Text = "Variable";
 			// 
-			// variantTextBox
+			// variableTextBox
 			// 
-			this.variantTextBox.Location = new System.Drawing.Point(62, 8);
-			this.variantTextBox.Margin = new System.Windows.Forms.Padding(2);
-			this.variantTextBox.Name = "variantTextBox";
-			this.variantTextBox.Size = new System.Drawing.Size(107, 19);
-			this.variantTextBox.TabIndex = 9;
-			this.variantTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.variantTextBox_KeyDown);
+			this.variableTextBox.Location = new System.Drawing.Point(62, 8);
+			this.variableTextBox.Margin = new System.Windows.Forms.Padding(2);
+			this.variableTextBox.Name = "variableTextBox";
+			this.variableTextBox.Size = new System.Drawing.Size(107, 19);
+			this.variableTextBox.TabIndex = 9;
+			this.variableTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.variableTextBox_KeyDown);
 			// 
 			// copyToClipBoardButton
 			// 
@@ -237,7 +237,7 @@
 		private System.Windows.Forms.DataGridViewTextBoxColumn sizeColumn;
 		private System.Windows.Forms.DataGridViewButtonColumn typeColumn;
 		private System.Windows.Forms.Button makeButton;
-		private System.Windows.Forms.TextBox variantTextBox;
+		private System.Windows.Forms.TextBox variableTextBox;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.Button copyToClipBoardButton;
 	}

@@ -8,7 +8,7 @@ namespace rmApplication
 {
 	public class IarMap
 	{
-		public static bool Interpret( string[] textArray, MapInfo.List mapList )
+		public static bool Interpret(string[] textArray, List<MapFactor> mapList)
 		{
 			int foundIndex = 0;
 
@@ -58,8 +58,8 @@ namespace rmApplication
 
 						if (splitLine.Length == 7)
 						{
-							MapInfo.Factor data = new MapInfo.Factor();
-
+							var data = new MapFactor();
+							
 							splitLine[2] = splitLine[2].Replace("0x", "");
 
 							string decimalSize = "1";
@@ -74,7 +74,7 @@ namespace rmApplication
 							data.Address = splitLine[1];
 							data.Size = decimalSize;
 
-							mapList.Factor.Add(data);
+							mapList.Add(data);
 
 						}
 
@@ -86,7 +86,7 @@ namespace rmApplication
 
 			bool ret = false;
 
-			if (mapList.Factor.Count != 0)
+			if (mapList.Count != 0)
 			{
 				ret = true;
 

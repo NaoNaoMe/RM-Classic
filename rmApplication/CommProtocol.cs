@@ -6,31 +6,69 @@ using System.Diagnostics;
 
 namespace rmApplication
 {
-	class CommProtocol
+	public class CommProtocol
 	{
-		public enum RmAddr : int
+		public struct RxDataParam
 		{
-			Byte2 = 0,
-			Byte4
-		};
+			public string Time;
+			public List<byte> Data;
 
-		public static string pbDutVersion;
-		public static string pbDumpData;
+		}
 
-		public static Queue<string> pbCommLog = new Queue<string>();
-
-		public static List<string> pbCommLogBuffer = new List<string>();
-
-		public static bool pbLogFlg = false;
-
-		private const int MAX_LOG_DATA = 10000;		//log size
-
-		private enum RmMode : int
+		public class Components
 		{
-			LOG = 0,
-			COMMAND
-		};
+			public enum RmMode : int
+			{
+				LOG = 0,
+				COMMAND
+			};
 
+			public enum RmAddr : int
+			{
+				Byte2 = 0,
+				Byte4
+			};
+
+
+			public RmMode CommMode { set; get; }
+			public RmAddr SelectByte { set; get; }
+			
+			public Queue<string> CommLog { set; get; }
+			public Queue<RxDataParam> RecieveStream { set; get; }
+			
+			public string DutVersion { set; get; }
+			public string DumpData { set; get; }
+
+			public Components()
+			{
+				CommMode = RmMode.COMMAND;
+				SelectByte = RmAddr.Byte4;
+				
+				CommLog = new Queue<string>();
+				RecieveStream = new Queue<RxDataParam>();
+				
+				DutVersion = "";
+				DumpData = null;
+				
+			}
+
+			public Components( Components data )
+			{
+				CommMode = data.CommMode;
+				SelectByte = data.SelectByte;
+				
+				CommLog = data.CommLog;
+				RecieveStream = data.RecieveStream;
+				
+				DutVersion = data.DutVersion;
+				DumpData = data.DumpData;
+				
+			}
+
+		}
+		
+		public Components myComponent;
+		
 		private enum RmInstr : byte
 		{
 			StartLog = 1,
@@ -50,95 +88,41 @@ namespace rmApplication
 			ESC_ESC =	0xDD
 		};
 		
-		private static RmMode CommMode = RmMode.COMMAND;
 		
-		private static RmAddr SelectByte = RmAddr.Byte4;
-		
-		private static int MasCnt = 0;
-		private static int LastSlvCnt = 0;
-		private static bool CommSentFlg = false;
-		private static int ContinueCnt = 1;
+		private int MasCnt = 0;
+		private int LastSlvCnt = 0;
+		private bool CommSentFlg = false;
 
-		private static Queue<List<byte>> TxDataStream = new Queue<List<byte>>();
-		private static Queue<List<byte>> RxDataStream = new Queue<List<byte>>();
+		private Queue<List<byte>> TxDataStream = new Queue<List<byte>>();
 
-		private static bool RcvFlg = false;
-		private static bool EscFlg = false;
-		private static List<byte> RcvFrame = new List<byte>();
-		private static Queue<byte> RxBytes = new Queue<byte>();
+		private bool RcvFlg = false;
+		private bool EscFlg = false;
+		private List<byte> RcvFrame = new List<byte>();
+		private Queue<byte> RxBytes = new Queue<byte>();
 
-		private struct DataGridViewParam
+		private Stopwatch sw = new Stopwatch();
+
+		public CommProtocol()
 		{
-			public string Size;
-			public string Address;
-			public string Type;
+			myComponent = new Components();
 			
 		}
 
-		private static List<DataGridViewParam> listDGVParam = new List<DataGridViewParam>();
 
-		static Stopwatch sw = new Stopwatch();
-
-		public static void startStopWatch()
+		public void startStopWatch()
 		{
 			sw.Restart();
 
 		}
 
-		public static void stopStopWatch()
+		public void stopStopWatch()
 		{
 			sw.Stop();
 
 		}
 
 
-		private static List<string> interpretRxFrameToAnyType(List<byte> rxFrameData)
-		{
-			int maxIndex = listDGVParam.Count;
-			
-			List<string> listSize = new List<string>();
-			List<string> listValue = new List<string>();
-			string retVal;
-
-			for (int i = 0; i < maxIndex; i++)
-			{
-				listSize.Add(listDGVParam[i].Size);
-
-			}
-
-			List<byte> cntCode = rxFrameData.GetRange(0, 1);
-			retVal = BitConverter.ToString(cntCode.ToArray());
-			listValue.Add(retVal);
-			rxFrameData.RemoveRange(0, 1);
-
-			for (int i = 0; i < listSize.Count; i++)
-			{
-				int size = int.Parse(listSize[i]);
-
-				if (rxFrameData.Count >= size)
-				{
-					List<byte> buff = rxFrameData.GetRange(0, size);
-					rxFrameData.RemoveRange(0, size);
-					buff = BinaryEditor.Swap(buff);
-					string hexdata = BinaryEditor.BytesToHexString(buff.ToArray());
-					retVal = TypeConvert.FromHexChars(listDGVParam[i].Type, int.Parse(listSize[i]), hexdata);
-					listValue.Add(retVal);
-					
-				}
-				else
-				{
-					//Invalid data
-					break;
-
-				}
-			}
-
-			return listValue;
-
-		}
-
-
-		public static List<string> interpretRxFrameToHexChars(List<byte> tmp, List<string> lsize, out bool validflg)
+		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<string> lsize, out bool validflg)
 		{
 			List<string> listValue = new List<string>();
 			validflg = true;
@@ -166,22 +150,33 @@ namespace rmApplication
 		}
 
 
-		private static void setCommLog(List<byte> byteList, string dir)
+		private void setCommLog(List<byte> byteList, string dir)
 		{
 			float msec = (float)sw.ElapsedMilliseconds;
 
 			string time = (msec/1000).ToString("000.000");
 
-			string ret = BitConverter.ToString(byteList.ToArray());
+			string byteStrings = BitConverter.ToString(byteList.ToArray());
 
-			string dat = time + " " + dir + " " + ret;
+			string dat = time + " " + dir + " " + byteStrings;
 			
-			pbCommLog.Enqueue( dat );
+			myComponent.CommLog.Enqueue( dat );
+			
+			if( dir != "Tx" )
+			{
+				RxDataParam tmp = new RxDataParam();
+				
+				tmp.Time = time;
+				tmp.Data = new List<byte>(byteList);
+				
+				myComponent.RecieveStream.Enqueue(tmp);
+				
+			}
 
 		}
 
 
-		public static void clear()
+		public void clear()
 		{
 			RcvFlg = false;
 			EscFlg = false;
@@ -191,7 +186,7 @@ namespace rmApplication
 		}
 
 
-		public static byte[] encode(List<byte> bytes)
+		public byte[] encode(List<byte> bytes)
 		{
 			List<byte> frame = new List<byte>();
 
@@ -202,9 +197,9 @@ namespace rmApplication
 
 			frame.Add((byte)FrameChar.END);
 
-			for (int tmp_length = 0; tmp_length < bytes.Count; tmp_length++)
+			for (int i = 0; i < bytes.Count; i++)
 			{
-				switch (bytes[tmp_length])
+				switch (bytes[i])
 				{
 					case (byte)FrameChar.END:
 						frame.Add((byte)FrameChar.ESC);
@@ -216,7 +211,7 @@ namespace rmApplication
 						break;
 
 					default:
-						frame.Add(bytes[tmp_length]);
+						frame.Add(bytes[i]);
 						break;
 
 				}
@@ -228,9 +223,9 @@ namespace rmApplication
 		}
 
 
-		public static void decode(List<byte> bytes)
+		public void decode(List<byte> bytes)
 		{
-			foreach (byte tmp in bytes)
+			foreach (var tmp in bytes)
 			{
 				RxBytes.Enqueue(tmp);
 
@@ -271,8 +266,6 @@ namespace rmApplication
 								RcvFrame.RemoveRange((RcvFrame.Count - 1), 1);
 
 								setCommLog(RcvFrame, "Rx");
-
-								RxDataStream.Enqueue(RcvFrame);
 
 								RcvFrame = new List<byte>();
 
@@ -329,7 +322,7 @@ namespace rmApplication
 		}
 
 
-		public static void clearTxData()
+		public void clearTxData()
 		{
 			while(TxDataStream.Count != 0)
 			{
@@ -339,17 +332,17 @@ namespace rmApplication
 		}
 
 
-		public static void clearRxData()
+		public void clearRxData()
 		{
-			while(RxDataStream.Count != 0)
+			while(myComponent.RecieveStream.Count != 0)
 			{
-				RxDataStream.Dequeue();
+				myComponent.RecieveStream.Dequeue();
 			}
 
 		}
 
 
-		public static void setLogModeStart()
+		public void setLogModeStart()
 		{
 			List<byte> frame = new List<byte>();
 
@@ -362,7 +355,7 @@ namespace rmApplication
 		}
 
 
-		public static void setLogModeStop()
+		public void setLogModeStop()
 		{
 			List<byte> frame = new List<byte>();
 
@@ -375,7 +368,7 @@ namespace rmApplication
 		}
 
 
-		public static void setTiming(string timing)
+		public void setTiming(string timing)
 		{
 			List<byte> frame = new List<byte>();
 			List<byte> addData = new List<byte>();
@@ -400,37 +393,10 @@ namespace rmApplication
 		}
 
 
-		public static void wirteData(string size, string address, string offset, string writeVal)
+		public void wirteData(string size, string address, string writeVal)
 		{
 			List<byte> frame = new List<byte>();
 			List<byte> addData = new List<byte>();
-
-			Int64 dec_address = 0;
-			Int64 dec_offset = 0;
-
-			try
-			{
-				dec_address = Convert.ToInt64(address, 16);
-				dec_offset = Convert.ToInt64(offset);
-				
-			}
-			catch (Exception ex)
-			{
-				return;
-				
-			}
-
-			Exception ex_text = null;
-
-			address = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((dec_address + dec_offset).ToString()), out ex_text);
-
-			writeVal = TypeConvert.FromHexChars(numeralSystem.HEX, int.Parse(size), writeVal);
-
-			if( ex_text != null )
-			{
-				return;
-				
-			}
 
 			byte seqCode = ctrlMasCnt();
 			seqCode = (byte)(seqCode + RmInstr.Write);
@@ -439,7 +405,7 @@ namespace rmApplication
 			addData = BinaryEditor.HexStringToBytes(size);
 			frame.AddRange(addData);
 
-			if( SelectByte == RmAddr.Byte4 )
+			if( myComponent.SelectByte == Components.RmAddr.Byte4 )
 			{
 
 			}
@@ -461,16 +427,13 @@ namespace rmApplication
 		}
 
 
-		public static void setLogData(List<string> listSize, List<string> listType, List<string> listAddress, List<string> listOffset, int maxSize)
+		public void setLogData(List<string> listSize, List<string> listAddress, int maxSize)
 		{
-			listDGVParam = new List<DataGridViewParam>();
-			DataGridViewParam listparam = new DataGridViewParam();
-			
 			int factor_max;
 			int frame_num;
 			int last_frame_contents;
 			
-			if( SelectByte == RmAddr.Byte4 )
+			if( myComponent.SelectByte == Components.RmAddr.Byte4 )
 			{
 				factor_max = 4;
 			}
@@ -491,10 +454,10 @@ namespace rmApplication
 			{
 				last_frame_contents = factor_max;
 			}
-			
-			int data_index = 0;
+
+			int dataIndex = 0;
 			int frame_contents = 0;
-			
+
 			for (int i = 0; i < frame_num; i++)
 			{
 				List<byte> frame = new List<byte>();
@@ -530,44 +493,12 @@ namespace rmApplication
 				
 				for (int j = 0; j < frame_contents; j++)
 				{
-					addData = BinaryEditor.HexStringToBytes(listSize[data_index]);
+					addData = BinaryEditor.HexStringToBytes(listSize[dataIndex]);
 					frame.AddRange(addData);
 
-					string address = listAddress[data_index];
-					string offset = listOffset[data_index];
+					string address = listAddress[dataIndex];
 
-					Int64 dec_address = 0;
-					Int64 dec_offset = 0;
-
-					try
-					{
-						dec_address = Convert.ToInt64(address, 16);
-						dec_offset = Convert.ToInt64(offset);
-						
-					}
-					catch (Exception ex)
-					{
-						err_flg = true;
-						break;
-						
-					}
-
-					Exception ex_text = null;
-
-					address = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((dec_address + dec_offset).ToString()), out ex_text);
-
-					if( ex_text != null )
-					{
-						err_flg = true;
-						break;
-						
-					}
-					else
-					{
-						
-					}
-
-					if( SelectByte == RmAddr.Byte4 )
+					if( myComponent.SelectByte == Components.RmAddr.Byte4 )
 					{
 						
 					}
@@ -581,13 +512,7 @@ namespace rmApplication
 					addData = BinaryEditor.Swap(addData);
 					frame.AddRange(addData);
 					
-					listparam.Size = listSize[data_index];
-					listparam.Type = listType[data_index];
-					listparam.Address = listAddress[data_index];
-
-					listDGVParam.Add(listparam);
-
-					data_index++;
+					dataIndex++;
 
 				}
 				
@@ -602,7 +527,7 @@ namespace rmApplication
 		}
 
 
-		public static void readVersion(string password)
+		public void readVersion(string password)
 		{
 			List<byte> frame = new List<byte>();
 			List<byte> addData = new List<byte>();
@@ -620,7 +545,7 @@ namespace rmApplication
 		}
 
 
-		public static void readDumpData(string address, string size)
+		public void readDumpData(string address, string size)
 		{
 			int payload_max = 128;
 			int frame_num;
@@ -641,8 +566,8 @@ namespace rmApplication
 				last_frame_contents = payload_max;
 			}
 			
-			Int64 dec_address = 0;
-			Int64 dec_offset = 0;
+			Int64 intAddress = 0;
+			Int64 intOffset = 0;
 			
 			bool err_flg = false;
 			
@@ -655,7 +580,7 @@ namespace rmApplication
 				seqCode = (byte)(seqCode + RmInstr.ReadDump);
 				frame.Add(seqCode);
 
-				dec_offset = payload_max * i;
+				intOffset = payload_max * i;
 				
 				if( i == (frame_num-1) )
 				{
@@ -670,7 +595,7 @@ namespace rmApplication
 
 				try
 				{
-					dec_address = Convert.ToInt64(address, 16);
+					intAddress = Convert.ToInt64(address, 16);
 					
 				}
 				catch (Exception ex)
@@ -680,22 +605,18 @@ namespace rmApplication
 					
 				}
 
-				Exception ex_text = null;
+				var value = Convert.ToInt64(intAddress + intOffset);
+				var bytes = BitConverter.GetBytes(value);
 
-				address = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((dec_address + dec_offset).ToString()), out ex_text);
+				var list = bytes.ToList();
+				list.RemoveRange(4, (list.Count - 4));
+				bytes = list.ToArray();
+				Array.Reverse(bytes, 0, bytes.Length);
+				string byteStrings = BitConverter.ToString(bytes);
 
-				if( ex_text != null )
-				{
-					err_flg = true;
-					break;
-					
-				}
-				else
-				{
-					
-				}
+				address = byteStrings.Replace("-", "");
 
-				if( SelectByte == RmAddr.Byte4 )
+				if( myComponent.SelectByte == Components.RmAddr.Byte4 )
 				{
 
 				}
@@ -723,7 +644,7 @@ namespace rmApplication
 		}
 
 
-		public static int checkLogSequence(List<byte> rxBuff)
+		public int checkLogSequence(List<byte> rxBuff)
 		{
 			int lostcnt = 0;
 
@@ -751,7 +672,7 @@ namespace rmApplication
 		}
 
 
-		private static byte ctrlMasCnt()
+		private byte ctrlMasCnt()
 		{
 			MasCnt = MasCnt + 16;
 
@@ -765,14 +686,18 @@ namespace rmApplication
 		}
 
 
-		public static List<byte> mainControl()
+		public bool mainControl()
 		{
-			List<byte> rxBuff = null;
+			bool rcvFlg = false;
 			
-			if (CommMode == RmMode.COMMAND)
+			if( myComponent.RecieveStream.Count != 0 )
 			{
-				ContinueCnt = 1;
+				rcvFlg = true;
 				
+			}
+			
+			if (myComponent.CommMode == Components.RmMode.COMMAND)
+			{
 				if( CommSentFlg == false )
 				{
 					
@@ -785,13 +710,13 @@ namespace rmApplication
 					}
 					else
 					{
-						while(RxDataStream.Count != 0)
+						while(myComponent.RecieveStream.Count != 0)
 						{
-							rxBuff = RxDataStream.Dequeue();
+							RxDataParam rxStream = myComponent.RecieveStream.Dequeue();
 
 							List<byte> txBuff = TxDataStream.Peek();
 
-							if ((txBuff[0] & 0xF0) == (rxBuff[0] & 0xF0))
+							if ((txBuff[0] & 0xF0) == (rxStream.Data[0] & 0xF0))
 							{
 								CommSentFlg = false;
 
@@ -812,12 +737,12 @@ namespace rmApplication
 									case (byte)RmInstr.SetAddr:
 										break;
 									case (byte)RmInstr.ReadInfo:
-										rxBuff.RemoveRange(0, 1);	// delete count code
-										pbDutVersion = System.Text.Encoding.ASCII.GetString(rxBuff.ToArray());
+										rxStream.Data.RemoveRange(0, 1);	// delete count code
+										myComponent.DutVersion = System.Text.Encoding.ASCII.GetString(rxStream.Data.ToArray());
 										break;
 									case (byte)RmInstr.ReadDump:
-										rxBuff.RemoveRange(0, 1);	// delete count code
-										pbDumpData = BitConverter.ToString(rxBuff.ToArray());
+										rxStream.Data.RemoveRange(0, 1);	// delete count code
+										myComponent.DumpData = BitConverter.ToString(rxStream.Data.ToArray());
 										break;
 									default:
 										break;
@@ -827,74 +752,24 @@ namespace rmApplication
 							}
 
 						}
-						
-						// initial useless buffer
-						rxBuff = null;
-						
+
 					}
 
 				}
-				
 
 			}
-			else if (CommMode == RmMode.LOG)
+			else if (myComponent.CommMode == Components.RmMode.LOG)
 			{
-				while (RxDataStream.Count != 0)
-				{
-					List<byte> tmpBuff = RxDataStream.Dequeue();
-					rxBuff = new List<byte>(tmpBuff);
-
-					List<string> listValue = interpretRxFrameToAnyType(tmpBuff);
-
-					if (pbLogFlg == true)
-					{
-						string rxtext = listValue[0];
-						listValue.RemoveAt(0);
-
-						foreach( string tmp in listValue )
-						{
-							rxtext = rxtext + "," + tmp;
-							
-						}
-
-						pbCommLogBuffer.Add(rxtext);
-
-						if (pbCommLogBuffer.Count > MAX_LOG_DATA)
-						{
-							pbCommLogBuffer.RemoveAt(0);
-
-						}
-
-					}
-					else
-					{
-						pbCommLogBuffer = new List<string>();
-
-					}
-
-				}
-
-
-				if (ContinueCnt > 10 )
-				{
-					ContinueCnt = 1;
-
-					setLogModeStart();
-
-				}
-				else
-				{
-					ContinueCnt++;
-
-				}
+				
 				
 			}
+
+			return rcvFlg;
 			
-			return rxBuff;
 		}
 
 
-		public static List<byte> getTxData()
+		public List<byte> getTxData()
 		{
 			List<byte> buff = null;
 
@@ -909,7 +784,7 @@ namespace rmApplication
 
 
 
-		public static void setTxCondtion( bool flg )
+		public void setTxCondtion( bool flg )
 		{
 			CommSentFlg = flg;
 				
@@ -926,23 +801,23 @@ namespace rmApplication
 				switch (req)
 				{
 					case (byte)RmInstr.StartLog:
-						CommMode = RmMode.LOG;
+						myComponent.CommMode = Components.RmMode.LOG;
 						break;
 					case (byte)RmInstr.StopLog:
-						CommMode = RmMode.COMMAND;
+						myComponent.CommMode = Components.RmMode.COMMAND;
 						break;
 					case (byte)RmInstr.SetTiming:
 						break;
 					case (byte)RmInstr.Write:
 						break;
 					case (byte)RmInstr.SetAddr:
-						CommMode = RmMode.COMMAND;
+						myComponent.CommMode = Components.RmMode.COMMAND;
 						break;
 					case (byte)RmInstr.ReadInfo:
-						CommMode = RmMode.COMMAND;
+						myComponent.CommMode = Components.RmMode.COMMAND;
 						break;
 					case (byte)RmInstr.ReadDump:
-						CommMode = RmMode.COMMAND;
+						myComponent.CommMode = Components.RmMode.COMMAND;
 						break;
 					default:
 						break;
@@ -951,7 +826,7 @@ namespace rmApplication
 
 			}
 			
-			if (CommMode == RmMode.LOG)
+			if (myComponent.CommMode == Components.RmMode.LOG)
 			{
 				CommSentFlg = false;
 				
@@ -961,32 +836,25 @@ namespace rmApplication
 			
 		}
 
-		public static void setCommAddress4byte()
+		public bool isLogMode()
 		{
-			SelectByte = RmAddr.Byte4;
+			bool ret = false;
 			
+			if( myComponent.CommMode == Components.RmMode.LOG )
+			{
+				ret = true;
+				
+			}
+			
+			return ret;
 		}
 
-		public static void setCommAddress2byte()
-		{
-			SelectByte = RmAddr.Byte2;
-			
-		}
-
-		public static RmAddr getCommAddress()
-		{
-			return(SelectByte);
-			
-		}
-
-
-		public static void initial()
+		public void initial()
 		{
 			MasCnt = 0;
 			LastSlvCnt = 0;
-			CommMode = RmMode.COMMAND;
+			myComponent.CommMode = Components.RmMode.COMMAND;
 			CommSentFlg = false;
-			ContinueCnt = 1;
 			
 			clearTxData();
 			clearRxData();

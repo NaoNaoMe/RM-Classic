@@ -9,8 +9,8 @@ namespace rmApplication
 	public class RmAddressMap
 	{
 		private static string RmVersion = "RM Address Map V1.00";
-		
-		public static bool Interpret( string[] textArray, MapInfo.List mapList )
+
+		public static bool Interpret(string[] textArray, List<MapFactor> mapList)
 		{
 			int foundIndex = 0;
 
@@ -33,13 +33,13 @@ namespace rmApplication
 
 					if (splitLine.Length == 3)
 					{
-						MapInfo.Factor data = new MapInfo.Factor();
+						var data = new MapFactor();
 
 						data.VariableName = splitLine[0];
 						data.Address = splitLine[1];
 						data.Size = splitLine[2];
 
-						mapList.Factor.Add(data);
+						mapList.Add(data);
 
 					}
 					
@@ -49,7 +49,7 @@ namespace rmApplication
 
 			bool ret = false;
 
-			if (mapList.Factor.Count != 0)
+			if (mapList.Count != 0)
 			{
 				ret = true;
 
@@ -58,7 +58,7 @@ namespace rmApplication
 			return ret;
 		}
 		
-		public static bool Convert( List<string> textList, MapInfo.List mapList )
+		public static bool Convert( List<string> textList, List<MapFactor> mapList )
 		{
 			bool ret = false;
 			
@@ -71,7 +71,7 @@ namespace rmApplication
 
 			textList.Add("//" + RmVersion);
 
-			foreach (var item in mapList.Factor)
+			foreach (var item in mapList)
 			{
 				if ( (item.VariableName != "") &&
 					(item.Address != "") &&

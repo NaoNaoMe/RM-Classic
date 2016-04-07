@@ -17,6 +17,7 @@ namespace rmApplication
 
 	public static class numeralSystem
 	{
+		public const string ASCII = "Ascii";
 		public const string DBL = "DBL";
 		public const string FLT = "FLT";
 		public const string HEX = "Hex";
@@ -32,20 +33,17 @@ namespace rmApplication
 		{
 			back_ex = null;
 			string ret = null;
-			
-			if (Regex.IsMatch(data, @"[0-9a-fA-F.]+$") != true)
+
+			if (type != numeralSystem.ASCII)
 			{
-				return ret;
+				if (Regex.IsMatch(data, @"[0-9a-fA-F.]+$") != true)
+				{
+					return ret;
+				}
+
 			}
 
 			data = data.Replace(" ", "");
-
-			if( (size != 1) &&
-				(size != 2) &&
-				(size != 4) )
-			{
-				return ret;
-			}
 
 			byte[] bytes = null;
 
@@ -107,6 +105,33 @@ namespace rmApplication
 						
 						break;
 
+					case numeralSystem.ASCII:
+						{
+							bytes = System.Text.Encoding.ASCII.GetBytes(data);
+
+							var list = bytes.ToList();
+
+							if (list.Count >= size)
+							{
+
+							}
+							else
+							{
+								for (int i = 0; i < (size - list.Count); i++)
+								{
+									list.Add(0x00);
+								}
+
+							}
+
+							bytes = list.ToArray();
+
+							Array.Reverse(bytes);
+
+						}
+
+						break;
+
 					default:
 						break;
 
@@ -119,19 +144,27 @@ namespace rmApplication
 				
 			}
 
-			if (bytes != null)
+			if (bytes == null)
 			{
-				var list = bytes.ToList();
 
-				list.RemoveRange(size, (list.Count - size));
+			}
+			else
+			{
+				if (type != numeralSystem.ASCII)
+				{
+					var list = bytes.ToList();
+					list.RemoveRange(size, (list.Count - size));
+					bytes = list.ToArray();
 
-				bytes = list.ToArray();
+				}
 
-				Array.Reverse(bytes, 0, bytes.Length);
+				if (bytes.Length == size)
+				{
+					Array.Reverse(bytes, 0, bytes.Length);
+					ret = BitConverter.ToString(bytes);
+					ret = ret.Replace("-", "");
 
-				ret = BitConverter.ToString(bytes);
-
-				ret = ret.Replace("-", "");
+				}
 
 			}
 
@@ -149,33 +182,6 @@ namespace rmApplication
 
 			}
 
-			int cnt = 0;
-			if (Regex.IsMatch(data, @"^[a-fA-F0-9]{2}[a-fA-F0-9]{2}[a-fA-F0-9]{2}[a-fA-F0-9]{2}$") == true)
-			{
-				cnt++;
-			}
-			if (Regex.IsMatch(data, @"^[a-fA-F0-9]{2}[a-fA-F0-9]{2}$") == true)
-			{
-				cnt++;
-			}
-			if (Regex.IsMatch(data, @"^[a-fA-F0-9]{2}$") == true)
-			{
-				cnt++;
-			}
-
-			if (cnt != 1)
-			{
-				return ret;
-
-			}
-
-			if( (size != 1) &&
-				(size != 2) &&
-				(size != 4) )
-			{
-				return ret;
-
-			}
 
 			byte[] bytes = new byte[data.Length/2];
 
@@ -290,6 +296,13 @@ namespace rmApplication
 					
 					break;
 
+				case numeralSystem.ASCII:
+					Array.Reverse(bytes);
+					ret = System.Text.Encoding.ASCII.GetString(bytes);
+					ret = ret.TrimEnd('\0');
+
+					break;
+
 				default:
 					break;
 
@@ -298,5 +311,64 @@ namespace rmApplication
 			return ret;
 
 		}
+
+		public static bool IsNumeric(string value)
+		{
+			bool ret = false;
+
+			if (string.IsNullOrEmpty(value) == false)
+			{
+				int data;
+
+				if (int.TryParse(value, out data) == true)
+				{
+					ret = true;
+
+				}
+
+			}
+
+			return ret;
+		}
+
+		public static bool IsHexString(string value)
+		{
+			bool ret = false;
+
+			if (string.IsNullOrEmpty(value) == false)
+			{
+				if (value.Length >= 2)
+				{
+					var header = value.Substring(0, 2);
+
+					if (header == "0x")
+					{
+						value = value.Remove(0, 2);
+
+					}
+
+				}
+
+				foreach (char factor in value)
+				{
+					if (Uri.IsHexDigit(factor) == false)
+					{
+						ret = false;
+						break;
+
+					}
+					else
+					{
+						ret = true;
+
+					}
+
+				}
+
+			}
+
+			return ret;
+		}
+
 	}
 }
