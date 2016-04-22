@@ -169,7 +169,7 @@ namespace rmApplication
 
 			passwordTextBox.Text = SubViewCtrl.myComponents.Password;
 
-			var tmp = SubViewCtrl.myCommProtocol.myComponent.SelectByte;
+			var tmp = SubViewCtrl.myCommProtocol.myComponents.SelectByte;
 
 			if (tmp == CommProtocol.Components.RmAddr.Byte4)
 			{
@@ -216,12 +216,12 @@ namespace rmApplication
 
 			if (adr2byteRadioButton.Checked)
 			{
-				SubViewCtrl.myCommProtocol.myComponent.SelectByte = CommProtocol.Components.RmAddr.Byte2;
+				SubViewCtrl.myCommProtocol.myComponents.SelectByte = CommProtocol.Components.RmAddr.Byte2;
 
 			}
 			else
 			{
-				SubViewCtrl.myCommProtocol.myComponent.SelectByte = CommProtocol.Components.RmAddr.Byte4;
+				SubViewCtrl.myCommProtocol.myComponents.SelectByte = CommProtocol.Components.RmAddr.Byte4;
 
 			}
 

@@ -300,14 +300,14 @@ namespace rmApplication
 			}
 			else
 			{
-				subViewControl1.customizeDataGirdView();
+				subViewControl1.customizeDataGridView();
 				
 			}
 		}
 
 		private void changeViewToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-			subViewControl1.changeDataGirdViewColumn();
+			subViewControl1.changeDataGridViewColumn();
 
 		}
 

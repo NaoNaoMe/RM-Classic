@@ -34,7 +34,7 @@ namespace rmApplication
 			public RmAddr SelectByte { set; get; }
 			
 			public Queue<string> CommLog { set; get; }
-			public Queue<RxDataParam> RecieveStream { set; get; }
+			public Queue<RxDataParam> ReceiveStream { set; get; }
 			
 			public string DutVersion { set; get; }
 			public string DumpData { set; get; }
@@ -45,7 +45,7 @@ namespace rmApplication
 				SelectByte = RmAddr.Byte4;
 				
 				CommLog = new Queue<string>();
-				RecieveStream = new Queue<RxDataParam>();
+				ReceiveStream = new Queue<RxDataParam>();
 				
 				DutVersion = "";
 				DumpData = null;
@@ -58,7 +58,7 @@ namespace rmApplication
 				SelectByte = data.SelectByte;
 				
 				CommLog = data.CommLog;
-				RecieveStream = data.RecieveStream;
+				ReceiveStream = data.ReceiveStream;
 				
 				DutVersion = data.DutVersion;
 				DumpData = data.DumpData;
@@ -67,7 +67,7 @@ namespace rmApplication
 
 		}
 		
-		public Components myComponent;
+		public Components myComponents;
 		
 		private enum RmInstr : byte
 		{
@@ -104,7 +104,7 @@ namespace rmApplication
 
 		public CommProtocol()
 		{
-			myComponent = new Components();
+			myComponents = new Components();
 			
 		}
 
@@ -150,7 +150,7 @@ namespace rmApplication
 		}
 
 
-		private void setCommLog(List<byte> byteList, string dir)
+		private string setCommLog(List<byte> byteList, string dir)
 		{
 			float msec = (float)sw.ElapsedMilliseconds;
 
@@ -160,18 +160,9 @@ namespace rmApplication
 
 			string dat = time + " " + dir + " " + byteStrings;
 			
-			myComponent.CommLog.Enqueue( dat );
+			myComponents.CommLog.Enqueue( dat );
 			
-			if( dir != "Tx" )
-			{
-				RxDataParam tmp = new RxDataParam();
-				
-				tmp.Time = time;
-				tmp.Data = new List<byte>(byteList);
-				
-				myComponent.RecieveStream.Enqueue(tmp);
-				
-			}
+			return time;
 
 		}
 
@@ -265,8 +256,15 @@ namespace rmApplication
 								// delete useless crc data size
 								RcvFrame.RemoveRange((RcvFrame.Count - 1), 1);
 
-								setCommLog(RcvFrame, "Rx");
+								string time = setCommLog(RcvFrame, "Rx");
 
+								RxDataParam rxData = new RxDataParam();
+
+								rxData.Time = time;
+								rxData.Data = new List<byte>(RcvFrame);
+
+								myComponents.ReceiveStream.Enqueue(rxData);
+				
 								RcvFrame = new List<byte>();
 
 								RcvFlg = false;
@@ -334,9 +332,9 @@ namespace rmApplication
 
 		public void clearRxData()
 		{
-			while(myComponent.RecieveStream.Count != 0)
+			while(myComponents.ReceiveStream.Count != 0)
 			{
-				myComponent.RecieveStream.Dequeue();
+				myComponents.ReceiveStream.Dequeue();
 			}
 
 		}
@@ -405,7 +403,7 @@ namespace rmApplication
 			addData = BinaryEditor.HexStringToBytes(size);
 			frame.AddRange(addData);
 
-			if( myComponent.SelectByte == Components.RmAddr.Byte4 )
+			if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 			{
 
 			}
@@ -433,7 +431,7 @@ namespace rmApplication
 			int frame_num;
 			int last_frame_contents;
 			
-			if( myComponent.SelectByte == Components.RmAddr.Byte4 )
+			if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 			{
 				factor_max = 4;
 			}
@@ -498,7 +496,7 @@ namespace rmApplication
 
 					string address = listAddress[dataIndex];
 
-					if( myComponent.SelectByte == Components.RmAddr.Byte4 )
+					if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 					{
 						
 					}
@@ -616,7 +614,7 @@ namespace rmApplication
 
 				address = byteStrings.Replace("-", "");
 
-				if( myComponent.SelectByte == Components.RmAddr.Byte4 )
+				if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 				{
 
 				}
@@ -690,13 +688,13 @@ namespace rmApplication
 		{
 			bool rcvFlg = false;
 			
-			if( myComponent.RecieveStream.Count != 0 )
+			if( myComponents.ReceiveStream.Count != 0 )
 			{
 				rcvFlg = true;
 				
 			}
 			
-			if (myComponent.CommMode == Components.RmMode.COMMAND)
+			if (myComponents.CommMode == Components.RmMode.COMMAND)
 			{
 				if( CommSentFlg == false )
 				{
@@ -710,9 +708,9 @@ namespace rmApplication
 					}
 					else
 					{
-						while(myComponent.RecieveStream.Count != 0)
+						while(myComponents.ReceiveStream.Count != 0)
 						{
-							RxDataParam rxStream = myComponent.RecieveStream.Dequeue();
+							RxDataParam rxStream = myComponents.ReceiveStream.Dequeue();
 
 							List<byte> txBuff = TxDataStream.Peek();
 
@@ -738,11 +736,11 @@ namespace rmApplication
 										break;
 									case (byte)RmInstr.ReadInfo:
 										rxStream.Data.RemoveRange(0, 1);	// delete count code
-										myComponent.DutVersion = System.Text.Encoding.ASCII.GetString(rxStream.Data.ToArray());
+										myComponents.DutVersion = System.Text.Encoding.ASCII.GetString(rxStream.Data.ToArray());
 										break;
 									case (byte)RmInstr.ReadDump:
 										rxStream.Data.RemoveRange(0, 1);	// delete count code
-										myComponent.DumpData = BitConverter.ToString(rxStream.Data.ToArray());
+										myComponents.DumpData = BitConverter.ToString(rxStream.Data.ToArray());
 										break;
 									default:
 										break;
@@ -758,7 +756,7 @@ namespace rmApplication
 				}
 
 			}
-			else if (myComponent.CommMode == Components.RmMode.LOG)
+			else if (myComponents.CommMode == Components.RmMode.LOG)
 			{
 				
 				
@@ -801,23 +799,23 @@ namespace rmApplication
 				switch (req)
 				{
 					case (byte)RmInstr.StartLog:
-						myComponent.CommMode = Components.RmMode.LOG;
+						myComponents.CommMode = Components.RmMode.LOG;
 						break;
 					case (byte)RmInstr.StopLog:
-						myComponent.CommMode = Components.RmMode.COMMAND;
+						myComponents.CommMode = Components.RmMode.COMMAND;
 						break;
 					case (byte)RmInstr.SetTiming:
 						break;
 					case (byte)RmInstr.Write:
 						break;
 					case (byte)RmInstr.SetAddr:
-						myComponent.CommMode = Components.RmMode.COMMAND;
+						myComponents.CommMode = Components.RmMode.COMMAND;
 						break;
 					case (byte)RmInstr.ReadInfo:
-						myComponent.CommMode = Components.RmMode.COMMAND;
+						myComponents.CommMode = Components.RmMode.COMMAND;
 						break;
 					case (byte)RmInstr.ReadDump:
-						myComponent.CommMode = Components.RmMode.COMMAND;
+						myComponents.CommMode = Components.RmMode.COMMAND;
 						break;
 					default:
 						break;
@@ -826,7 +824,7 @@ namespace rmApplication
 
 			}
 			
-			if (myComponent.CommMode == Components.RmMode.LOG)
+			if (myComponents.CommMode == Components.RmMode.LOG)
 			{
 				CommSentFlg = false;
 				
@@ -840,7 +838,7 @@ namespace rmApplication
 		{
 			bool ret = false;
 			
-			if( myComponent.CommMode == Components.RmMode.LOG )
+			if( myComponents.CommMode == Components.RmMode.LOG )
 			{
 				ret = true;
 				
@@ -853,7 +851,7 @@ namespace rmApplication
 		{
 			MasCnt = 0;
 			LastSlvCnt = 0;
-			myComponent.CommMode = Components.RmMode.COMMAND;
+			myComponents.CommMode = Components.RmMode.COMMAND;
 			CommSentFlg = false;
 			
 			clearTxData();

@@ -11,7 +11,7 @@ namespace rmApplication
 {
 	public partial class DumpForm : Form
 	{
-		private enum DgvRowName : int		// Column name of datagirdview1
+		private enum DgvRowName : int		// Column name of datagridview
 		{
 			Size = 0,
 			Type
@@ -143,40 +143,59 @@ namespace rmApplication
 							var size = int.Parse(item.Cells[(int)DgvRowName.Size].Value.ToString());
 							var type = item.Cells[(int)DgvRowName.Type].Value.ToString();
 
-							switch (size)
+							if (type == numeralSystem.ASCII)
 							{
-								case 1:
-									buff = stArrayData.GetRange(0, size);
-									stArrayData.RemoveRange(0, size);
+								buff = stArrayData.GetRange(0, size);
+								stArrayData.RemoveRange(0, size);
 
-									tmp = buff[0];
+								string tmpBinaryText = "";
+								foreach(var tmpBinChar in buff)
+								{
+									tmpBinaryText += tmpBinChar;
+								}
 
-									item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
+								item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmpBinaryText);
 
-									break;
+							}
+							else
+							{
+								switch (size)
+								{
+									case 1:
+										buff = stArrayData.GetRange(0, size);
+										stArrayData.RemoveRange(0, size);
 
-								case 2:
-									buff = stArrayData.GetRange(0, size);
-									stArrayData.RemoveRange(0, size);
+										tmp = buff[0];
 
-									tmp = buff[1] + buff[0];
+										item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
 
-									item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
+										break;
 
-									break;
+									case 2:
+										buff = stArrayData.GetRange(0, size);
+										stArrayData.RemoveRange(0, size);
 
-								case 4:
-									buff = stArrayData.GetRange(0, size);
-									stArrayData.RemoveRange(0, size);
+										tmp = buff[1] + buff[0];
 
-									tmp = buff[3] + buff[2] + buff[1] + buff[0];
+										item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
 
-									item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
+										break;
 
-									break;
+									case 4:
+										buff = stArrayData.GetRange(0, size);
+										stArrayData.RemoveRange(0, size);
 
-								default:
-									break;
+										tmp = buff[3] + buff[2] + buff[1] + buff[0];
+
+										item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
+
+										break;
+
+									default:
+										break;
+
+								}
+
 
 							}
 
@@ -245,7 +264,7 @@ namespace rmApplication
 						case numeralSystem.HEX:
 							if (size != "4")
 							{
-								type = numeralSystem.BIN;
+								type = numeralSystem.ASCII;
 							}
 							else
 							{
@@ -254,6 +273,10 @@ namespace rmApplication
 							break;
 
 						case numeralSystem.FLT:
+							type = numeralSystem.ASCII;
+							break;
+
+						case numeralSystem.ASCII:
 							type = numeralSystem.BIN;
 							break;
 
@@ -298,7 +321,7 @@ namespace rmApplication
 					if (TypeConvert.IsNumeric(str) == true)
 					{
 						num = int.Parse(str);
-
+#if false
 						if ((num != 1) &&
 							(num != 2) &&
 							(num != 4))
@@ -306,7 +329,7 @@ namespace rmApplication
 							num = 1;
 
 						}
-
+#endif
 					}
 					
 					dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = num;

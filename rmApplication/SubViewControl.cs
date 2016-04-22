@@ -92,7 +92,7 @@ namespace rmApplication
 		public Components myComponents;
 		public CommProtocol myCommProtocol;
 
-		private enum DgvRowName : int       // Column name of datagirdview1
+		private enum DgvRowName : int       // Column name of datagridview
 		{
 			Group = 0,
 			Check,
@@ -321,7 +321,7 @@ namespace rmApplication
 		{
 			myComponents.MapList = new List<MapFactor>();
 
-			bool ret = false;
+			bool retFlg = false;
 			string[] textArray;
 
 			try
@@ -338,37 +338,37 @@ namespace rmApplication
 			{
 				MessageBox.Show(ex.Message);
 				
-				return ret;
+				return retFlg;
 				
 			}
 
 			var date = File.GetLastWriteTime(path);
 
-			if (ret == false)
+			if (retFlg == false)
 			{
-				ret = ReadElfMap.Interpret(textArray, myComponents.MapList);
+				retFlg = ReadElfMap.Interpret(textArray, myComponents.MapList);
 
 			}
 
-			if (ret == false)
+			if (retFlg == false)
 			{
-				ret = IarMap.Interpret(textArray, myComponents.MapList);
+				retFlg = IarMap.Interpret(textArray, myComponents.MapList);
 
 			}
 
-			if (ret == false)
+			if (retFlg == false)
 			{
-				ret = KeilMap.Interpret(textArray, myComponents.MapList);
+				retFlg = KeilMap.Interpret(textArray, myComponents.MapList);
 
 			}
 
-			if (ret == false)
+			if (retFlg == false)
 			{
-				ret = RmAddressMap.Interpret(textArray, myComponents.MapList);
+				retFlg = RmAddressMap.Interpret(textArray, myComponents.MapList);
 
 			}
 
-			if (ret == true)
+			if (retFlg == true)
 			{
 				myComponents.ValidMapPath = path;
 				myComponents.ValidMapLastWrittenDate = date;
@@ -389,6 +389,7 @@ namespace rmApplication
 				{
 					reviseDataFromViewSettingList();
 					checkDataGridViewCells();
+					dataGridView.Refresh();
 
 				}
 
@@ -408,11 +409,11 @@ namespace rmApplication
 
 			}
 
-			return ret;
+			return retFlg;
 		}
 
 
-		public void customizeDataGirdView()
+		public void customizeDataGridView()
 		{
 			if (myComponents.CustomizingModeFlg == false)
 			{
@@ -483,9 +484,9 @@ namespace rmApplication
 			}
 			else
 			{
-				bool flg = checkDataGridViewCells();
+				bool errFlg = checkDataGridViewCells();
 				
-				if( flg == true )
+				if( errFlg == false )
 				{
 					myComponents.CustomizingModeFlg = false;
 
@@ -508,7 +509,7 @@ namespace rmApplication
 
 		}
 
-		public void changeDataGirdViewColumn()
+		public void changeDataGridViewColumn()
 		{
 			if (myComponents.CellVisibleFlg == false)
 			{
@@ -654,7 +655,7 @@ namespace rmApplication
 
 			int maxIndex = checkedRowData.Length;
 
-			bool errFlg = true;
+			bool errFlg = false;
 			bool validFlg = false;
 			int totalSize = 0;
 
@@ -685,7 +686,7 @@ namespace rmApplication
 
 				if (validFlg == false)
 				{
-					errFlg = false;
+					errFlg = true;
 					item.Cells[(int)DgvRowName.Size].Style.BackColor = Color.Red;
 					item.Cells[(int)DgvRowName.Size].Style.SelectionBackColor = Color.Red;
 
@@ -708,7 +709,7 @@ namespace rmApplication
 
 				if (validFlg == false)
 				{
-					errFlg = false;
+					errFlg = true;
 					item.Cells[(int)DgvRowName.Address].Style.BackColor = Color.Red;
 					item.Cells[(int)DgvRowName.Address].Style.SelectionBackColor = Color.Red;
 
@@ -731,7 +732,7 @@ namespace rmApplication
 
 				if (validFlg == false)
 				{
-					errFlg = false;
+					errFlg = true;
 					item.Cells[(int)DgvRowName.Offset].Style.BackColor = Color.Red;
 					item.Cells[(int)DgvRowName.Offset].Style.SelectionBackColor = Color.Red;
 
@@ -748,7 +749,7 @@ namespace rmApplication
 
 				if (validFlg == false)
 				{
-					errFlg = false;
+					errFlg = true;
 					item.Cells[(int)DgvRowName.Type].Style.BackColor = Color.Red;
 					item.Cells[(int)DgvRowName.Type].Style.SelectionBackColor = Color.Red;
 
@@ -766,7 +767,7 @@ namespace rmApplication
 									MessageBoxIcon.Warning);
 #endif
 			}
-			else if (errFlg == false)
+			else if (errFlg == true)
 			{
 				MessageBox.Show("Invalid data found.",
 									"Caution",
@@ -889,9 +890,9 @@ namespace rmApplication
 		}
 
 
-		private void editingCtrl(bool flg)
+		private void editingCtrl(bool swFlg)
 		{
-			if (flg == true)
+			if (swFlg == true)
 			{
 				dataGridView.Columns[(int)DgvRowName.Group].Visible = false;
 
@@ -902,33 +903,33 @@ namespace rmApplication
 
 			}
 
-			dataGridView.Columns[(int)DgvRowName.Check].ReadOnly = flg;
-			dataGridView.Columns[(int)DgvRowName.Size].ReadOnly = flg;
-			dataGridView.Columns[(int)DgvRowName.Variable].ReadOnly = flg;
-			dataGridView.Columns[(int)DgvRowName.Addrlock].ReadOnly = flg;
-			dataGridView.Columns[(int)DgvRowName.Address].ReadOnly = flg;
-			dataGridView.Columns[(int)DgvRowName.Offset].ReadOnly = flg;
-			dataGridView.Columns[(int)DgvRowName.Name].ReadOnly = flg;
+			dataGridView.Columns[(int)DgvRowName.Check].ReadOnly = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Size].ReadOnly = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Variable].ReadOnly = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Addrlock].ReadOnly = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Address].ReadOnly = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Offset].ReadOnly = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Name].ReadOnly = swFlg;
 
 		}
 
 
-		private void visibleCtrl(bool flg)
+		private void visibleCtrl(bool swFlg)
 		{
-			dataGridView.Columns[(int)DgvRowName.Size].Visible = flg;
-			dataGridView.Columns[(int)DgvRowName.Variable].Visible = flg;
-			dataGridView.Columns[(int)DgvRowName.Addrlock].Visible = flg;
-			dataGridView.Columns[(int)DgvRowName.Address].Visible = flg;
-			dataGridView.Columns[(int)DgvRowName.Offset].Visible = flg;
+			dataGridView.Columns[(int)DgvRowName.Size].Visible = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Variable].Visible = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Addrlock].Visible = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Address].Visible = swFlg;
+			dataGridView.Columns[(int)DgvRowName.Offset].Visible = swFlg;
 
 		}
 
 
 		private void readDUTVersion()
 		{
-			bool flg = commResource_CheckState();
+			bool retFlg = commResource_CheckState();
 
-			if (flg == false)
+			if (retFlg == false)
 			{
 				return;
 
@@ -941,9 +942,9 @@ namespace rmApplication
 
 		private void renewLogSetting()
 		{
-			bool flg = commResource_CheckState();
+			bool retFlg = commResource_CheckState();
 
-			if (flg == false)
+			if (retFlg == false)
 			{
 				return;
 
@@ -1030,9 +1031,9 @@ namespace rmApplication
 
 		private void renewTimingSetting(string timingNum)
 		{
-			bool flg = commResource_CheckState();
+			bool retFlg = commResource_CheckState();
 
-			if (flg == false)
+			if (retFlg == false)
 			{
 				return;
 
@@ -1049,9 +1050,9 @@ namespace rmApplication
 
 		private void writeData(string size, string address, string offset, string writeVal)
 		{
-			bool flg = commResource_CheckState();
+			bool retFlg = commResource_CheckState();
 
-			if (flg == false)
+			if (retFlg == false)
 			{
 				return;
 
@@ -1127,10 +1128,7 @@ namespace rmApplication
 
 		private bool serialPort_DataSend(List<byte> frame)
 		{
-			bool flg = false;
-
-			List<byte> txBuff = new List<byte>(frame);
-
+			bool retFlg = false;
 
 			if (serialPort.IsOpen == false)
 			{
@@ -1140,13 +1138,13 @@ namespace rmApplication
 			{
 				try
 				{
+					List<byte> txBuff = new List<byte>(frame);
+
 					byte[] tmp = myCommProtocol.encode(txBuff);
 
-					int count = Convert.ToSByte(tmp.Length);
+					serialPort.Write(tmp, 0, tmp.Length);
 
-					serialPort.Write(tmp, 0, count);
-
-					flg = true;
+					retFlg = true;
 
 				}
 				catch (Exception ex)
@@ -1157,15 +1155,15 @@ namespace rmApplication
 
 			}
 
-			return flg;
+			return retFlg;
 		}
 
 
-		private bool serialPort_SelectState(bool req_flg)
+		private bool serialPort_SelectState(bool reqFlg)
 		{
-			bool ret = false;
+			bool retFlg = false;
 
-			if (req_flg == true)
+			if (reqFlg == true)
 			{
 				if (serialPort.IsOpen == false)
 				{
@@ -1183,7 +1181,7 @@ namespace rmApplication
 					{
 						serialPort.Open();
 
-						ret = true;
+						retFlg = true;
 
 					}
 					catch (Exception ex)
@@ -1204,7 +1202,7 @@ namespace rmApplication
 				{
 					serialPort.Close();
 
-					ret = true;
+					retFlg = true;
 
 					this.serialPort.DataReceived -= new System.IO.Ports.SerialDataReceivedEventHandler(this.serialPort_DataReceived);
 
@@ -1212,21 +1210,21 @@ namespace rmApplication
 
 			}
 
-			return ret;
+			return retFlg;
 		}
 
 
 		private bool serialPort_CheckState()
 		{
-			bool ret = false;
+			bool retFlg = false;
 
 			if (serialPort.IsOpen == true)
 			{
-				ret = true;
+				retFlg = true;
 
 			}
 
-			return ret;
+			return retFlg;
 		}
 
 
@@ -1239,6 +1237,11 @@ namespace rmApplication
 			}
 
 			SocketsAsyncParam ap = (SocketsAsyncParam)ar.AsyncState;
+
+			if(ap.Client.Connected == false)
+			{
+				return;
+			}
 
 			System.Net.Sockets.NetworkStream stream = ap.Client.GetStream();
 
@@ -1261,7 +1264,7 @@ namespace rmApplication
 
 		private bool sockets_DataSend(List<byte> frame)
 		{
-			bool flg = false;
+			bool retFlg = false;
 
 			System.Net.Sockets.NetworkStream stream = SocketsParam.Client.GetStream();
 
@@ -1271,17 +1274,17 @@ namespace rmApplication
 
 			stream.Write(tmp, 0, tmp.Length);
 
-			flg = true;
+			retFlg = true;
 
-			return flg;
+			return retFlg;
 		}
 
 
-		private bool sockets_SelectState(bool req_flg)
+		private bool sockets_SelectState(bool reqFlg)
 		{
-			bool ret = false;
+			bool retFlg = false;
 
-			if (req_flg == true)
+			if (reqFlg == true)
 			{
 				try
 				{
@@ -1294,7 +1297,7 @@ namespace rmApplication
 					stream.BeginRead(SocketsParam.ReadBuff, 0, SocketsParam.ReadBuff.Length, new AsyncCallback(sockets_DataReceived), SocketsParam);
 
 					stream = SocketsParam.Client.GetStream();
-					ret = true;
+					retFlg = true;
 
 				}
 				catch (Exception ex)
@@ -1309,35 +1312,36 @@ namespace rmApplication
 				if (SocketsParam.Client != null)
 				{
 					SocketsParam.Client.Close();
+					retFlg = true;
 
 				}
 
 			}
 
-			return ret;
+			return retFlg;
 		}
 
 
 		private bool sockets_CheckState()
 		{
-			bool ret = false;
+			bool retFlg = false;
 
 			if ((myComponents.CommunicationMode == Components.CommMode.NetWork) &&
 				(myComponents.CommActiveFlg == true) &&
 				(myComponents.NetIP != null) &&
 				(myComponents.NetPort != 0))
 			{
-				ret = true;
+				retFlg = true;
 
 			}
 
-			return ret;
+			return retFlg;
 		}
 
 
 		public bool commResource_CheckState()
 		{
-			bool ret = false;
+			bool retFlg = false;
 
 			switch (myComponents.CommunicationMode)
 			{
@@ -1346,18 +1350,18 @@ namespace rmApplication
 					break;
 
 				case Components.CommMode.Serial:
-					ret = serialPort_CheckState();
+					retFlg = serialPort_CheckState();
 
 					break;
 
 				case Components.CommMode.NetWork:
-					ret = sockets_CheckState();
+					retFlg = sockets_CheckState();
 
 					break;
 
 			}
 
-			return ret;
+			return retFlg;
 		}
 
 
@@ -1447,7 +1451,8 @@ namespace rmApplication
 			if ((e.ColumnIndex < 0) ||
 				(e.RowIndex < 0))
 			{
-				
+				return;
+
 			}
 			else
 			{
@@ -1504,9 +1509,9 @@ namespace rmApplication
 					{
 						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteText].Value = writeText;
 
-						bool flg = commResource_CheckState();
+						bool retFlg = commResource_CheckState();
 
-						if (flg == false)
+						if (retFlg == false)
 						{
 
 						}
@@ -1647,7 +1652,8 @@ namespace rmApplication
 			if ((e.ColumnIndex < 0) ||
 				(e.RowIndex < 0))
 			{
-				
+				return;
+
 			}
 			else
 			{
@@ -1937,9 +1943,9 @@ namespace rmApplication
 			
 			if (myComponents.CommActiveFlg == true)
 			{
-				bool flg = checkDataGridViewCells();
+				bool errFlg = checkDataGridViewCells();
 
-				if ( flg == true )
+				if ( errFlg == false )
 				{
 					renewLogSetting();
 
@@ -2055,23 +2061,23 @@ namespace rmApplication
 
 					}
 
-					bool ret = false;
+					bool retFlg = false;
 
 					if (myComponents.CommunicationMode == Components.CommMode.Serial)
 					{
-						ret = serialPort_SelectState(true);
+						retFlg = serialPort_SelectState(true);
 
 					}
 					else if (myComponents.CommunicationMode == Components.CommMode.NetWork)
 					{
-						ret = sockets_SelectState(true);
+						retFlg = sockets_SelectState(true);
 
 					}
 
-					bool flg = checkDataGridViewCells();
+					bool errFlg = checkDataGridViewCells();
 
-					if ( (ret == true) &&
-						(flg == true) )
+					if ( (retFlg == true) &&
+						(errFlg == false) )
 					{
 						myCommProtocol.startStopWatch();
 
@@ -2093,7 +2099,7 @@ namespace rmApplication
 				{
 					myCommProtocol.stopStopWatch();
 
-					bool ret = false;
+					bool retFlg = false;
 
 					myComponents.CommActiveFlg = false;
 
@@ -2102,19 +2108,19 @@ namespace rmApplication
 
 					if (myComponents.CommunicationMode == Components.CommMode.Serial)
 					{
-						ret = serialPort_SelectState(false);
+						retFlg = serialPort_SelectState(false);
 
 					}
 					else if (myComponents.CommunicationMode == Components.CommMode.NetWork)
 					{
-						ret = sockets_SelectState(false);
+						retFlg = sockets_SelectState(false);
 
 					}
 
 					//Revise Timing
 					timingValTextBox.Text = "500";
 
-					if (ret == true)
+					if (retFlg == true)
 					{
 						myCommProtocol.clear();
 
@@ -2134,11 +2140,9 @@ namespace rmApplication
 
 		private void mainTimer_Tick(object sender, EventArgs e)
 		{
-			bool flg = false;
-
-			while (myCommProtocol.myComponent.CommLog.Count != 0)
+			while (myCommProtocol.myComponents.CommLog.Count != 0)
 			{
-				string data = myCommProtocol.myComponent.CommLog.Dequeue();
+				string data = myCommProtocol.myComponents.CommLog.Dequeue();
 				
 				if (data != null)
 				{
@@ -2157,9 +2161,9 @@ namespace rmApplication
 
 			}
 
-			flg = commResource_CheckState();
+			bool retFlg = commResource_CheckState();
 
-			if (flg == false)
+			if (retFlg == false)
 			{
 				dispRxDStatusLabel.BackColor = Color.FromKnownColor(KnownColor.Control);
 				dispTxDStatusLabel.BackColor = Color.FromKnownColor(KnownColor.Control);
@@ -2181,9 +2185,9 @@ namespace rmApplication
 
 			}
 
-			flg = myCommProtocol.isLogMode();
+			var isLogMode = myCommProtocol.isLogMode();
 
-			if (flg == false)
+			if (isLogMode == false)
 			{
 				ContinueCnt = 1;
 				LastSlvCnt = 0;
@@ -2211,9 +2215,9 @@ namespace rmApplication
 
 				}
 
-				while (myCommProtocol.myComponent.RecieveStream.Count != 0)
+				while (myCommProtocol.myComponents.ReceiveStream.Count != 0)
 				{
-					CommProtocol.RxDataParam rxStream = myCommProtocol.myComponent.RecieveStream.Dequeue();
+					CommProtocol.RxDataParam rxStream = myCommProtocol.myComponents.ReceiveStream.Dequeue();
 
 					List<string> listSize = new List<string>();
 					int maxIndex = CheckedCellData.Length;
@@ -2336,20 +2340,20 @@ namespace rmApplication
 			{
 				dispTxDStatusLabel.BackColor = Color.Orange;
 
-				bool ret = false;
+				retFlg = false;
 
 				if (myComponents.CommunicationMode == Components.CommMode.Serial)
 				{
-					ret = serialPort_DataSend(txBuff);
+					retFlg = serialPort_DataSend(txBuff);
 
 				}
 				else if (myComponents.CommunicationMode == Components.CommMode.NetWork)
 				{
-					ret = sockets_DataSend(txBuff);
+					retFlg = sockets_DataSend(txBuff);
 
 				}
 
-				myCommProtocol.setTxCondtion(ret);
+				myCommProtocol.setTxCondtion(retFlg);
 
 			}
 			else
@@ -2358,10 +2362,10 @@ namespace rmApplication
 
 			}
 
-			dutVerViewControl.TextBox = myCommProtocol.myComponent.DutVersion;
+			dutVerViewControl.TextBox = myCommProtocol.myComponents.DutVersion;
 
 			//dump Data
-			if (myCommProtocol.myComponent.DumpData != null)
+			if (myCommProtocol.myComponents.DumpData != null)
 			{
 				string tmp = DumpFormInstance.dumpTextBox.Text;
 
@@ -2371,9 +2375,9 @@ namespace rmApplication
 
 				}
 
-				tmp += myCommProtocol.myComponent.DumpData;
+				tmp += myCommProtocol.myComponents.DumpData;
 				DumpFormInstance.dumpTextBox.Text = tmp;
-				myCommProtocol.myComponent.DumpData = null;
+				myCommProtocol.myComponents.DumpData = null;
 
 			}
 
