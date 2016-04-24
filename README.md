@@ -70,12 +70,12 @@ To configure these settings, navigate to: Tools > Options.
 Finally, when you click 'Comm Close' icon, the icon turns to 'Comm Open', and RM Classic communicates with your target.
 You can see Counter value in which first row is increasing.
 
-![RM Classic screen](mdContents/RMScreenShot_5_Communicating.png "screenshot")
+![RM Classic screen](mdContents/RMScreenShot_5_Communicating.gif "screenshot")
 
 "WR" column is button as changing value command.
 If you click a button in "Count Disable" row, the counter value will be stopped soon.
 
-![RM Classic screen](mdContents/RMScreenShot_5_1_Communicating.png "screenshot")
+![RM Classic screen](mdContents/RMScreenShot_5_1_Communicating.gif "screenshot")
 
 ## 2.1 Enable to change Variables
 If you might want to read another variables, you need a map file.
