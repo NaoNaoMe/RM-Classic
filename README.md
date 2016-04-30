@@ -12,7 +12,9 @@ MIT
 
 
 # How to use RM Classic
-This tutorial describes the introduction of RM Classic, and using it to communicate with your Arduino. 
+This tutorial describes the introduction of RM Classic. The following procedures are how to use RM Classic with your Arduino. 
+You could find a demonstartion on my [youtube channel](https://youtu.be/uLL1HGZ19iA).
+
 
 ## Table of Contents
 - 1 Quick Start
@@ -139,3 +141,7 @@ These results of functions copy to 'clip board'.
 ## 3.2 Communication through WiFi
 RM Classic supports network socket(as TCP client).
 You could try to communicate with your target through local network if you have UART-WiFi bridge that supports transparent mode.
+
+If you have the esp8266 board, [ESP8266-WiFi-UART-transparent-bridge](https://github.com/NaoNaoMe/ESP8266-WiFi-UART-transparent-bridge) is useful.
+You could find a tutorial on my [youtube channel](https://youtu.be/QDO9URz7r5U).
+
