@@ -1,6 +1,7 @@
 # RM Classic
 RM Classic is a debug monitor tool for Arduino, mbed and so on.  
 This tool provides monitoring variables via serial communication interface to your target. You can read and write internal variables in embedded CPU.
+RM Classic can only run on windows, but [Cross-platform edition](https://github.com/NaoNaoMe/RM-Classic-Cross-Platform) is available.
 
 ![RM Classic screen](mdContents/RMScreenShot_1_Initial.png "screenshot")
 

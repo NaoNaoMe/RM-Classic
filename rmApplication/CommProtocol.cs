@@ -15,6 +15,12 @@ namespace rmApplication
 
 		}
 
+		public struct SetLogParam
+		{
+			public string Size;
+			public string Address;
+		}
+		
 		public class Components
 		{
 			public enum RmMode : int
@@ -122,19 +128,19 @@ namespace rmApplication
 		}
 
 
-		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<string> lsize, out bool validflg)
+		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<string> listSize, out bool validflg)
 		{
 			List<string> listValue = new List<string>();
 			validflg = true;
 			
-			for( int i =0; i < lsize.Count; i++ )
+			foreach( var size in listSize )
 			{
-				int size = int.Parse(lsize[i]);
+				int intSize = int.Parse(size);
 
-				if (tmp.Count >= size)
+				if (tmp.Count >= intSize)
 				{
-					List<byte> buff = tmp.GetRange(0, size);
-					tmp.RemoveRange(0, size);
+					List<byte> buff = tmp.GetRange(0, intSize);
+					tmp.RemoveRange(0, intSize);
 					buff = BinaryEditor.Swap(buff);
 					listValue.Add(BinaryEditor.BytesToHexString(buff.ToArray()));
 				}
@@ -214,7 +220,7 @@ namespace rmApplication
 		}
 
 
-		public void decode(List<byte> bytes)
+		public void decode(byte[] bytes)
 		{
 			foreach (var tmp in bytes)
 			{
@@ -425,7 +431,7 @@ namespace rmApplication
 		}
 
 
-		public void setLogData(List<string> listSize, List<string> listAddress, int maxSize)
+		public void setLogData(List<SetLogParam> argParam)
 		{
 			int factor_max;
 			int frame_num;
@@ -441,8 +447,8 @@ namespace rmApplication
 				
 			}
 
-			frame_num = maxSize / factor_max;
-			last_frame_contents = maxSize - (frame_num * factor_max);
+			frame_num = argParam.Count / factor_max;
+			last_frame_contents = argParam.Count - (frame_num * factor_max);
 
 			if (last_frame_contents != 0)
 			{
@@ -491,10 +497,10 @@ namespace rmApplication
 				
 				for (int j = 0; j < frame_contents; j++)
 				{
-					addData = BinaryEditor.HexStringToBytes(listSize[dataIndex]);
+					addData = BinaryEditor.HexStringToBytes(argParam[dataIndex].Size);
 					frame.AddRange(addData);
 
-					string address = listAddress[dataIndex];
+					string address = argParam[dataIndex].Address;
 
 					if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 					{

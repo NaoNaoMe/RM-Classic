@@ -175,7 +175,16 @@ namespace rmApplication
 										buff = stArrayData.GetRange(0, size);
 										stArrayData.RemoveRange(0, size);
 
+										if (radioButtonBigEndian.Checked)
+										{
+											tmp = buff[0] + buff[1];
+
+										}
+										else
+										{
 										tmp = buff[1] + buff[0];
+
+										}
 
 										item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
 
@@ -185,7 +194,16 @@ namespace rmApplication
 										buff = stArrayData.GetRange(0, size);
 										stArrayData.RemoveRange(0, size);
 
+										if (radioButtonBigEndian.Checked)
+										{
+											tmp = buff[0] + buff[1] + buff[2] + buff[3];
+
+										}
+										else
+										{
 										tmp = buff[3] + buff[2] + buff[1] + buff[0];
+
+										}
 
 										item.Cells[column_name].Value = TypeConvert.FromHexChars(type, size, tmp);
 

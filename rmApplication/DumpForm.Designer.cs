@@ -35,13 +35,15 @@
 			this.sizeTextBox = new System.Windows.Forms.TextBox();
 			this.requestButton = new System.Windows.Forms.Button();
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+			this.copyToClipBoardButton = new System.Windows.Forms.Button();
+			this.variableTextBox = new System.Windows.Forms.TextBox();
+			this.label3 = new System.Windows.Forms.Label();
 			this.makeButton = new System.Windows.Forms.Button();
 			this.dataGridView1 = new System.Windows.Forms.DataGridView();
 			this.sizeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.typeColumn = new System.Windows.Forms.DataGridViewButtonColumn();
-			this.label3 = new System.Windows.Forms.Label();
-			this.variableTextBox = new System.Windows.Forms.TextBox();
-			this.copyToClipBoardButton = new System.Windows.Forms.Button();
+			this.radioButtonBigEndian = new System.Windows.Forms.RadioButton();
+			this.radioButtonLittleEndian = new System.Windows.Forms.RadioButton();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -99,7 +101,7 @@
 			// 
 			// requestButton
 			// 
-			this.requestButton.Location = new System.Drawing.Point(252, 51);
+			this.requestButton.Location = new System.Drawing.Point(253, 11);
 			this.requestButton.Margin = new System.Windows.Forms.Padding(2);
 			this.requestButton.Name = "requestButton";
 			this.requestButton.Size = new System.Drawing.Size(82, 22);
@@ -117,6 +119,8 @@
 			// 
 			// splitContainer1.Panel1
 			// 
+			this.splitContainer1.Panel1.Controls.Add(this.radioButtonLittleEndian);
+			this.splitContainer1.Panel1.Controls.Add(this.radioButtonBigEndian);
 			this.splitContainer1.Panel1.Controls.Add(this.copyToClipBoardButton);
 			this.splitContainer1.Panel1.Controls.Add(this.variableTextBox);
 			this.splitContainer1.Panel1.Controls.Add(this.label3);
@@ -132,8 +136,37 @@
 			// 
 			this.splitContainer1.Panel2.Controls.Add(this.dataGridView1);
 			this.splitContainer1.Size = new System.Drawing.Size(346, 304);
-			this.splitContainer1.SplitterDistance = 138;
+			this.splitContainer1.SplitterDistance = 133;
 			this.splitContainer1.TabIndex = 7;
+			// 
+			// copyToClipBoardButton
+			// 
+			this.copyToClipBoardButton.Location = new System.Drawing.Point(252, 106);
+			this.copyToClipBoardButton.Name = "copyToClipBoardButton";
+			this.copyToClipBoardButton.Size = new System.Drawing.Size(82, 22);
+			this.copyToClipBoardButton.TabIndex = 10;
+			this.copyToClipBoardButton.Text = "Copy";
+			this.copyToClipBoardButton.UseVisualStyleBackColor = true;
+			this.copyToClipBoardButton.Click += new System.EventHandler(this.copyToClipBoardButton_Click);
+			// 
+			// variableTextBox
+			// 
+			this.variableTextBox.Location = new System.Drawing.Point(62, 8);
+			this.variableTextBox.Margin = new System.Windows.Forms.Padding(2);
+			this.variableTextBox.Name = "variableTextBox";
+			this.variableTextBox.Size = new System.Drawing.Size(107, 19);
+			this.variableTextBox.TabIndex = 9;
+			this.variableTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.variableTextBox_KeyDown);
+			// 
+			// label3
+			// 
+			this.label3.AutoSize = true;
+			this.label3.Location = new System.Drawing.Point(11, 11);
+			this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+			this.label3.Name = "label3";
+			this.label3.Size = new System.Drawing.Size(47, 12);
+			this.label3.TabIndex = 8;
+			this.label3.Text = "Variable";
 			// 
 			// makeButton
 			// 
@@ -155,7 +188,7 @@
 			this.dataGridView1.Location = new System.Drawing.Point(0, 0);
 			this.dataGridView1.Name = "dataGridView1";
 			this.dataGridView1.RowTemplate.Height = 21;
-			this.dataGridView1.Size = new System.Drawing.Size(346, 162);
+			this.dataGridView1.Size = new System.Drawing.Size(346, 167);
 			this.dataGridView1.TabIndex = 0;
 			this.dataGridView1.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellContentClick);
 			this.dataGridView1.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView1_CellEndEdit);
@@ -176,34 +209,27 @@
 			this.typeColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
 			this.typeColumn.Width = 42;
 			// 
-			// label3
+			// radioButtonBigEndian
 			// 
-			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(11, 11);
-			this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(42, 12);
-			this.label3.TabIndex = 8;
-			this.label3.Text = "Variable";
+			this.radioButtonBigEndian.AutoSize = true;
+			this.radioButtonBigEndian.Checked = true;
+			this.radioButtonBigEndian.Location = new System.Drawing.Point(253, 38);
+			this.radioButtonBigEndian.Name = "radioButtonBigEndian";
+			this.radioButtonBigEndian.Size = new System.Drawing.Size(78, 16);
+			this.radioButtonBigEndian.TabIndex = 11;
+			this.radioButtonBigEndian.TabStop = true;
+			this.radioButtonBigEndian.Text = "Big Endian";
+			this.radioButtonBigEndian.UseVisualStyleBackColor = true;
 			// 
-			// variableTextBox
+			// radioButtonLittleEndian
 			// 
-			this.variableTextBox.Location = new System.Drawing.Point(62, 8);
-			this.variableTextBox.Margin = new System.Windows.Forms.Padding(2);
-			this.variableTextBox.Name = "variableTextBox";
-			this.variableTextBox.Size = new System.Drawing.Size(107, 19);
-			this.variableTextBox.TabIndex = 9;
-			this.variableTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.variableTextBox_KeyDown);
-			// 
-			// copyToClipBoardButton
-			// 
-			this.copyToClipBoardButton.Location = new System.Drawing.Point(252, 106);
-			this.copyToClipBoardButton.Name = "copyToClipBoardButton";
-			this.copyToClipBoardButton.Size = new System.Drawing.Size(82, 22);
-			this.copyToClipBoardButton.TabIndex = 10;
-			this.copyToClipBoardButton.Text = "Copy";
-			this.copyToClipBoardButton.UseVisualStyleBackColor = true;
-			this.copyToClipBoardButton.Click += new System.EventHandler(this.copyToClipBoardButton_Click);
+			this.radioButtonLittleEndian.AutoSize = true;
+			this.radioButtonLittleEndian.Location = new System.Drawing.Point(252, 60);
+			this.radioButtonLittleEndian.Name = "radioButtonLittleEndian";
+			this.radioButtonLittleEndian.Size = new System.Drawing.Size(87, 16);
+			this.radioButtonLittleEndian.TabIndex = 12;
+			this.radioButtonLittleEndian.Text = "Little Endian";
+			this.radioButtonLittleEndian.UseVisualStyleBackColor = true;
 			// 
 			// DumpForm
 			// 
@@ -240,5 +266,7 @@
 		private System.Windows.Forms.TextBox variableTextBox;
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.Button copyToClipBoardButton;
+		private System.Windows.Forms.RadioButton radioButtonLittleEndian;
+		private System.Windows.Forms.RadioButton radioButtonBigEndian;
 	}
 }

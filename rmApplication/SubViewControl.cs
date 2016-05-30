@@ -952,15 +952,16 @@ namespace rmApplication
 
 			CheckedCellData = (from DataGridViewRow x in dataGridView.Rows where (bool)x.Cells[(int)DgvRowName.Check].Value == true select x).ToArray();
 
-			List<string> listSize = new List<string>();
-			List<string> listAddress = new List<string>();
-			List<string> listType = new List<string>();
+			List<CommProtocol.SetLogParam> listParam = new List<CommProtocol.SetLogParam>();
+
 			int maxIndex = CheckedCellData.Length;
 
 			bool errFlg = false;
 
 			for (int i = 0; i < maxIndex; i++)
 			{
+				CommProtocol.SetLogParam tmpParam = new CommProtocol.SetLogParam();
+
 				if ((string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value as string) == true) ||
 					(string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Address].Value as string) == true) ||
 					(string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Offset].Value as string) == true) ||
@@ -1001,9 +1002,9 @@ namespace rmApplication
 
 					}
 
-					listSize.Add(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString());
-					listAddress.Add(address);
-					listType.Add(CheckedCellData[i].Cells[(int)DgvRowName.Type].Value.ToString());
+					tmpParam.Size = CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString();
+					tmpParam.Address = address;
+					listParam.Add(tmpParam);
 
 				}
 
@@ -1020,7 +1021,7 @@ namespace rmApplication
 			}
 			else
 			{
-				myCommProtocol.setLogData(listSize, listAddress, maxIndex);
+				myCommProtocol.setLogData(listParam);
 
 				myCommProtocol.setLogModeStart();
 
@@ -1112,9 +1113,7 @@ namespace rmApplication
 
 				serialPort.Read(rcvbuff, 0, size);
 
-				List<byte> rcvlist = rcvbuff.ToList();
-
-				myCommProtocol.decode(rcvlist);
+				myCommProtocol.decode(rcvbuff);
 
 			}
 			catch (Exception ex)
@@ -1247,15 +1246,15 @@ namespace rmApplication
 
 			int size = stream.EndRead(ar);
 
-			List<byte> rcvlist = new List<byte>();
+			byte[] rcvbuff = new byte[size];
 
 			for (int i = 0; i < size; i++)
 			{
-				rcvlist.Add(ap.ReadBuff[i]);
+				rcvbuff[i] = ap.ReadBuff[i];
 
 			}
 
-			myCommProtocol.decode(rcvlist);
+			myCommProtocol.decode(rcvbuff);
 
 			stream.BeginRead(ap.ReadBuff, 0, ap.ReadBuff.Length, new AsyncCallback(sockets_DataReceived), ap);
 
