@@ -335,6 +335,12 @@ namespace rmApplication
 
 		}
 
+		private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			AboutBox newAboutBox = new AboutBox();
+			newAboutBox.ShowDialog();
+		}
+
 
 	}
 
