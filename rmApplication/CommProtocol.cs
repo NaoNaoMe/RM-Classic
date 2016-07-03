@@ -48,7 +48,7 @@ namespace rmApplication
 			public Components()
 			{
 				CommMode = RmMode.COMMAND;
-				SelectByte = RmAddr.Byte4;
+				SelectByte = RmAddr.Byte2;
 				
 				CommLog = new Queue<string>();
 				ReceiveStream = new Queue<RxDataParam>();
@@ -150,6 +150,7 @@ namespace rmApplication
 					validflg = false;
 					
 				}
+				
 			}
 			
 			return listValue;
@@ -859,6 +860,7 @@ namespace rmApplication
 			LastSlvCnt = 0;
 			myComponents.CommMode = Components.RmMode.COMMAND;
 			CommSentFlg = false;
+			clear ();
 			
 			clearTxData();
 			clearRxData();

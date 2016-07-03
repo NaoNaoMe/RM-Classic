@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
+//using System.ComponentModel;
+//using System.Drawing;
+//using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using System.IO;
-using System.IO.Ports;
 using System.Xml.Serialization;
-using System.ComponentModel;
-
 
 namespace rmApplication
 {
 	public partial class MainForm : Form
 	{
+		private const string WINDOW_TITLE = "RM Classic";
+
 		private OptionForm OptionFormInstance;
+		private SubViewControl subViewControl1;
 
 		public MainForm()
 		{
@@ -25,11 +25,14 @@ namespace rmApplication
 
 		private void MainForm_Load(object sender, EventArgs e)
 		{
-			subViewControl1.commonInitialRoutine();
+			subViewControl1 = new SubViewControl();
+
+			mainPanel.Controls.Add(subViewControl1);
+			subViewControl1.Dock = DockStyle.Fill;
 
 			var tmpVSettingFactor = new ViewSetting();
 
-			for (int i = 0; i < 32; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				tmpVSettingFactor.DataSetting.Add(new DataSetting());
 			}
@@ -76,7 +79,7 @@ namespace rmApplication
 
 				if (ofd.ShowDialog() == DialogResult.OK)
 				{
-					string path = ofd.FileName;
+					string pathName = ofd.FileName;
 
 					XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
 
@@ -84,7 +87,7 @@ namespace rmApplication
 
 					try
 					{
-						StreamReader reader = new StreamReader(path);
+						System.IO.StreamReader reader = new System.IO.StreamReader(pathName);
 						deserializedData = (ViewSetting)serializer.Deserialize(reader);
 						reader.Close();
 
@@ -100,11 +103,12 @@ namespace rmApplication
 					{
 						subViewControl1.loadViewSettingFile(deserializedData);
 
-						string name = subViewControl1.getViewName(path);
+						string fileName = System.IO.Path.GetFileNameWithoutExtension(pathName);
+						string viewName = subViewControl1.getViewName(fileName);
 
-						if (name != null)
+						if (viewName != null)
 						{
-							this.Text = name + " - " + this.Text;
+							this.Text = viewName + " - " + WINDOW_TITLE;
 						}
 
 					}
@@ -197,11 +201,19 @@ namespace rmApplication
 
 				try
 				{
-					FileStream fs = new FileStream(sfd.FileName, FileMode.Create);
+					System.IO.FileStream fs = new System.IO.FileStream(sfd.FileName, System.IO.FileMode.Create);
 					XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
 					serializer.Serialize(fs, tmpVSettingFactor);
 					fs.Close();
-					
+
+					string fileName = System.IO.Path.GetFileNameWithoutExtension(sfd.FileName);
+					string viewName = subViewControl1.getViewName(fileName);
+
+					if (viewName != null)
+					{
+						this.Text = viewName + " - " + WINDOW_TITLE;
+					}
+
 				}
 				catch (Exception ex)
 				{
@@ -285,29 +297,6 @@ namespace rmApplication
 		private void exitToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			this.Close();
-
-		}
-
-		private void settingViewToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			if (subViewControl1.myComponents.CommActiveFlg == true)
-			{
-				MessageBox.Show("Stop communication.",
-									"Caution",
-									MessageBoxButtons.OK,
-									MessageBoxIcon.Warning);
-
-			}
-			else
-			{
-				subViewControl1.customizeDataGridView();
-				
-			}
-		}
-
-		private void changeViewToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			subViewControl1.changeDataGridViewColumn();
 
 		}
 

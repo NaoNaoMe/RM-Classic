@@ -105,5 +105,10 @@ namespace rmApplication
 		{
 			this.Close();
 		}
+
+		private void AboutBox_Load(object sender, EventArgs e)
+		{
+
+		}
 	}
 }

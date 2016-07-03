@@ -190,17 +190,21 @@ namespace rmApplication
 
 		private void okButton_Click(object sender, EventArgs e)
 		{
-			if (tabControl1.SelectedIndex == 0)
+			if (radioButtonSerialP.Checked)
 			{
-				SubViewCtrl.myComponents.CommPort = cmbPortName.SelectedItem.ToString();
+				if (cmbPortName.SelectedItem != null)
+				{
+					SubViewCtrl.myComponents.CommPort = cmbPortName.SelectedItem.ToString();
 
-				BuadRateItem baud = (BuadRateItem)cmbBaudRate.SelectedItem;
-				SubViewCtrl.myComponents.CommBaudRate = baud.BAUDRATE;
+					BuadRateItem baud = (BuadRateItem)cmbBaudRate.SelectedItem;
+					SubViewCtrl.myComponents.CommBaudRate = baud.BAUDRATE;
 
-				SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.Serial;
+					SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.Serial;
+
+				}
 
 			}
-			else if (tabControl1.SelectedIndex == 1)
+			else if ( radioButtonLocalN.Checked )
 			{
 				SubViewCtrl.myComponents.NetIP = localIPTextBox.Text;
 				SubViewCtrl.myComponents.NetPort = int.Parse(portTextBox.Text);
