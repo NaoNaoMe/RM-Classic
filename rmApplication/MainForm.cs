@@ -32,7 +32,7 @@ namespace rmApplication
 
 			var tmpVSettingFactor = new ViewSetting();
 
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < 16; i++)
 			{
 				tmpVSettingFactor.DataSetting.Add(new DataSetting());
 			}
