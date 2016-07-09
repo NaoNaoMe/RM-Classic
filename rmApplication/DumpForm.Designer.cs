@@ -34,7 +34,7 @@
 			this.addressTextBox = new System.Windows.Forms.TextBox();
 			this.sizeTextBox = new System.Windows.Forms.TextBox();
 			this.requestButton = new System.Windows.Forms.Button();
-			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+			this.splitContainerMain = new System.Windows.Forms.SplitContainer();
 			this.radioButtonLittleEndian = new System.Windows.Forms.RadioButton();
 			this.radioButtonBigEndian = new System.Windows.Forms.RadioButton();
 			this.copyToClipBoardButton = new System.Windows.Forms.Button();
@@ -44,10 +44,10 @@
 			this.dataGridView1 = new System.Windows.Forms.DataGridView();
 			this.sizeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.typeColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
-			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
-			this.splitContainer1.Panel1.SuspendLayout();
-			this.splitContainer1.Panel2.SuspendLayout();
-			this.splitContainer1.SuspendLayout();
+			((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).BeginInit();
+			this.splitContainerMain.Panel1.SuspendLayout();
+			this.splitContainerMain.Panel2.SuspendLayout();
+			this.splitContainerMain.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
 			this.SuspendLayout();
 			// 
@@ -56,7 +56,7 @@
 			this.label1.AutoSize = true;
 			this.label1.Location = new System.Drawing.Point(15, 45);
 			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(60, 17);
+			this.label1.Size = new System.Drawing.Size(47, 12);
 			this.label1.TabIndex = 1;
 			this.label1.Text = "Address";
 			// 
@@ -65,7 +65,7 @@
 			this.label2.AutoSize = true;
 			this.label2.Location = new System.Drawing.Point(15, 76);
 			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(35, 17);
+			this.label2.Size = new System.Drawing.Size(26, 12);
 			this.label2.TabIndex = 2;
 			this.label2.Text = "Size";
 			// 
@@ -82,7 +82,7 @@
 			// 
 			this.addressTextBox.Location = new System.Drawing.Point(83, 41);
 			this.addressTextBox.Name = "addressTextBox";
-			this.addressTextBox.Size = new System.Drawing.Size(141, 22);
+			this.addressTextBox.Size = new System.Drawing.Size(141, 19);
 			this.addressTextBox.TabIndex = 4;
 			this.addressTextBox.Text = "20000000";
 			// 
@@ -90,7 +90,7 @@
 			// 
 			this.sizeTextBox.Location = new System.Drawing.Point(83, 72);
 			this.sizeTextBox.Name = "sizeTextBox";
-			this.sizeTextBox.Size = new System.Drawing.Size(141, 22);
+			this.sizeTextBox.Size = new System.Drawing.Size(141, 19);
 			this.sizeTextBox.TabIndex = 5;
 			this.sizeTextBox.Text = "1";
 			// 
@@ -104,36 +104,37 @@
 			this.requestButton.UseVisualStyleBackColor = true;
 			this.requestButton.Click += new System.EventHandler(this.requestButton_Click);
 			// 
-			// splitContainer1
+			// splitContainerMain
 			// 
-			this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.splitContainer1.Location = new System.Drawing.Point(0, 0);
-			this.splitContainer1.Margin = new System.Windows.Forms.Padding(4);
-			this.splitContainer1.Name = "splitContainer1";
-			this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
+			this.splitContainerMain.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.splitContainerMain.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
+			this.splitContainerMain.Location = new System.Drawing.Point(0, 0);
+			this.splitContainerMain.Margin = new System.Windows.Forms.Padding(4);
+			this.splitContainerMain.Name = "splitContainerMain";
+			this.splitContainerMain.Orientation = System.Windows.Forms.Orientation.Horizontal;
 			// 
-			// splitContainer1.Panel1
+			// splitContainerMain.Panel1
 			// 
-			this.splitContainer1.Panel1.Controls.Add(this.radioButtonLittleEndian);
-			this.splitContainer1.Panel1.Controls.Add(this.radioButtonBigEndian);
-			this.splitContainer1.Panel1.Controls.Add(this.copyToClipBoardButton);
-			this.splitContainer1.Panel1.Controls.Add(this.variableTextBox);
-			this.splitContainer1.Panel1.Controls.Add(this.label3);
-			this.splitContainer1.Panel1.Controls.Add(this.makeButton);
-			this.splitContainer1.Panel1.Controls.Add(this.dumpTextBox);
-			this.splitContainer1.Panel1.Controls.Add(this.requestButton);
-			this.splitContainer1.Panel1.Controls.Add(this.label1);
-			this.splitContainer1.Panel1.Controls.Add(this.addressTextBox);
-			this.splitContainer1.Panel1.Controls.Add(this.sizeTextBox);
-			this.splitContainer1.Panel1.Controls.Add(this.label2);
+			this.splitContainerMain.Panel1.Controls.Add(this.radioButtonLittleEndian);
+			this.splitContainerMain.Panel1.Controls.Add(this.radioButtonBigEndian);
+			this.splitContainerMain.Panel1.Controls.Add(this.copyToClipBoardButton);
+			this.splitContainerMain.Panel1.Controls.Add(this.variableTextBox);
+			this.splitContainerMain.Panel1.Controls.Add(this.label3);
+			this.splitContainerMain.Panel1.Controls.Add(this.makeButton);
+			this.splitContainerMain.Panel1.Controls.Add(this.dumpTextBox);
+			this.splitContainerMain.Panel1.Controls.Add(this.requestButton);
+			this.splitContainerMain.Panel1.Controls.Add(this.label1);
+			this.splitContainerMain.Panel1.Controls.Add(this.addressTextBox);
+			this.splitContainerMain.Panel1.Controls.Add(this.sizeTextBox);
+			this.splitContainerMain.Panel1.Controls.Add(this.label2);
 			// 
-			// splitContainer1.Panel2
+			// splitContainerMain.Panel2
 			// 
-			this.splitContainer1.Panel2.Controls.Add(this.dataGridView1);
-			this.splitContainer1.Size = new System.Drawing.Size(461, 405);
-			this.splitContainer1.SplitterDistance = 177;
-			this.splitContainer1.SplitterWidth = 5;
-			this.splitContainer1.TabIndex = 7;
+			this.splitContainerMain.Panel2.Controls.Add(this.dataGridView1);
+			this.splitContainerMain.Size = new System.Drawing.Size(461, 405);
+			this.splitContainerMain.SplitterDistance = 177;
+			this.splitContainerMain.SplitterWidth = 5;
+			this.splitContainerMain.TabIndex = 7;
 			// 
 			// radioButtonLittleEndian
 			// 
@@ -141,7 +142,7 @@
 			this.radioButtonLittleEndian.Location = new System.Drawing.Point(336, 80);
 			this.radioButtonLittleEndian.Margin = new System.Windows.Forms.Padding(4);
 			this.radioButtonLittleEndian.Name = "radioButtonLittleEndian";
-			this.radioButtonLittleEndian.Size = new System.Drawing.Size(107, 21);
+			this.radioButtonLittleEndian.Size = new System.Drawing.Size(87, 16);
 			this.radioButtonLittleEndian.TabIndex = 12;
 			this.radioButtonLittleEndian.Text = "Little Endian";
 			this.radioButtonLittleEndian.UseVisualStyleBackColor = true;
@@ -153,7 +154,7 @@
 			this.radioButtonBigEndian.Location = new System.Drawing.Point(337, 51);
 			this.radioButtonBigEndian.Margin = new System.Windows.Forms.Padding(4);
 			this.radioButtonBigEndian.Name = "radioButtonBigEndian";
-			this.radioButtonBigEndian.Size = new System.Drawing.Size(97, 21);
+			this.radioButtonBigEndian.Size = new System.Drawing.Size(78, 16);
 			this.radioButtonBigEndian.TabIndex = 11;
 			this.radioButtonBigEndian.TabStop = true;
 			this.radioButtonBigEndian.Text = "Big Endian";
@@ -174,7 +175,7 @@
 			// 
 			this.variableTextBox.Location = new System.Drawing.Point(83, 11);
 			this.variableTextBox.Name = "variableTextBox";
-			this.variableTextBox.Size = new System.Drawing.Size(141, 22);
+			this.variableTextBox.Size = new System.Drawing.Size(141, 19);
 			this.variableTextBox.TabIndex = 9;
 			this.variableTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.variableTextBox_KeyDown);
 			// 
@@ -183,7 +184,7 @@
 			this.label3.AutoSize = true;
 			this.label3.Location = new System.Drawing.Point(15, 15);
 			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(60, 17);
+			this.label3.Size = new System.Drawing.Size(47, 12);
 			this.label3.TabIndex = 8;
 			this.label3.Text = "Variable";
 			// 
@@ -234,14 +235,14 @@
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
 			this.ClientSize = new System.Drawing.Size(461, 405);
-			this.Controls.Add(this.splitContainer1);
+			this.Controls.Add(this.splitContainerMain);
 			this.Name = "DumpForm";
 			this.Text = "DumpForm";
-			this.splitContainer1.Panel1.ResumeLayout(false);
-			this.splitContainer1.Panel1.PerformLayout();
-			this.splitContainer1.Panel2.ResumeLayout(false);
-			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
-			this.splitContainer1.ResumeLayout(false);
+			this.splitContainerMain.Panel1.ResumeLayout(false);
+			this.splitContainerMain.Panel1.PerformLayout();
+			this.splitContainerMain.Panel2.ResumeLayout(false);
+			((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).EndInit();
+			this.splitContainerMain.ResumeLayout(false);
 			((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
 			this.ResumeLayout(false);
 
@@ -255,7 +256,7 @@
 		private System.Windows.Forms.TextBox sizeTextBox;
 		private System.Windows.Forms.Button requestButton;
 		public System.Windows.Forms.TextBox dumpTextBox;
-		private System.Windows.Forms.SplitContainer splitContainer1;
+		private System.Windows.Forms.SplitContainer splitContainerMain;
 		private System.Windows.Forms.DataGridView dataGridView1;
 		private System.Windows.Forms.Button makeButton;
 		private System.Windows.Forms.TextBox variableTextBox;

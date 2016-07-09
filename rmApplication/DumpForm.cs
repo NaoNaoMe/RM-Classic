@@ -178,8 +178,6 @@ namespace rmApplication
 			if ((quotient != 0) &&
 				(remainder == 0))
 			{
-				// http://www.martyndavis.com/?p=357
-
 				string[][] arrayTextBuffer = new string[listNumSize.Count][];
 
 				for (int i = 0; i < listNumSize.Count; i++)

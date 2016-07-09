@@ -32,10 +32,28 @@
 			System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
 			System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
 			System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
-			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+			this.splitContainerMain = new System.Windows.Forms.SplitContainer();
 			this.commLogtextBox = new System.Windows.Forms.TextBox();
-			this.WarningViewControl = new rmApplication.VersionViewControl();
+			this.splitContainerSub = new System.Windows.Forms.SplitContainer();
 			this.dataGridView = new System.Windows.Forms.DataGridView();
+			this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
+			this.userToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.area1ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.area2ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.dispTxDStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.dispRxDStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+			this.mainToolStrip = new System.Windows.Forms.ToolStrip();
+			this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
+			this.pageValComboBox = new System.Windows.Forms.ToolStripComboBox();
+			this.customizeToolStripButton = new System.Windows.Forms.ToolStripButton();
+			this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
+			this.timingValTextBox = new System.Windows.Forms.ToolStripTextBox();
+			this.opclCommButton = new System.Windows.Forms.ToolStripButton();
+			this.logCtrlButton = new System.Windows.Forms.ToolStripButton();
+			this.dumpEntryButton = new System.Windows.Forms.ToolStripButton();
+			this.serialPort = new System.IO.Ports.SerialPort(this.components);
+			this.mainTimer = new System.Windows.Forms.Timer(this.components);
+			this.contextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.groupColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.checkColumn = new System.Windows.Forms.DataGridViewCheckBoxColumn();
 			this.sizeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -50,56 +68,41 @@
 			this.writeTextColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.writeValueColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 			this.writeButtonColumn = new System.Windows.Forms.DataGridViewButtonColumn();
-			this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
-			this.userToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-			this.area1ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-			this.area2ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-			this.dispTxDStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-			this.dispRxDStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-			this.mainToolStrip = new System.Windows.Forms.ToolStrip();
-			this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-			this.pageValComboBox = new System.Windows.Forms.ToolStripComboBox();
-			this.customizeToolStripButton = new System.Windows.Forms.ToolStripButton();
-			this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
-			this.timingValTextBox = new System.Windows.Forms.ToolStripTextBox();
-			this.opclCommButton = new System.Windows.Forms.ToolStripButton();
-			this.boolDataLogButton = new System.Windows.Forms.ToolStripButton();
-			this.dumpEntryButton = new System.Windows.Forms.ToolStripButton();
-			this.serialPort = new System.IO.Ports.SerialPort(this.components);
-			this.mainTimer = new System.Windows.Forms.Timer(this.components);
-			this.contextMenuStrip = new System.Windows.Forms.ContextMenuStrip(this.components);
+			this.WarningViewControl = new rmApplication.VersionViewControl();
 			this.targetVerViewControl = new rmApplication.VersionViewControl();
 			this.dutVerViewControl = new rmApplication.VersionViewControl();
-			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
-			this.splitContainer1.Panel1.SuspendLayout();
-			this.splitContainer1.Panel2.SuspendLayout();
-			this.splitContainer1.SuspendLayout();
+			((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).BeginInit();
+			this.splitContainerMain.Panel1.SuspendLayout();
+			this.splitContainerMain.Panel2.SuspendLayout();
+			this.splitContainerMain.SuspendLayout();
+			((System.ComponentModel.ISupportInitialize)(this.splitContainerSub)).BeginInit();
+			this.splitContainerSub.Panel1.SuspendLayout();
+			this.splitContainerSub.Panel2.SuspendLayout();
+			this.splitContainerSub.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)(this.dataGridView)).BeginInit();
 			this.mainStatusStrip.SuspendLayout();
 			this.mainToolStrip.SuspendLayout();
 			this.SuspendLayout();
 			// 
-			// splitContainer1
+			// splitContainerMain
 			// 
-			this.splitContainer1.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.splitContainer1.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
-			this.splitContainer1.Location = new System.Drawing.Point(0, 76);
-			this.splitContainer1.Margin = new System.Windows.Forms.Padding(4);
-			this.splitContainer1.Name = "splitContainer1";
-			this.splitContainer1.Orientation = System.Windows.Forms.Orientation.Horizontal;
+			this.splitContainerMain.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.splitContainerMain.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
+			this.splitContainerMain.IsSplitterFixed = true;
+			this.splitContainerMain.Location = new System.Drawing.Point(0, 63);
+			this.splitContainerMain.Name = "splitContainerMain";
+			this.splitContainerMain.Orientation = System.Windows.Forms.Orientation.Horizontal;
 			// 
-			// splitContainer1.Panel1
+			// splitContainerMain.Panel1
 			// 
-			this.splitContainer1.Panel1.Controls.Add(this.commLogtextBox);
+			this.splitContainerMain.Panel1.Controls.Add(this.commLogtextBox);
 			// 
-			// splitContainer1.Panel2
+			// splitContainerMain.Panel2
 			// 
-			this.splitContainer1.Panel2.Controls.Add(this.WarningViewControl);
-			this.splitContainer1.Panel2.Controls.Add(this.dataGridView);
-			this.splitContainer1.Size = new System.Drawing.Size(993, 412);
-			this.splitContainer1.SplitterDistance = 83;
-			this.splitContainer1.SplitterWidth = 5;
-			this.splitContainer1.TabIndex = 14;
+			this.splitContainerMain.Panel2.Controls.Add(this.splitContainerSub);
+			this.splitContainerMain.Size = new System.Drawing.Size(745, 297);
+			this.splitContainerMain.SplitterDistance = 83;
+			this.splitContainerMain.TabIndex = 14;
 			// 
 			// commLogtextBox
 			// 
@@ -107,23 +110,33 @@
 			this.commLogtextBox.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.commLogtextBox.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
 			this.commLogtextBox.Location = new System.Drawing.Point(0, 0);
+			this.commLogtextBox.Margin = new System.Windows.Forms.Padding(2);
 			this.commLogtextBox.Multiline = true;
 			this.commLogtextBox.Name = "commLogtextBox";
 			this.commLogtextBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-			this.commLogtextBox.Size = new System.Drawing.Size(993, 83);
+			this.commLogtextBox.Size = new System.Drawing.Size(745, 83);
 			this.commLogtextBox.TabIndex = 0;
 			this.commLogtextBox.WordWrap = false;
 			// 
-			// WarningViewControl
+			// splitContainerSub
 			// 
-			this.WarningViewControl.Dock = System.Windows.Forms.DockStyle.Bottom;
-			this.WarningViewControl.Label = "Warning";
-			this.WarningViewControl.Location = new System.Drawing.Point(0, 300);
-			this.WarningViewControl.Name = "WarningViewControl";
-			this.WarningViewControl.Size = new System.Drawing.Size(993, 24);
-			this.WarningViewControl.TabIndex = 1;
-			this.WarningViewControl.TextBox = "";
-			this.WarningViewControl.TextEnabled = false;
+			this.splitContainerSub.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.splitContainerSub.FixedPanel = System.Windows.Forms.FixedPanel.Panel2;
+			this.splitContainerSub.IsSplitterFixed = true;
+			this.splitContainerSub.Location = new System.Drawing.Point(0, 0);
+			this.splitContainerSub.Name = "splitContainerSub";
+			this.splitContainerSub.Orientation = System.Windows.Forms.Orientation.Horizontal;
+			// 
+			// splitContainerSub.Panel1
+			// 
+			this.splitContainerSub.Panel1.Controls.Add(this.dataGridView);
+			// 
+			// splitContainerSub.Panel2
+			// 
+			this.splitContainerSub.Panel2.Controls.Add(this.WarningViewControl);
+			this.splitContainerSub.Size = new System.Drawing.Size(745, 210);
+			this.splitContainerSub.SplitterDistance = 181;
+			this.splitContainerSub.TabIndex = 2;
 			// 
 			// dataGridView
 			// 
@@ -162,7 +175,6 @@
 			this.dataGridView.DefaultCellStyle = dataGridViewCellStyle2;
 			this.dataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.dataGridView.Location = new System.Drawing.Point(0, 0);
-			this.dataGridView.Margin = new System.Windows.Forms.Padding(4);
 			this.dataGridView.Name = "dataGridView";
 			dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
 			dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
@@ -173,24 +185,174 @@
 			dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
 			this.dataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
 			this.dataGridView.RowTemplate.Height = 21;
-			this.dataGridView.Size = new System.Drawing.Size(993, 324);
+			this.dataGridView.Size = new System.Drawing.Size(745, 181);
 			this.dataGridView.TabIndex = 0;
 			this.dataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView_CellContentClick);
+			this.dataGridView.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView_CellEndEdit);
 			this.dataGridView.CellValidating += new System.Windows.Forms.DataGridViewCellValidatingEventHandler(this.dataGridView_CellValidating);
 			this.dataGridView.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView_CellValueChanged);
 			this.dataGridView.EditingControlShowing += new System.Windows.Forms.DataGridViewEditingControlShowingEventHandler(this.dataGridView_EditingControlShowing);
 			this.dataGridView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.dataGridView_KeyDown);
 			this.dataGridView.MouseDown += new System.Windows.Forms.MouseEventHandler(this.dataGridView_MouseDown);
 			// 
+			// mainStatusStrip
+			// 
+			this.mainStatusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+			this.mainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.userToolStripStatusLabel,
+            this.area1ToolStripStatusLabel,
+            this.area2ToolStripStatusLabel,
+            this.dispTxDStatusLabel,
+            this.dispRxDStatusLabel});
+			this.mainStatusStrip.Location = new System.Drawing.Point(0, 360);
+			this.mainStatusStrip.Name = "mainStatusStrip";
+			this.mainStatusStrip.Size = new System.Drawing.Size(745, 25);
+			this.mainStatusStrip.TabIndex = 9;
+			this.mainStatusStrip.Text = "statusStrip1";
+			// 
+			// userToolStripStatusLabel
+			// 
+			this.userToolStripStatusLabel.AutoSize = false;
+			this.userToolStripStatusLabel.Name = "userToolStripStatusLabel";
+			this.userToolStripStatusLabel.Size = new System.Drawing.Size(100, 20);
+			// 
+			// area1ToolStripStatusLabel
+			// 
+			this.area1ToolStripStatusLabel.Name = "area1ToolStripStatusLabel";
+			this.area1ToolStripStatusLabel.Size = new System.Drawing.Size(292, 20);
+			this.area1ToolStripStatusLabel.Spring = true;
+			this.area1ToolStripStatusLabel.Text = "Empty";
+			// 
+			// area2ToolStripStatusLabel
+			// 
+			this.area2ToolStripStatusLabel.Name = "area2ToolStripStatusLabel";
+			this.area2ToolStripStatusLabel.Size = new System.Drawing.Size(292, 20);
+			this.area2ToolStripStatusLabel.Spring = true;
+			this.area2ToolStripStatusLabel.Text = "-";
+			// 
+			// dispTxDStatusLabel
+			// 
+			this.dispTxDStatusLabel.BackColor = System.Drawing.SystemColors.Control;
+			this.dispTxDStatusLabel.Name = "dispTxDStatusLabel";
+			this.dispTxDStatusLabel.Size = new System.Drawing.Size(22, 20);
+			this.dispTxDStatusLabel.Text = "Tx";
+			// 
+			// dispRxDStatusLabel
+			// 
+			this.dispRxDStatusLabel.Name = "dispRxDStatusLabel";
+			this.dispRxDStatusLabel.Size = new System.Drawing.Size(23, 20);
+			this.dispRxDStatusLabel.Text = "Rx";
+			// 
+			// mainToolStrip
+			// 
+			this.mainToolStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
+			this.mainToolStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+			this.mainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.toolStripLabel1,
+            this.pageValComboBox,
+            this.customizeToolStripButton,
+            this.toolStripLabel2,
+            this.timingValTextBox,
+            this.opclCommButton,
+            this.logCtrlButton,
+            this.dumpEntryButton});
+			this.mainToolStrip.Location = new System.Drawing.Point(0, 0);
+			this.mainToolStrip.Name = "mainToolStrip";
+			this.mainToolStrip.Size = new System.Drawing.Size(745, 27);
+			this.mainToolStrip.TabIndex = 10;
+			this.mainToolStrip.Text = "toolStrip1";
+			// 
+			// toolStripLabel1
+			// 
+			this.toolStripLabel1.Name = "toolStripLabel1";
+			this.toolStripLabel1.Size = new System.Drawing.Size(41, 24);
+			this.toolStripLabel1.Text = "Page:";
+			// 
+			// pageValComboBox
+			// 
+			this.pageValComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this.pageValComboBox.Name = "pageValComboBox";
+			this.pageValComboBox.Size = new System.Drawing.Size(180, 27);
+			this.pageValComboBox.SelectedIndexChanged += new System.EventHandler(this.pageValComboBox_SelectedIndexChanged);
+			// 
+			// customizeToolStripButton
+			// 
+			this.customizeToolStripButton.AutoSize = false;
+			this.customizeToolStripButton.Image = global::rmApplication.Properties.Resources.Complete_and_ok_gray;
+			this.customizeToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+			this.customizeToolStripButton.Name = "customizeToolStripButton";
+			this.customizeToolStripButton.Size = new System.Drawing.Size(100, 24);
+			this.customizeToolStripButton.Text = "Customize";
+			this.customizeToolStripButton.Click += new System.EventHandler(this.customizeToolStripButton_Click);
+			// 
+			// toolStripLabel2
+			// 
+			this.toolStripLabel2.AutoSize = false;
+			this.toolStripLabel2.Name = "toolStripLabel2";
+			this.toolStripLabel2.Size = new System.Drawing.Size(81, 24);
+			this.toolStripLabel2.Text = "Timing(ms):";
+			// 
+			// timingValTextBox
+			// 
+			this.timingValTextBox.AutoSize = false;
+			this.timingValTextBox.Name = "timingValTextBox";
+			this.timingValTextBox.Size = new System.Drawing.Size(60, 27);
+			this.timingValTextBox.Text = "500";
+			this.timingValTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.timingValTextBox_KeyPress);
+			// 
+			// opclCommButton
+			// 
+			this.opclCommButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+			this.opclCommButton.AutoSize = false;
+			this.opclCommButton.Image = global::rmApplication.Properties.Resources.FlagThread_white;
+			this.opclCommButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+			this.opclCommButton.Name = "opclCommButton";
+			this.opclCommButton.Size = new System.Drawing.Size(106, 24);
+			this.opclCommButton.Text = "Comm Open";
+			this.opclCommButton.Click += new System.EventHandler(this.opclCommButton_Click);
+			// 
+			// logCtrlButton
+			// 
+			this.logCtrlButton.AutoSize = false;
+			this.logCtrlButton.Image = global::rmApplication.Properties.Resources.Complete_and_ok_gray;
+			this.logCtrlButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+			this.logCtrlButton.Name = "logCtrlButton";
+			this.logCtrlButton.Size = new System.Drawing.Size(84, 24);
+			this.logCtrlButton.Text = "Stop Log";
+			this.logCtrlButton.Click += new System.EventHandler(this.logCtrlButton_Click);
+			// 
+			// dumpEntryButton
+			// 
+			this.dumpEntryButton.AutoSize = false;
+			this.dumpEntryButton.Image = global::rmApplication.Properties.Resources.VirtualMachine;
+			this.dumpEntryButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+			this.dumpEntryButton.Name = "dumpEntryButton";
+			this.dumpEntryButton.Size = new System.Drawing.Size(65, 24);
+			this.dumpEntryButton.Text = "Dump";
+			this.dumpEntryButton.Click += new System.EventHandler(this.dumpEntryButton_Click);
+			// 
+			// mainTimer
+			// 
+			this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
+			// 
+			// contextMenuStrip
+			// 
+			this.contextMenuStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+			this.contextMenuStrip.Name = "contextMenuStrip";
+			this.contextMenuStrip.Size = new System.Drawing.Size(61, 4);
+			this.contextMenuStrip.ItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.contextMenuStrip_ItemClicked);
+			// 
 			// groupColumn
 			// 
 			this.groupColumn.DataPropertyName = "Group";
+			this.groupColumn.Frozen = true;
 			this.groupColumn.HeaderText = "Group";
 			this.groupColumn.Name = "groupColumn";
 			// 
 			// checkColumn
 			// 
 			this.checkColumn.DataPropertyName = "Check";
+			this.checkColumn.Frozen = true;
 			this.checkColumn.HeaderText = "CK";
 			this.checkColumn.Name = "checkColumn";
 			this.checkColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
@@ -285,157 +447,26 @@
 			this.writeButtonColumn.Text = "TRG";
 			this.writeButtonColumn.Width = 42;
 			// 
-			// mainStatusStrip
+			// WarningViewControl
 			// 
-			this.mainStatusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
-			this.mainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.userToolStripStatusLabel,
-            this.area1ToolStripStatusLabel,
-            this.area2ToolStripStatusLabel,
-            this.dispTxDStatusLabel,
-            this.dispRxDStatusLabel});
-			this.mainStatusStrip.Location = new System.Drawing.Point(0, 488);
-			this.mainStatusStrip.Name = "mainStatusStrip";
-			this.mainStatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 19, 0);
-			this.mainStatusStrip.Size = new System.Drawing.Size(993, 25);
-			this.mainStatusStrip.TabIndex = 9;
-			this.mainStatusStrip.Text = "statusStrip1";
-			// 
-			// userToolStripStatusLabel
-			// 
-			this.userToolStripStatusLabel.AutoSize = false;
-			this.userToolStripStatusLabel.Name = "userToolStripStatusLabel";
-			this.userToolStripStatusLabel.Size = new System.Drawing.Size(100, 20);
-			// 
-			// area1ToolStripStatusLabel
-			// 
-			this.area1ToolStripStatusLabel.Name = "area1ToolStripStatusLabel";
-			this.area1ToolStripStatusLabel.Size = new System.Drawing.Size(412, 20);
-			this.area1ToolStripStatusLabel.Spring = true;
-			this.area1ToolStripStatusLabel.Text = "Empty";
-			// 
-			// area2ToolStripStatusLabel
-			// 
-			this.area2ToolStripStatusLabel.Name = "area2ToolStripStatusLabel";
-			this.area2ToolStripStatusLabel.Size = new System.Drawing.Size(412, 20);
-			this.area2ToolStripStatusLabel.Spring = true;
-			this.area2ToolStripStatusLabel.Text = "-";
-			// 
-			// dispTxDStatusLabel
-			// 
-			this.dispTxDStatusLabel.BackColor = System.Drawing.SystemColors.Control;
-			this.dispTxDStatusLabel.Name = "dispTxDStatusLabel";
-			this.dispTxDStatusLabel.Size = new System.Drawing.Size(23, 20);
-			this.dispTxDStatusLabel.Text = "Tx";
-			// 
-			// dispRxDStatusLabel
-			// 
-			this.dispRxDStatusLabel.Name = "dispRxDStatusLabel";
-			this.dispRxDStatusLabel.Size = new System.Drawing.Size(25, 20);
-			this.dispRxDStatusLabel.Text = "Rx";
-			// 
-			// mainToolStrip
-			// 
-			this.mainToolStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
-			this.mainToolStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
-			this.mainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel1,
-            this.pageValComboBox,
-            this.customizeToolStripButton,
-            this.toolStripLabel2,
-            this.timingValTextBox,
-            this.opclCommButton,
-            this.boolDataLogButton,
-            this.dumpEntryButton});
-			this.mainToolStrip.Location = new System.Drawing.Point(0, 0);
-			this.mainToolStrip.Name = "mainToolStrip";
-			this.mainToolStrip.Size = new System.Drawing.Size(993, 28);
-			this.mainToolStrip.TabIndex = 10;
-			this.mainToolStrip.Text = "toolStrip1";
-			// 
-			// toolStripLabel1
-			// 
-			this.toolStripLabel1.Name = "toolStripLabel1";
-			this.toolStripLabel1.Size = new System.Drawing.Size(44, 25);
-			this.toolStripLabel1.Text = "Page:";
-			// 
-			// pageValComboBox
-			// 
-			this.pageValComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this.pageValComboBox.Name = "pageValComboBox";
-			this.pageValComboBox.Size = new System.Drawing.Size(239, 28);
-			this.pageValComboBox.SelectedIndexChanged += new System.EventHandler(this.pageValComboBox_SelectedIndexChanged);
-			// 
-			// customizeToolStripButton
-			// 
-			this.customizeToolStripButton.Image = global::rmApplication.Properties.Resources.Complete_and_ok_gray;
-			this.customizeToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-			this.customizeToolStripButton.Name = "customizeToolStripButton";
-			this.customizeToolStripButton.Size = new System.Drawing.Size(102, 25);
-			this.customizeToolStripButton.Text = "Customize";
-			this.customizeToolStripButton.Click += new System.EventHandler(this.customizeToolStripButton_Click);
-			// 
-			// toolStripLabel2
-			// 
-			this.toolStripLabel2.Name = "toolStripLabel2";
-			this.toolStripLabel2.Size = new System.Drawing.Size(87, 25);
-			this.toolStripLabel2.Text = "Timing(ms):";
-			// 
-			// timingValTextBox
-			// 
-			this.timingValTextBox.Name = "timingValTextBox";
-			this.timingValTextBox.Size = new System.Drawing.Size(79, 28);
-			this.timingValTextBox.Text = "500";
-			this.timingValTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.timingValTextBox_KeyPress);
-			// 
-			// opclCommButton
-			// 
-			this.opclCommButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-			this.opclCommButton.AutoSize = false;
-			this.opclCommButton.Image = global::rmApplication.Properties.Resources.FlagThread_white;
-			this.opclCommButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-			this.opclCommButton.Name = "opclCommButton";
-			this.opclCommButton.Size = new System.Drawing.Size(106, 24);
-			this.opclCommButton.Text = "Comm Close";
-			this.opclCommButton.Click += new System.EventHandler(this.opclCommButton_Click);
-			// 
-			// boolDataLogButton
-			// 
-			this.boolDataLogButton.AutoSize = false;
-			this.boolDataLogButton.Image = global::rmApplication.Properties.Resources.Complete_and_ok_gray;
-			this.boolDataLogButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-			this.boolDataLogButton.Name = "boolDataLogButton";
-			this.boolDataLogButton.Size = new System.Drawing.Size(84, 24);
-			this.boolDataLogButton.Text = "Stop Log";
-			this.boolDataLogButton.Click += new System.EventHandler(this.boolDataLogButton_Click);
-			// 
-			// dumpEntryButton
-			// 
-			this.dumpEntryButton.Image = global::rmApplication.Properties.Resources.VirtualMachine;
-			this.dumpEntryButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-			this.dumpEntryButton.Name = "dumpEntryButton";
-			this.dumpEntryButton.Size = new System.Drawing.Size(72, 25);
-			this.dumpEntryButton.Text = "dump";
-			this.dumpEntryButton.Click += new System.EventHandler(this.dumpEntryButton_Click);
-			// 
-			// mainTimer
-			// 
-			this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
-			// 
-			// contextMenuStrip
-			// 
-			this.contextMenuStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
-			this.contextMenuStrip.Name = "contextMenuStrip";
-			this.contextMenuStrip.Size = new System.Drawing.Size(61, 4);
-			this.contextMenuStrip.ItemClicked += new System.Windows.Forms.ToolStripItemClickedEventHandler(this.contextMenuStrip_ItemClicked);
+			this.WarningViewControl.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.WarningViewControl.Label = "";
+			this.WarningViewControl.Location = new System.Drawing.Point(0, 0);
+			this.WarningViewControl.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.WarningViewControl.Name = "WarningViewControl";
+			this.WarningViewControl.Size = new System.Drawing.Size(745, 25);
+			this.WarningViewControl.TabIndex = 1;
+			this.WarningViewControl.TextBox = "";
+			this.WarningViewControl.TextEnabled = false;
 			// 
 			// targetVerViewControl
 			// 
 			this.targetVerViewControl.Dock = System.Windows.Forms.DockStyle.Top;
 			this.targetVerViewControl.Label = "Target Version";
-			this.targetVerViewControl.Location = new System.Drawing.Point(0, 52);
+			this.targetVerViewControl.Location = new System.Drawing.Point(0, 45);
+			this.targetVerViewControl.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
 			this.targetVerViewControl.Name = "targetVerViewControl";
-			this.targetVerViewControl.Size = new System.Drawing.Size(993, 24);
+			this.targetVerViewControl.Size = new System.Drawing.Size(745, 18);
 			this.targetVerViewControl.TabIndex = 12;
 			this.targetVerViewControl.TextBox = "";
 			this.targetVerViewControl.TextEnabled = false;
@@ -444,30 +475,34 @@
 			// 
 			this.dutVerViewControl.Dock = System.Windows.Forms.DockStyle.Top;
 			this.dutVerViewControl.Label = "DUT Version";
-			this.dutVerViewControl.Location = new System.Drawing.Point(0, 28);
+			this.dutVerViewControl.Location = new System.Drawing.Point(0, 27);
+			this.dutVerViewControl.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
 			this.dutVerViewControl.Name = "dutVerViewControl";
-			this.dutVerViewControl.Size = new System.Drawing.Size(993, 24);
+			this.dutVerViewControl.Size = new System.Drawing.Size(745, 18);
 			this.dutVerViewControl.TabIndex = 11;
 			this.dutVerViewControl.TextBox = "";
 			this.dutVerViewControl.TextEnabled = false;
 			// 
 			// SubViewControl
 			// 
-			this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
+			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.Controls.Add(this.splitContainer1);
+			this.Controls.Add(this.splitContainerMain);
 			this.Controls.Add(this.targetVerViewControl);
 			this.Controls.Add(this.dutVerViewControl);
 			this.Controls.Add(this.mainStatusStrip);
 			this.Controls.Add(this.mainToolStrip);
-			this.Margin = new System.Windows.Forms.Padding(4);
 			this.Name = "SubViewControl";
-			this.Size = new System.Drawing.Size(993, 513);
-			this.splitContainer1.Panel1.ResumeLayout(false);
-			this.splitContainer1.Panel1.PerformLayout();
-			this.splitContainer1.Panel2.ResumeLayout(false);
-			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
-			this.splitContainer1.ResumeLayout(false);
+			this.Size = new System.Drawing.Size(745, 385);
+			this.splitContainerMain.Panel1.ResumeLayout(false);
+			this.splitContainerMain.Panel1.PerformLayout();
+			this.splitContainerMain.Panel2.ResumeLayout(false);
+			((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).EndInit();
+			this.splitContainerMain.ResumeLayout(false);
+			this.splitContainerSub.Panel1.ResumeLayout(false);
+			this.splitContainerSub.Panel2.ResumeLayout(false);
+			((System.ComponentModel.ISupportInitialize)(this.splitContainerSub)).EndInit();
+			this.splitContainerSub.ResumeLayout(false);
 			((System.ComponentModel.ISupportInitialize)(this.dataGridView)).EndInit();
 			this.mainStatusStrip.ResumeLayout(false);
 			this.mainStatusStrip.PerformLayout();
@@ -480,7 +515,7 @@
 
 		#endregion
 
-		private System.Windows.Forms.SplitContainer splitContainer1;
+		private System.Windows.Forms.SplitContainer splitContainerMain;
 		private System.Windows.Forms.TextBox commLogtextBox;
 		private System.Windows.Forms.DataGridView dataGridView;
 		private VersionViewControl targetVerViewControl;
@@ -497,13 +532,14 @@
 		private System.Windows.Forms.ToolStripLabel toolStripLabel2;
 		private System.Windows.Forms.ToolStripTextBox timingValTextBox;
 		private System.Windows.Forms.ToolStripButton opclCommButton;
-		private System.Windows.Forms.ToolStripButton boolDataLogButton;
+		private System.Windows.Forms.ToolStripButton logCtrlButton;
 		private System.Windows.Forms.ToolStripButton dumpEntryButton;
 		private System.Windows.Forms.Timer mainTimer;
 		private System.Windows.Forms.ContextMenuStrip contextMenuStrip;
 		private System.IO.Ports.SerialPort serialPort;
 		private VersionViewControl WarningViewControl;
 		private System.Windows.Forms.ToolStripButton customizeToolStripButton;
+		private System.Windows.Forms.SplitContainer splitContainerSub;
 		private System.Windows.Forms.DataGridViewTextBoxColumn groupColumn;
 		private System.Windows.Forms.DataGridViewCheckBoxColumn checkColumn;
 		private System.Windows.Forms.DataGridViewTextBoxColumn sizeColumn;

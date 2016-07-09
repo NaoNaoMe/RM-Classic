@@ -14,7 +14,6 @@ namespace rmApplication
 	{
 		private const string WINDOW_TITLE = "RM Classic";
 
-		private OptionForm OptionFormInstance;
 		private SubViewControl subViewControl1;
 
 		public MainForm()
@@ -312,13 +311,8 @@ namespace rmApplication
 			}
 			else
 			{
-				if (OptionFormInstance != null)
-				{
-					OptionFormInstance.Close();
-				}
-
-				OptionFormInstance = new OptionForm(subViewControl1);
-				OptionFormInstance.Show();
+				OptionForm otpnForm = new OptionForm(subViewControl1);
+				otpnForm.ShowDialog();
 
 			}
 
