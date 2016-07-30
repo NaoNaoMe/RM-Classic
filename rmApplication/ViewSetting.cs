@@ -97,5 +97,51 @@ namespace rmApplication
 
 	}
 
+	class ViewSettingMisc
+	{
+		public static void replaceEmptyWithNull(ref ViewSetting data)
+		{
+			foreach (var item in data.DataSetting)
+			{
+				if (string.IsNullOrEmpty(item.Group))
+				{
+					item.Group = null;
+				}
+
+				if (string.IsNullOrEmpty(item.Size))
+				{
+					item.Size = "1";
+				}
+
+				if (string.IsNullOrEmpty(item.Variable))
+				{
+					item.Variable = null;
+				}
+
+				if (string.IsNullOrEmpty(item.Address))
+				{
+					item.Address = null;
+				}
+
+				if (string.IsNullOrEmpty(item.Offset))
+				{
+					item.Address = "0";
+				}
+
+				if (string.IsNullOrEmpty(item.Name))
+				{
+					item.Name = null;
+				}
+
+				if (string.IsNullOrEmpty(item.WriteValue))
+				{
+					item.WriteValue = null;
+				}
+
+			}
+
+		}
+	}
+
 	
 }

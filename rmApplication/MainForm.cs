@@ -186,23 +186,25 @@ namespace rmApplication
 
 			if (sfd.ShowDialog() == DialogResult.OK)
 			{
-				var tmpVSettingFactor = new ViewSetting();
+				var tmpViewSetting = new ViewSetting();
 
 				foreach (var factor in subViewControl1.myComponents.ViewSettingList)
 				{
 					foreach (var item in factor.DataSetting)
 					{
-						tmpVSettingFactor.DataSetting.Add(item);
+						tmpViewSetting.DataSetting.Add(item);
 
 					}
 
 				}
 
+				ViewSettingMisc.replaceEmptyWithNull(ref tmpViewSetting);
+
 				try
 				{
 					System.IO.FileStream fs = new System.IO.FileStream(sfd.FileName, System.IO.FileMode.Create);
 					XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
-					serializer.Serialize(fs, tmpVSettingFactor);
+					serializer.Serialize(fs, tmpViewSetting);
 					fs.Close();
 
 					string fileName = System.IO.Path.GetFileNameWithoutExtension(sfd.FileName);
