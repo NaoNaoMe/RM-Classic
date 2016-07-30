@@ -1,5 +1,5 @@
 # RM Classic
-RM Classic is a real-time debugging monitor for embedded software.
+RM Classic(1.2.0 beta) is a real-time debugging monitor for embedded software.
 
 This tool allows you to monitor variables on an on-board CPU in real time with using serial communication or tcp/ip communication.
 
@@ -13,6 +13,7 @@ This tool allows you to collect variables periodically without stop and change a
 This tool needs communication library, which is called [RM-Comm](https://github.com/NaoNaoMe/RM-Comm), on your target.
 
 # Table of contents
+- 0 [Quick Start for Arduino](https://github.com/NaoNaoMe/RM-Classic/tree/master)
 - 1 How To Use
 - 2 Setting File
 - 3 Logging Data
