@@ -13,6 +13,7 @@ namespace rmApplication
 	public partial class MainForm : Form
 	{
 		private const string WINDOW_TITLE = "RM Classic";
+		private const string GROUP_INITIAL_TAG = "x:Test";
 
 		private SubViewControl subViewControl1;
 
@@ -36,7 +37,7 @@ namespace rmApplication
 				tmpVSettingFactor.DataSetting.Add(new DataSetting());
 			}
 
-			tmpVSettingFactor.DataSetting[0].Group = SubViewControl.GROUP_TEMPORARY_TAG;
+			tmpVSettingFactor.DataSetting[0].Group = GROUP_INITIAL_TAG;
 
 			subViewControl1.loadViewSettingFile(tmpVSettingFactor);
 

@@ -45,6 +45,8 @@ namespace rmApplication
 			SubViewCtrl = tmp;
 			InitializeComponent();
 
+			passwordTextBox.MaxLength = 8;
+
 		}
 
 		private void OptionForm_Load(object sender, EventArgs e)
@@ -163,15 +165,14 @@ namespace rmApplication
 			}
 
 
-			localIPTextBox.Text = SubViewCtrl.myComponents.NetIP;
+			localIPTextBox.Text = SubViewCtrl.myComponents.NetIP.ToString();
 			portTextBox.Text = SubViewCtrl.myComponents.NetPort.ToString();
 
 
 			passwordTextBox.Text = SubViewCtrl.myComponents.Password;
 
-			var tmp = SubViewCtrl.myCommProtocol.myComponents.SelectByte;
-
-			if (tmp == CommProtocol.Components.RmAddr.Byte4)
+			var bMode = SubViewCtrl.myCommProtocol.myComponents.SelectByte;
+			if (bMode == CommProtocol.Components.RmAddr.Byte4)
 			{
 				adr4byteRadioButton.Checked = true;
 			}
@@ -180,6 +181,18 @@ namespace rmApplication
 				adr2byteRadioButton.Checked = true;
 
 			}
+
+			var commMode = SubViewCtrl.myComponents.CommunicationMode;
+			if (commMode == SubViewControl.Components.CommMode.NetWork)
+			{
+				radioButtonLocalN.Checked = true;
+			}
+			else
+			{
+				radioButtonSerialP.Checked = true;
+
+			}
+
 
 		}
 
@@ -206,8 +219,23 @@ namespace rmApplication
 			}
 			else if ( radioButtonLocalN.Checked )
 			{
-				SubViewCtrl.myComponents.NetIP = localIPTextBox.Text;
-				SubViewCtrl.myComponents.NetPort = int.Parse(portTextBox.Text);
+				string tmp;
+
+				tmp = localIPTextBox.Text;
+				System.Net.IPAddress address;
+				if (System.Net.IPAddress.TryParse(tmp, out address))
+				{
+					SubViewCtrl.myComponents.NetIP = address;
+				}
+
+				tmp = portTextBox.Text;
+				int port;
+				if(int.TryParse(tmp, out port))
+				{
+					SubViewCtrl.myComponents.NetPort = port;
+
+				}
+
 				SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.NetWork;
 				
 				// Baudrate must be defined by Uart-Network ConverterUnit.

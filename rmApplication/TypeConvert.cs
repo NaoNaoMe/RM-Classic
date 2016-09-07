@@ -176,7 +176,7 @@ namespace rmApplication
 		{
 			string ret = null;
 
-			if (data == null)
+			if (string.IsNullOrEmpty(data))
 			{
 				return ret;
 

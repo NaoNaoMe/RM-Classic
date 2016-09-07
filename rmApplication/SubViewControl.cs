@@ -23,7 +23,7 @@ namespace rmApplication
 			public CommMode CommunicationMode { set; get; }
 			public string CommPort { set; get; }
 			public int CommBaudRate { set; get; }
-			public string NetIP { set; get; }
+			public System.Net.IPAddress NetIP { set; get; }
 			public int NetPort { set; get; }
 			public string Password { set; get; }
 
@@ -38,13 +38,14 @@ namespace rmApplication
 			public string SettingName { set; get; }
 			public string SettingVer { set; get; }
 			public string TargetVer { set; get; }
+			public int TimingValue { set; get; }
 
 			public Components()
 			{
 				CommunicationMode = CommMode.NotDefine;
 				CommPort = "";
 				CommBaudRate = 9600;
-				NetIP = "192.168.0.255";
+				NetIP = System.Net.IPAddress.Parse("192.168.0.255");
 				NetPort = 49152;
 				Password = "0000FFFF";
 
@@ -59,6 +60,7 @@ namespace rmApplication
 				SettingName = "Sample";
 				SettingVer = "001";
 				TargetVer = "";
+				TimingValue = INITIAL_TIMING_VALUE;
 
 			}
 
@@ -82,6 +84,7 @@ namespace rmApplication
 				SettingName = data.SettingName;
 				SettingVer = data.SettingVer;
 				TargetVer = data.TargetVer;
+				TimingValue = data.TimingValue;
 
 			}
 
@@ -122,16 +125,24 @@ namespace rmApplication
 			public byte[] ReadBuff;
 		}
 
+		private const int MAIN_CTRL_INTERVAL = 100;
+
 		private const int COLUMN_NUM = 32;
 		private const int SELECT_NUM = 32;
 		private const int MAX_TOTAL_SIZE = 128;
 
-		public const string GROUP_TEMPORARY_TAG = "x:Test";
+		private const string GROUP_TEMPORARY_TAG = "x:Test";
 		private const string TARGET_VER_TAG = "_TgV";
 		private const string SETTING_VER_TAG = "_StV";
 
+		private const int INITIAL_TIMING_VALUE = 500;
+		private const int MAXIMUM_TIMING_VALUE = 10000;
+
 		private const int COMM_LOG_MAX = 500;
 		private const int RCV_LOGDATA_MAX = 10000;
+
+		private const int WARNING_SHOWUP_CNT_MAX = 20;
+		private const int CONTINUE_CNT_MAX = 10;
 
 		private DumpForm DumpFormInstance;
 		private ContextMenuStrip contextMenuStrip;
@@ -143,8 +154,12 @@ namespace rmApplication
 		private List<List<string>> RcvLogData;
 		private int ContinueCnt;
 		private int LastSlvCnt;
+		private int RxSilentCnt;
 		private string WarningText;
 		private int WarningShowUpCount;
+		private bool WarningReminder;
+
+		private string WorkaroundInputBuffer;
 
 		public string getViewSettingFileName()
 		{
@@ -410,14 +425,7 @@ namespace rmApplication
 
 							if (result != null)
 							{
-								if ((result.Size == "1") ||
-									(result.Size == "2") ||
-									(result.Size == "4"))
-								{
-									itemDS.Size = result.Size;
-
-								}
-
+								itemDS.Size = result.Size;
 								itemDS.Address = result.Address;
 
 							}
@@ -681,6 +689,21 @@ namespace rmApplication
 
 		}
 
+		public bool checkTimingTextBox()
+		{
+			bool errFlg = true;
+			string timingNum = timingValTextBox.Text.ToString();
+
+			if (TypeConvert.IsNumeric(timingNum) == true)
+			{
+				errFlg = false;
+
+			}
+
+			return errFlg;
+
+		}
+
 
 		private StringBuilder makeLogData(RecordMode mode)
 		{
@@ -888,8 +911,15 @@ namespace rmApplication
 
 			}
 
-			Exception ex_text = null;
+			if (TypeConvert.IsNumeric(timingNum) == false)
+			{
+				timingNum = INITIAL_TIMING_VALUE.ToString();
 
+			}
+
+			myComponents.TimingValue = int.Parse(timingNum);
+
+			Exception ex_text = null;
 			string timngVal = TypeConvert.ToHexChars(numeralSystem.UDEC, 2, timingNum, out ex_text);
 
 			myCommProtocol.setTiming(timngVal);
@@ -1133,7 +1163,7 @@ namespace rmApplication
 			if (reqFlg == true)
 			{
 				if ((myComponents.CommunicationMode == Components.CommMode.NetWork) &&
-					(string.IsNullOrEmpty(myComponents.NetIP) == false) &&
+					(myComponents.NetIP != null) &&
 					(myComponents.NetPort != 0))
 				{
 					try
@@ -1283,9 +1313,13 @@ namespace rmApplication
 			contextMenuStrip.Items.Add("Insert an Page to next",     null, OnInsertPageButtonPressed);
 			contextMenuStrip.Items.Add("Copy this Page to next",     null, OnCopyPageButtonPressed);
 
+			timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
+
 			ContinueCnt = 1;
 			LastSlvCnt = 0;
+			RxSilentCnt = 0;
 
+			mainTimer.Interval = MAIN_CTRL_INTERVAL;
 			mainTimer.Enabled = true;
 
 		}
@@ -1432,6 +1466,31 @@ namespace rmApplication
 			if (e.KeyChar == (char)Keys.Enter)
 			{
 				string timingNum = timingValTextBox.Text.ToString();
+
+				if (checkTimingTextBox())
+				{
+					timingNum = INITIAL_TIMING_VALUE.ToString();
+					timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
+					PutWarningMessage("Invalid timing value. Initial value is set.");
+
+				}
+				else
+				{
+					int num = int.Parse(timingNum);
+
+					if (num > MAXIMUM_TIMING_VALUE)
+					{
+						num = MAXIMUM_TIMING_VALUE;
+
+						timingNum = num.ToString();
+						timingValTextBox.Text = num.ToString();
+						PutWarningMessage("Timing value is limited by maximum value.");
+
+					}
+
+				}
+
+
 				renewTimingSetting(timingNum);
 
 			}
@@ -1529,46 +1588,54 @@ namespace rmApplication
 
 					}
 
-					bool retFlg = false;
+					bool dgvErrFlg = checkDataGridViewCells();
+					bool ttbErrFlg = checkTimingTextBox();
 
-					if (myComponents.CommunicationMode == Components.CommMode.Serial)
+					if ((dgvErrFlg == false) &&
+						(ttbErrFlg == false))
 					{
-						retFlg = serialPort_SelectState(true);
+						bool retFlg = false;
+
+						if (myComponents.CommunicationMode == Components.CommMode.Serial)
+						{
+							retFlg = serialPort_SelectState(true);
+
+						}
+						else if (myComponents.CommunicationMode == Components.CommMode.NetWork)
+						{
+							retFlg = sockets_SelectState(true);
+
+						}
+						else
+						{
+							PutWarningMessage("Communication setting is undefined.");
+
+						}
+
+						if (retFlg == true)
+						{
+							myCommProtocol.startStopWatch();
+
+							myCommProtocol.initial();
+
+							myComponents.CommActiveFlg = true;
+
+							opclCommButton.Image = Properties.Resources.FlagThread_red;
+							opclCommButton.Text = COMM_CLOSE_TEXT;
+
+							readDUTVersion();
+
+							string timingNum = timingValTextBox.Text.ToString();
+							renewTimingSetting(timingNum);
+
+							renewLogSetting();
+
+							PutWarningMessage("");	//Clear warning meassage.
+
+						}
 
 					}
-					else if (myComponents.CommunicationMode == Components.CommMode.NetWork)
-					{
-						retFlg = sockets_SelectState(true);
 
-					}
-					else
-					{
-						PutWarningMessage("Communication setting is undefined.");
-
-					}
-
-					bool errFlg = checkDataGridViewCells();
-
-					if ((retFlg == true) &&
-						(errFlg == false))
-					{
-						myCommProtocol.startStopWatch();
-
-						myCommProtocol.initial();
-
-						myComponents.CommActiveFlg = true;
-
-						opclCommButton.Image = Properties.Resources.FlagThread_red;
-						opclCommButton.Text = COMM_CLOSE_TEXT;
-
-						readDUTVersion();
-
-						string timingNum = timingValTextBox.Text.ToString();
-						renewTimingSetting(timingNum);
-
-						renewLogSetting();
-
-					}
 
 				}
 				else
@@ -1594,7 +1661,7 @@ namespace rmApplication
 					}
 
 					//Revise Timing
-					timingValTextBox.Text = "500";
+					timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
 
 					if (retFlg == true)
 					{
@@ -1625,10 +1692,13 @@ namespace rmApplication
 
 			if (WarningViewControl.TextBox != "")
 			{
-				WarningShowUpCount++;
-				if (WarningShowUpCount > 20)
+				if (WarningReminder == false)
 				{
-					WarningViewControl.TextBox = "";
+					WarningShowUpCount++;
+					if (WarningShowUpCount > WARNING_SHOWUP_CNT_MAX)
+					{
+						WarningViewControl.TextBox = "";
+					}
 				}
 
 			}
@@ -1674,11 +1744,29 @@ namespace rmApplication
 			if (rcvFlg == true)
 			{
 				dispRxDStatusLabel.BackColor = System.Drawing.Color.Red;
-
+				RxSilentCnt = 0;
 			}
 			else
 			{
 				dispRxDStatusLabel.BackColor = System.Drawing.Color.FromKnownColor(System.Drawing.KnownColor.Control);
+				RxSilentCnt++;
+
+				int tmpTimeoutCnt = myComponents.TimingValue * 10 / MAIN_CTRL_INTERVAL;
+				int maxTimeoutCnt = MAXIMUM_TIMING_VALUE * 2 / MAIN_CTRL_INTERVAL;
+
+				if (tmpTimeoutCnt > maxTimeoutCnt)
+				{
+					tmpTimeoutCnt = maxTimeoutCnt;
+				}
+
+				if (RxSilentCnt > tmpTimeoutCnt)
+				{
+					DateTime dtNow = DateTime.Now;
+					string strDataTime = dtNow.ToString("yyyy/MM/dd (ddd) HH:mm:ss");
+
+					stopLogMode();
+					PutUnerasableWarningMessage("Communication stopped at " + strDataTime);
+				}
 
 			}
 
@@ -1688,12 +1776,13 @@ namespace rmApplication
 			{
 				ContinueCnt = 1;
 				LastSlvCnt = 0;
+				RxSilentCnt = 0;
 				RcvLogData = new List<List<string>>();
 
 			}
 			else
 			{
-				if (ContinueCnt > 10)
+				if (ContinueCnt > CONTINUE_CNT_MAX)
 				{
 					ContinueCnt = 1;
 
@@ -1754,17 +1843,25 @@ namespace rmApplication
 
 					rxStream.Data.RemoveAt(0);
 
-					List<string> listSize = new List<string>();
+					List<int> listNumSize = new List<int>();
 					int maxIndex = CheckedCellData.Length;
 
 					for (int i = 0; i < maxIndex; i++)
 					{
-						listSize.Add(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString());
+						int numSize = 0;
+
+						if ( (CheckedCellData[i].Index != -1) &&
+							(string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value as string) == false) )
+						{
+							int.TryParse(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString(), out numSize);
+						}
+
+						listNumSize.Add(numSize);
 
 					}
 
 					bool validflg;
-					List<string> rxData = myCommProtocol.interpretRxFrameToHexChars(rxStream.Data, listSize, out validflg);
+					List<string> rxData = myCommProtocol.interpretRxFrameToHexChars(rxStream.Data, listNumSize, out validflg);
 					List<string> logBuff = new List<string>();
 
 					if (validflg == true)
@@ -1779,9 +1876,15 @@ namespace rmApplication
 
 							CheckedCellData[i].Cells[(int)DgvRowName.ReadText].Value = retText;
 
-							string type = CheckedCellData[i].Cells[(int)DgvRowName.Type].Value.ToString();
+							string type = numeralSystem.HEX;
 
-							string retValue = TypeConvert.FromHexChars(type, int.Parse(listSize[i]), retText);
+							if (string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Type].Value as string) == false)
+							{
+								type = CheckedCellData[i].Cells[(int)DgvRowName.Type].Value.ToString();
+
+							}
+
+							string retValue = TypeConvert.FromHexChars(type, listNumSize[i], retText);
 
 							CheckedCellData[i].Cells[(int)DgvRowName.ReadValue].Value = retValue;
 
@@ -1874,6 +1977,15 @@ namespace rmApplication
 		{
 			WarningText = text;
 			WarningShowUpCount = 0;
+			WarningReminder = false;
+
+		}
+
+		private void PutUnerasableWarningMessage(string text)
+		{
+			WarningText = text;
+			WarningShowUpCount = 0;
+			WarningReminder = true;
 
 		}
 
@@ -2049,6 +2161,10 @@ namespace rmApplication
 
 		private void dataGridView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
 		{
+			//Workaround: Problem that a user set value in last row
+			dataGridView.CurrentCellChanged -= new System.EventHandler(dataGridView_CurrentCellChanged);
+			dataGridView.CellValueChanged -= new System.Windows.Forms.DataGridViewCellEventHandler(dataGridView_CellValueChanged);
+
 			DataGridView dgv = (DataGridView)sender;
 
 			if (dgv.CurrentCell == null)
@@ -2056,12 +2172,294 @@ namespace rmApplication
 				return;
 			}
 
+			if ((e.ColumnIndex < 0) ||
+				(e.RowIndex < 0))
+			{
+				return;
+
+			}
+
+			if (e.RowIndex == (dataGridView.Rows.Count - 1))
+			{
+				 dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = WorkaroundInputBuffer;
+			}
+
+		}
+
+		private void dataGridView_CurrentCellChanged(object sender, EventArgs e)
+		{
+			//Workaround: Problem that a user set value in last row
+			dataGridView.CurrentCellChanged -= new System.EventHandler(dataGridView_CurrentCellChanged);
+			dataGridView.CellValueChanged -= new System.Windows.Forms.DataGridViewCellEventHandler(dataGridView_CellValueChanged);
+
+		}
+
+		private void dataGridView_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
+		{
+			DataGridView dgv = (DataGridView)sender;
+			dgv.CancelEdit();
+
+			if ((e.ColumnIndex < 0) ||
+				(e.RowIndex < 0))
+			{
+				return;
+
+			}
+
+			string inputText = e.FormattedValue.ToString();
+			string size = null;
+			string type = null;
+			string readText = null;
+			string writeText = null;
+
+			if (string.IsNullOrEmpty(inputText))
+			{
+				inputText = null;
+
+			}
+
+			if ((dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value == null) &&
+				(inputText == null))
+			{
+				return;
+
+			}
+
+			if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value as string) == false)
+			{
+				string currentText = dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString();
+
+				if (inputText == currentText)
+				{
+					return;
+
+				}
+
+			}
+
+			//Workaround: Problem that a user set value in last row
+			int workaroundConditionCnt = 0;
+
+			if (e.RowIndex == (dataGridView.Rows.Count - 1))
+			{
+				workaroundConditionCnt++;
+				WorkaroundInputBuffer = inputText;
+			}
+
 			int columnIndex = e.ColumnIndex;
 
 			switch ((DgvRowName)columnIndex)
 			{
+				case DgvRowName.Group:
+					if ((e.RowIndex == 0) &&
+						(string.IsNullOrEmpty(inputText) == false))
+					{
+						//Group tag is a cell at the upper left.
+						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Group].Value = inputText;
+						workaroundConditionCnt++;
+						pageValComboBox.SelectedIndexChanged -= new System.EventHandler(pageValComboBox_SelectedIndexChanged);
+						pageValComboBox.Items[pageValComboBox.SelectedIndex] = inputText;
+						pageValComboBox.SelectedIndexChanged += new System.EventHandler(pageValComboBox_SelectedIndexChanged);
+
+					}
+
+					break;
+
+				case DgvRowName.Check:
+					//Ignore
+					break;
+
+				case DgvRowName.Size:
+					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
+						(myComponents.CustomizingModeFlg == true))
+					{
+						bool validFlg = false;
+
+						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = inputText;
+						workaroundConditionCnt++;
+
+						if (TypeConvert.IsNumeric(inputText) == true)
+						{
+							int num = int.Parse(inputText);
+
+							if ((num == 1) ||
+								(num == 2) ||
+								(num == 4))
+							{
+								validFlg = true;
+
+							}
+
+						}
+
+						if (validFlg == false)
+						{
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = "Invalid Value.";
+
+						}
+						else
+						{
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = null;
+
+						}
+
+					}
+
+					break;
+
+				case DgvRowName.Variable:
+					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
+						(myComponents.CustomizingModeFlg == true))
+					{
+						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Variable].Value = inputText;
+						workaroundConditionCnt++;
+
+						if ((myComponents.MapList == null) ||
+							(myComponents.MapList.Count <= 0))
+						{
+
+						}
+						else if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Variable].Value as string))
+						{
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].ErrorText = null;
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = null;
+							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = "0";
+
+						}
+						else
+						{
+							string cellValue = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Variable].Value.ToString();
+							MapFactor result = myComponents.MapList.Find(key => key.VariableName == cellValue);
+
+							if (result != null)
+							{
+								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = result.Size;
+
+								bool validFlg = false;
+
+								if (TypeConvert.IsNumeric(result.Size) == true)
+								{
+									int num = int.Parse(result.Size);
+
+									if ((num == 1) ||
+										(num == 2) ||
+										(num == 4))
+									{
+										validFlg = true;
+
+									}
+
+								}
+
+								if (validFlg == false)
+								{
+									dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = "Invalid Value.";
+
+								}
+								else
+								{
+									dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = null;
+
+								}
+
+								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = result.Address;
+
+								if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value as string))
+								{
+									dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = "0";
+
+								}
+
+							}
+							else
+							{
+								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value = false;
+								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = null;
+
+							}
+						}
+
+					}
+					break;
+
+				case DgvRowName.Addrlock:
+					//Ignore
+					break;
+
+				case DgvRowName.Address:
+					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
+						(myComponents.CustomizingModeFlg == true))
+					{
+						bool validFlg = false;
+
+						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = inputText;
+						workaroundConditionCnt++;
+
+						if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value as string))
+						{
+							validFlg = true;
+						}
+						else
+						{
+							if (TypeConvert.IsHexString(inputText) == true)
+							{
+								validFlg = true;
+
+							}
+
+						}
+
+						if (validFlg == false)
+						{
+							dgv[e.ColumnIndex, e.RowIndex].ErrorText = "Invalid Address.";
+
+						}
+						else
+						{
+							dgv[e.ColumnIndex, e.RowIndex].ErrorText = null;
+
+						}
+
+					}
+
+					break;
+
+				case DgvRowName.Offset:
+					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
+						(myComponents.CustomizingModeFlg == true))
+					{
+						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = inputText;
+						workaroundConditionCnt++;
+
+						if (TypeConvert.IsNumeric(inputText) == true)
+						{
+							dgv[e.ColumnIndex, e.RowIndex].ErrorText = null;
+
+						}
+						else
+						{
+							dgv[e.ColumnIndex, e.RowIndex].ErrorText = "Invalid Value.";
+
+						}
+
+					}
+
+					break;
+
+				case DgvRowName.Name:
+					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
+						(myComponents.CustomizingModeFlg == true))
+					{
+						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Name].Value = inputText;
+						workaroundConditionCnt++;
+
+					}
+
+					break;
+
 				case DgvRowName.Type:
-					string type = null;
+					dgv.Rows[e.RowIndex].Cells[columnIndex].Value = inputText;
+					workaroundConditionCnt++;
 
 					if (dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Type].Value != null)
 					{
@@ -2074,15 +2472,11 @@ namespace rmApplication
 
 					}
 
-					string readText = null;
-
 					if (dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.ReadText].Value != null)
 					{
 						readText = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.ReadText].Value.ToString();
 
 					}
-
-					string writeText = null;
 
 					if (dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteText].Value != null)
 					{
@@ -2090,7 +2484,7 @@ namespace rmApplication
 
 					}
 
-					string size = null;
+					size = null;
 
 					if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value as string))
 					{
@@ -2129,243 +2523,6 @@ namespace rmApplication
 					}
 
 					break;
-				case DgvRowName.Variable:
-					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == true) &&
-						(myComponents.CustomizingModeFlg == false))
-					{
-
-					}
-					else if ((myComponents.MapList == null) ||
-							(myComponents.MapList.Count <= 0))
-					{
-
-					}
-					else if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Variable].Value as string))
-					{
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].ErrorText = null;
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = null;
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = "0";
-
-					}
-					else
-					{
-						string inputText = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Variable].Value.ToString();
-						MapFactor result = myComponents.MapList.Find(key => key.VariableName == inputText);
-
-						if (result != null)
-						{
-							if ((int.Parse(result.Size) >= 1) &&
-								 (int.Parse(result.Size) <= 4))
-							{
-								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = result.Size;
-
-							}
-
-							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = result.Address;
-
-							if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value as string))
-							{
-								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = "0";
-
-							}
-
-						}
-						else
-						{
-							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value = false;
-							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = null;
-
-						}
-					}
-
-					break;
-
-			}
-
-		}
-
-		private void dataGridView_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
-		{
-			DataGridView dgv = (DataGridView)sender;
-			dgv.CancelEdit();
-
-			if ((e.ColumnIndex < 0) ||
-				(e.RowIndex < 0))
-			{
-				return;
-
-			}
-
-			string inputText = e.FormattedValue.ToString();
-
-			if (string.IsNullOrEmpty(inputText))
-			{
-				inputText = null;
-
-			}
-
-			if ((dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value == null) &&
-				(inputText == null))
-			{
-				return;
-
-			}
-
-			if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value as string) == false)
-			{
-				string currentText = dgv.Rows[e.RowIndex].Cells[e.ColumnIndex].Value.ToString();
-
-				if (inputText == currentText)
-				{
-					return;
-
-				}
-
-			}
-
-
-			int columnIndex = e.ColumnIndex;
-
-			switch ((DgvRowName)columnIndex)
-			{
-				case DgvRowName.Group:
-					if ((e.RowIndex == 0) &&
-						(string.IsNullOrEmpty(inputText) == false))
-					{
-						//Group tag is a cell at the upper left.
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Group].Value = inputText;
-						//pageValComboBox_SelectedIndexChanged will occur when items is changed.
-						pageValComboBox.Items[pageValComboBox.SelectedIndex] = inputText;
-
-					}
-
-					break;
-
-				case DgvRowName.Check:
-					//Ignore
-					break;
-
-				case DgvRowName.Size:
-					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
-						(myComponents.CustomizingModeFlg == true))
-					{
-						bool validFlg = false;
-
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = inputText;
-
-						if (TypeConvert.IsNumeric(inputText) == true)
-						{
-							int num = int.Parse(inputText);
-
-							if ((num == 1) ||
-								(num == 2) ||
-								(num == 4))
-							{
-								validFlg = true;
-
-							}
-
-						}
-
-						if (validFlg == false)
-						{
-							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = "Invalid Value.";
-
-						}
-						else
-						{
-							dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = null;
-
-						}
-
-					}
-
-					break;
-
-				case DgvRowName.Variable:
-					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
-						(myComponents.CustomizingModeFlg == true))
-					{
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Variable].Value = inputText;
-
-					}
-					break;
-
-				case DgvRowName.Addrlock:
-					//Ignore
-					break;
-
-				case DgvRowName.Address:
-					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
-						(myComponents.CustomizingModeFlg == true))
-					{
-						bool validFlg = false;
-
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value = inputText;
-
-						if (string.IsNullOrEmpty(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Address].Value as string))
-						{
-							validFlg = true;
-						}
-						else
-						{
-							if (TypeConvert.IsHexString(inputText) == true)
-							{
-								validFlg = true;
-
-							}
-
-						}
-
-						if (validFlg == false)
-						{
-							dgv[e.ColumnIndex, e.RowIndex].ErrorText = "Invalid Address.";
-
-						}
-						else
-						{
-							dgv[e.ColumnIndex, e.RowIndex].ErrorText = null;
-
-						}
-
-					}
-
-					break;
-
-				case DgvRowName.Offset:
-					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
-						(myComponents.CustomizingModeFlg == true))
-					{
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Offset].Value = inputText;
-
-						if (TypeConvert.IsNumeric(inputText) == true)
-						{
-							dgv[e.ColumnIndex, e.RowIndex].ErrorText = null;
-
-						}
-						else
-						{
-							dgv[e.ColumnIndex, e.RowIndex].ErrorText = "Invalid Value.";
-
-						}
-
-					}
-
-					break;
-
-				case DgvRowName.Name:
-					if ((Convert.ToBoolean(dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Check].Value) == false) ||
-						(myComponents.CustomizingModeFlg == true))
-					{
-						dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Name].Value = inputText;
-
-					}
-
-					break;
-
-				case DgvRowName.Type:
-					dgv.Rows[e.RowIndex].Cells[columnIndex].Value = inputText;
-					break;
 
 				case DgvRowName.ReadValue:
 					//Ignore
@@ -2373,6 +2530,7 @@ namespace rmApplication
 
 				case DgvRowName.WriteValue:
 					dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].Value = inputText;
+					workaroundConditionCnt++;
 
 					if (string.IsNullOrEmpty(inputText))
 					{
@@ -2392,12 +2550,12 @@ namespace rmApplication
 					}
 					else
 					{
-						string size = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value.ToString();
-						string type = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Type].Value.ToString();
+						size = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value.ToString();
+						type = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Type].Value.ToString();
 
 						Exception ex_text = null;
 
-						string writeText = TypeConvert.ToHexChars(type, int.Parse(size), inputText, out ex_text);
+						writeText = TypeConvert.ToHexChars(type, int.Parse(size), inputText, out ex_text);
 
 						if (ex_text != null)
 						{
@@ -2424,6 +2582,14 @@ namespace rmApplication
 					}
 
 					break;
+
+			}
+
+			if( workaroundConditionCnt == 2 )
+			{
+				//Workaround: Problem that a user set value in last row
+				dataGridView.CurrentCellChanged += new System.EventHandler(dataGridView_CurrentCellChanged);
+				dataGridView.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView_CellValueChanged);
 
 			}
 

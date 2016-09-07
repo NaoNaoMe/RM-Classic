@@ -128,15 +128,13 @@ namespace rmApplication
 		}
 
 
-		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<string> listSize, out bool validflg)
+		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<int> listNumSize, out bool validflg)
 		{
 			List<string> listValue = new List<string>();
 			validflg = true;
-			
-			foreach( var size in listSize )
-			{
-				int intSize = int.Parse(size);
 
+			foreach (var intSize in listNumSize)
+			{
 				if (tmp.Count >= intSize)
 				{
 					List<byte> buff = tmp.GetRange(0, intSize);
@@ -151,6 +149,13 @@ namespace rmApplication
 					
 				}
 				
+			}
+
+			if (tmp.Count != 0)
+			{
+				//Invalid data
+				validflg = false;
+
 			}
 			
 			return listValue;
@@ -375,6 +380,12 @@ namespace rmApplication
 
 		public void setTiming(string timing)
 		{
+			if (string.IsNullOrEmpty(timing))
+			{
+				return;
+
+			}
+
 			List<byte> frame = new List<byte>();
 			List<byte> addData = new List<byte>();
 
