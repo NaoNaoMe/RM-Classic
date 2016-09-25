@@ -425,7 +425,14 @@ namespace rmApplication
 
 							if (result != null)
 							{
-								itemDS.Size = result.Size;
+								if ((result.Size == "1") ||
+									(result.Size == "2") ||
+									(result.Size == "4"))
+								{
+									itemDS.Size = result.Size;
+
+								}
+
 								itemDS.Address = result.Address;
 
 							}
@@ -2333,10 +2340,6 @@ namespace rmApplication
 
 							if (result != null)
 							{
-								dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = result.Size;
-
-								bool validFlg = false;
-
 								if (TypeConvert.IsNumeric(result.Size) == true)
 								{
 									int num = int.Parse(result.Size);
@@ -2345,20 +2348,10 @@ namespace rmApplication
 										(num == 2) ||
 										(num == 4))
 									{
-										validFlg = true;
+										dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = result.Size;
+										dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = null;
 
 									}
-
-								}
-
-								if (validFlg == false)
-								{
-									dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = "Invalid Value.";
-
-								}
-								else
-								{
-									dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].ErrorText = null;
 
 								}
 

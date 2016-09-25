@@ -418,8 +418,7 @@ namespace rmApplication
 			seqCode = (byte)(seqCode + RmInstr.Write);
 			frame.Add(seqCode);
 			
-			addData = BinaryEditor.HexStringToBytes(size);
-			frame.AddRange(addData);
+			frame.Add(byte.Parse(size));
 
 			if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 			{
@@ -509,8 +508,7 @@ namespace rmApplication
 				
 				for (int j = 0; j < frame_contents; j++)
 				{
-					addData = BinaryEditor.HexStringToBytes(argParam[dataIndex].Size);
-					frame.AddRange(addData);
+					frame.Add(byte.Parse(argParam[dataIndex].Size));
 
 					string address = argParam[dataIndex].Address;
 
