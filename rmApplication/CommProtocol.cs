@@ -48,7 +48,7 @@ namespace rmApplication
 			public Components()
 			{
 				CommMode = RmMode.COMMAND;
-				SelectByte = RmAddr.Byte4;
+				SelectByte = RmAddr.Byte2;
 				
 				CommLog = new Queue<string>();
 				ReceiveStream = new Queue<RxDataParam>();
@@ -128,15 +128,13 @@ namespace rmApplication
 		}
 
 
-		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<string> listSize, out bool validflg)
+		public List<string> interpretRxFrameToHexChars(List<byte> tmp, List<int> listNumSize, out bool validflg)
 		{
 			List<string> listValue = new List<string>();
 			validflg = true;
-			
-			foreach( var size in listSize )
-			{
-				int intSize = int.Parse(size);
 
+			foreach (var intSize in listNumSize)
+			{
 				if (tmp.Count >= intSize)
 				{
 					List<byte> buff = tmp.GetRange(0, intSize);
@@ -150,6 +148,14 @@ namespace rmApplication
 					validflg = false;
 					
 				}
+				
+			}
+
+			if (tmp.Count != 0)
+			{
+				//Invalid data
+				validflg = false;
+
 			}
 			
 			return listValue;
@@ -374,6 +380,12 @@ namespace rmApplication
 
 		public void setTiming(string timing)
 		{
+			if (string.IsNullOrEmpty(timing))
+			{
+				return;
+
+			}
+
 			List<byte> frame = new List<byte>();
 			List<byte> addData = new List<byte>();
 
@@ -406,8 +418,7 @@ namespace rmApplication
 			seqCode = (byte)(seqCode + RmInstr.Write);
 			frame.Add(seqCode);
 			
-			addData = BinaryEditor.HexStringToBytes(size);
-			frame.AddRange(addData);
+			frame.Add(byte.Parse(size));
 
 			if( myComponents.SelectByte == Components.RmAddr.Byte4 )
 			{
@@ -497,8 +508,7 @@ namespace rmApplication
 				
 				for (int j = 0; j < frame_contents; j++)
 				{
-					addData = BinaryEditor.HexStringToBytes(argParam[dataIndex].Size);
-					frame.AddRange(addData);
+					frame.Add(byte.Parse(argParam[dataIndex].Size));
 
 					string address = argParam[dataIndex].Address;
 
@@ -859,6 +869,7 @@ namespace rmApplication
 			LastSlvCnt = 0;
 			myComponents.CommMode = Components.RmMode.COMMAND;
 			CommSentFlg = false;
+			clear ();
 			
 			clearTxData();
 			clearRxData();

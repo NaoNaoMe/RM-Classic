@@ -14,6 +14,7 @@ namespace rmApplication
 
 			string searchWord = "ELF Header";
 			bool detectFlg = false;
+			int startIndex = 0;
 
 			for (int i = 0; i < textArray.Length; i++)
 			{
@@ -29,6 +30,8 @@ namespace rmApplication
 					if (foundIndex != -1)
 					{
 						detectFlg = true;
+						startIndex = i;
+						break;
 
 					}
 
@@ -41,7 +44,7 @@ namespace rmApplication
 				string symbolPhrase = "Symbol table";
 				bool symbolFoundFlg = false;
 
-				for (int i = 0; i < textArray.Length; i++)
+				for (int i = startIndex; i < textArray.Length; i++)
 				{
 					foundIndex = textArray[i].IndexOf(symbolPhrase);
 

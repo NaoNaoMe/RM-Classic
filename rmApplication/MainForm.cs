@@ -1,21 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
+//using System.ComponentModel;
+//using System.Drawing;
+//using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using System.IO;
-using System.IO.Ports;
 using System.Xml.Serialization;
-using System.ComponentModel;
-
 
 namespace rmApplication
 {
 	public partial class MainForm : Form
 	{
-		private OptionForm OptionFormInstance;
+		private const string WINDOW_TITLE = "RM Classic";
+		private const string GROUP_INITIAL_TAG = "x:Test";
+
+		private SubViewControl subViewControl1;
 
 		public MainForm()
 		{
@@ -25,16 +25,19 @@ namespace rmApplication
 
 		private void MainForm_Load(object sender, EventArgs e)
 		{
-			subViewControl1.commonInitialRoutine();
+			subViewControl1 = new SubViewControl();
+
+			mainPanel.Controls.Add(subViewControl1);
+			subViewControl1.Dock = DockStyle.Fill;
 
 			var tmpVSettingFactor = new ViewSetting();
 
-			for (int i = 0; i < 32; i++)
+			for (int i = 0; i < 16; i++)
 			{
 				tmpVSettingFactor.DataSetting.Add(new DataSetting());
 			}
 
-			tmpVSettingFactor.DataSetting[0].Group = SubViewControl.GROUP_TEMPORARY_TAG;
+			tmpVSettingFactor.DataSetting[0].Group = GROUP_INITIAL_TAG;
 
 			subViewControl1.loadViewSettingFile(tmpVSettingFactor);
 
@@ -76,7 +79,7 @@ namespace rmApplication
 
 				if (ofd.ShowDialog() == DialogResult.OK)
 				{
-					string path = ofd.FileName;
+					string pathName = ofd.FileName;
 
 					XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
 
@@ -84,7 +87,7 @@ namespace rmApplication
 
 					try
 					{
-						StreamReader reader = new StreamReader(path);
+						System.IO.StreamReader reader = new System.IO.StreamReader(pathName);
 						deserializedData = (ViewSetting)serializer.Deserialize(reader);
 						reader.Close();
 
@@ -100,11 +103,12 @@ namespace rmApplication
 					{
 						subViewControl1.loadViewSettingFile(deserializedData);
 
-						string name = subViewControl1.getViewName(path);
+						string fileName = System.IO.Path.GetFileNameWithoutExtension(pathName);
+						string viewName = subViewControl1.getViewName(fileName);
 
-						if (name != null)
+						if (viewName != null)
 						{
-							this.Text = name + " - " + this.Text;
+							this.Text = viewName + " - " + WINDOW_TITLE;
 						}
 
 					}
@@ -183,25 +187,35 @@ namespace rmApplication
 
 			if (sfd.ShowDialog() == DialogResult.OK)
 			{
-				var tmpVSettingFactor = new ViewSetting();
+				var tmpViewSetting = new ViewSetting();
 
 				foreach (var factor in subViewControl1.myComponents.ViewSettingList)
 				{
 					foreach (var item in factor.DataSetting)
 					{
-						tmpVSettingFactor.DataSetting.Add(item);
+						tmpViewSetting.DataSetting.Add(item);
 
 					}
 
 				}
 
+				ViewSettingMisc.replaceEmptyWithNull(ref tmpViewSetting);
+
 				try
 				{
-					FileStream fs = new FileStream(sfd.FileName, FileMode.Create);
+					System.IO.FileStream fs = new System.IO.FileStream(sfd.FileName, System.IO.FileMode.Create);
 					XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
-					serializer.Serialize(fs, tmpVSettingFactor);
+					serializer.Serialize(fs, tmpViewSetting);
 					fs.Close();
-					
+
+					string fileName = System.IO.Path.GetFileNameWithoutExtension(sfd.FileName);
+					string viewName = subViewControl1.getViewName(fileName);
+
+					if (viewName != null)
+					{
+						this.Text = viewName + " - " + WINDOW_TITLE;
+					}
+
 				}
 				catch (Exception ex)
 				{
@@ -288,29 +302,6 @@ namespace rmApplication
 
 		}
 
-		private void settingViewToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			if (subViewControl1.myComponents.CommActiveFlg == true)
-			{
-				MessageBox.Show("Stop communication.",
-									"Caution",
-									MessageBoxButtons.OK,
-									MessageBoxIcon.Warning);
-
-			}
-			else
-			{
-				subViewControl1.customizeDataGridView();
-				
-			}
-		}
-
-		private void changeViewToolStripMenuItem_Click(object sender, EventArgs e)
-		{
-			subViewControl1.changeDataGridViewColumn();
-
-		}
-
 		private void optionsToolStripMenuItem_Click(object sender, EventArgs e)
 		{
 			if (subViewControl1.myComponents.CommActiveFlg == true)
@@ -323,13 +314,8 @@ namespace rmApplication
 			}
 			else
 			{
-				if (OptionFormInstance != null)
-				{
-					OptionFormInstance.Close();
-				}
-
-				OptionFormInstance = new OptionForm(subViewControl1);
-				OptionFormInstance.Show();
+				OptionForm otpnForm = new OptionForm(subViewControl1);
+				otpnForm.ShowDialog();
 
 			}
 

@@ -16,18 +16,34 @@ namespace rmApplication
 
 			string searchWord = RmVersion;
 			bool detectFlg = false;
+			int startIndex = 0;
 
-			foundIndex = textArray[0].IndexOf(searchWord);
-
-			if (foundIndex != -1)
+			for (int i = 0; i < textArray.Length; i++)
 			{
-				detectFlg = true;
+				if ((detectFlg == false) &&
+					(i > 16))
+				{
+					break;
+				}
+				else
+				{
+					foundIndex = textArray[i].IndexOf(searchWord);
+
+					if (foundIndex != -1)
+					{
+						detectFlg = true;
+						startIndex = i + 1;
+						break;
+
+					}
+
+				}
 
 			}
 
 			if (detectFlg == true)
 			{
-				for (int i = 1; i < textArray.Length; i++)
+				for (int i = startIndex; i < textArray.Length; i++)
 				{
 					string[] splitLine = textArray[i].Split(' ');
 
