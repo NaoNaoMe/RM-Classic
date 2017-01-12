@@ -6,112 +6,112 @@ using System.Text.RegularExpressions;
 
 namespace rmApplication
 {
-	public class RmAddressMap
-	{
-		private static string RmVersion = "RM Address Map V1.00";
+    public class RmAddressMap
+    {
+        private static string RmVersion = "RM Address Map V1.00";
 
-		public static bool Interpret(string[] textArray, List<MapFactor> mapList)
-		{
-			int foundIndex = 0;
+        public static bool Interpret(string[] textArray, List<MapFactor> mapList)
+        {
+            int foundIndex = 0;
 
-			string searchWord = RmVersion;
-			bool detectFlg = false;
-			int startIndex = 0;
+            string searchWord = RmVersion;
+            bool detectFlg = false;
+            int startIndex = 0;
 
-			for (int i = 0; i < textArray.Length; i++)
-			{
-				if ((detectFlg == false) &&
-					(i > 16))
-				{
-					break;
-				}
-				else
-				{
-					foundIndex = textArray[i].IndexOf(searchWord);
+            for (int i = 0; i < textArray.Length; i++)
+            {
+                if ((detectFlg == false) &&
+                    (i > 16))
+                {
+                    break;
+                }
+                else
+                {
+                    foundIndex = textArray[i].IndexOf(searchWord);
 
-					if (foundIndex != -1)
-					{
-						detectFlg = true;
-						startIndex = i + 1;
-						break;
+                    if (foundIndex != -1)
+                    {
+                        detectFlg = true;
+                        startIndex = i + 1;
+                        break;
 
-					}
+                    }
 
-				}
+                }
 
-			}
+            }
 
-			if (detectFlg == true)
-			{
-				for (int i = startIndex; i < textArray.Length; i++)
-				{
-					string[] splitLine = textArray[i].Split(' ');
+            if (detectFlg == true)
+            {
+                for (int i = startIndex; i < textArray.Length; i++)
+                {
+                    string[] splitLine = textArray[i].Split(' ');
 
-					if (splitLine.Length == 3)
-					{
-						var data = new MapFactor();
+                    if (splitLine.Length == 3)
+                    {
+                        var data = new MapFactor();
 
-						data.VariableName = splitLine[0];
-						data.Address = splitLine[1];
-						data.Size = splitLine[2];
+                        data.VariableName = splitLine[0];
+                        data.Address = splitLine[1];
+                        data.Size = splitLine[2];
 
-						mapList.Add(data);
+                        mapList.Add(data);
 
-					}
-					
-				}
+                    }
 
-			}
+                }
 
-			bool ret = false;
+            }
 
-			if (mapList.Count != 0)
-			{
-				ret = true;
+            bool ret = false;
 
-			}
+            if (mapList.Count != 0)
+            {
+                ret = true;
 
-			return ret;
-		}
-		
-		public static bool Convert( List<string> textList, List<MapFactor> mapList )
-		{
-			bool ret = false;
-			
-			if( ( textList == null ) ||
-				( mapList == null ) )
-			{
-				return ret;
-				
-			}
+            }
 
-			textList.Add("//" + RmVersion);
+            return ret;
+        }
 
-			foreach (var item in mapList)
-			{
-				if ( (item.VariableName != "") &&
-					(item.Address != "") &&
-					(item.Size != "") )
-				{
-					var tmpAddress = item.Address;
+        public static bool Convert(List<string> textList, List<MapFactor> mapList)
+        {
+            bool ret = false;
 
-					textList.Add( item.VariableName + " " + tmpAddress + " " + item.Size );
+            if ((textList == null) ||
+                (mapList == null))
+            {
+                return ret;
 
-				}
+            }
 
-			}
+            textList.Add("//" + RmVersion);
 
-			if (textList.Count != 0)
-			{
-				ret = true;
+            foreach (var item in mapList)
+            {
+                if ((item.VariableName != "") &&
+                    (item.Address != "") &&
+                    (item.Size != ""))
+                {
+                    var tmpAddress = item.Address;
 
-			}
+                    textList.Add(item.VariableName + " " + tmpAddress + " " + item.Size);
 
-			return ret;
-			
-		}
-		
-		
-	}
-	
+                }
+
+            }
+
+            if (textList.Count != 0)
+            {
+                ret = true;
+
+            }
+
+            return ret;
+
+        }
+
+
+    }
+
 }

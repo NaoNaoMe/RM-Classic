@@ -11,261 +11,273 @@ using System.IO.Ports;
 
 namespace rmApplication
 {
-	public partial class OptionForm : Form
-	{
-		private SubViewControl SubViewCtrl;
+    public partial class OptionForm : Form
+    {
+        private SubViewControl SubViewCtrl;
 
-		private class BuadRateItem : Object
-		{
-			private string m_name = "";
-			private int m_value = 0;
+        private class BuadRateItem : Object
+        {
+            private string m_name = "";
+            private int m_value = 0;
 
-			public string NAME
-			{
-				set { m_name = value; }
-				get { return m_name; }
-			}
+            public string NAME
+            {
+                set { m_name = value; }
+                get { return m_name; }
+            }
 
-			public int BAUDRATE
-			{
-				set { m_value = value; }
-				get { return m_value; }
-			}
+            public int BAUDRATE
+            {
+                set { m_value = value; }
+                get { return m_value; }
+            }
 
-			public override string ToString()
-			{
-				return m_name;
-			}
+            public override string ToString()
+            {
+                return m_name;
+            }
 
-		}	/* class BuadRateItem */
+        }   /* class BuadRateItem */
 
 
-		public OptionForm(SubViewControl tmp)
-		{
-			SubViewCtrl = tmp;
-			InitializeComponent();
+        public OptionForm(SubViewControl tmp)
+        {
+            SubViewCtrl = tmp;
+            InitializeComponent();
 
-			passwordTextBox.MaxLength = 8;
+            passwordTextBox.MaxLength = 8;
 
-		}
+        }
 
-		private void OptionForm_Load(object sender, EventArgs e)
-		{
-			string[] PortList = SerialPort.GetPortNames();
+        private void OptionForm_Load(object sender, EventArgs e)
+        {
+            string[] PortList = SerialPort.GetPortNames();
 
-			cmbPortName.Items.Clear();
+            cmbPortName.Items.Clear();
 
-			int tmpIndex = 0;
-			int foundIndex = 0;
-			bool foundFlg = false;
+            int tmpIndex = 0;
+            int foundIndex = 0;
+            bool foundFlg = false;
 
-			foreach (var PortName in PortList)
-			{
-				cmbPortName.Items.Add(PortName);
+            foreach (var PortName in PortList)
+            {
+                cmbPortName.Items.Add(PortName);
 
-				if (PortName == SubViewCtrl.myComponents.CommPort)
-				{
-					foundFlg = true;
-					foundIndex = tmpIndex;
-				}
+                if (PortName == SubViewCtrl.myComponents.CommPort)
+                {
+                    foundFlg = true;
+                    foundIndex = tmpIndex;
+                }
 
-				tmpIndex++;
+                tmpIndex++;
 
-			}
+            }
 
-			if (foundFlg == true)
-			{
-				cmbPortName.SelectedIndex = foundIndex;
+            if (foundFlg == true)
+            {
+                cmbPortName.SelectedIndex = foundIndex;
 
-			}
-			else
-			{
-				if (cmbPortName.Items.Count > 0)
-				{
-					cmbPortName.SelectedIndex = cmbPortName.Items.Count - 1;
-				}
+            }
+            else
+            {
+                if (cmbPortName.Items.Count > 0)
+                {
+                    cmbPortName.SelectedIndex = cmbPortName.Items.Count - 1;
+                }
 
-			}
+            }
 
-			foundIndex = 0;
-			foundFlg = false;
+            foundIndex = 0;
+            foundFlg = false;
 
-			cmbBaudRate.Items.Clear();
+            cmbBaudRate.Items.Clear();
 
-			BuadRateItem baud;
-			baud = new BuadRateItem();
-			baud.NAME = "4800bps";
-			baud.BAUDRATE = 4800;
+            BuadRateItem baud;
+            baud = new BuadRateItem();
+            baud.NAME = "4800bps";
+            baud.BAUDRATE = 4800;
 
-			if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
-			{
-				foundFlg = true;
-				foundIndex = 0;
-			}
+            if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
+            {
+                foundFlg = true;
+                foundIndex = 0;
+            }
 
-			cmbBaudRate.Items.Add(baud);
+            cmbBaudRate.Items.Add(baud);
 
-			baud = new BuadRateItem();
-			baud.NAME = "9600bps";
-			baud.BAUDRATE = 9600;
+            baud = new BuadRateItem();
+            baud.NAME = "9600bps";
+            baud.BAUDRATE = 9600;
 
-			if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
-			{
-				foundFlg = true;
-				foundIndex = 1;
-			}
+            if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
+            {
+                foundFlg = true;
+                foundIndex = 1;
+            }
 
-			cmbBaudRate.Items.Add(baud);
+            cmbBaudRate.Items.Add(baud);
 
-			baud = new BuadRateItem();
-			baud.NAME = "19200bps";
-			baud.BAUDRATE = 19200;
+            baud = new BuadRateItem();
+            baud.NAME = "19200bps";
+            baud.BAUDRATE = 19200;
 
-			if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
-			{
-				foundFlg = true;
-				foundIndex = 2;
-			}
+            if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
+            {
+                foundFlg = true;
+                foundIndex = 2;
+            }
 
-			cmbBaudRate.Items.Add(baud);
+            cmbBaudRate.Items.Add(baud);
 
-			baud = new BuadRateItem();
-			baud.NAME = "38400bps";
-			baud.BAUDRATE = 38400;
+            baud = new BuadRateItem();
+            baud.NAME = "38400bps";
+            baud.BAUDRATE = 38400;
 
-			if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
-			{
-				foundFlg = true;
-				foundIndex = 3;
-			}
+            if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
+            {
+                foundFlg = true;
+                foundIndex = 3;
+            }
 
-			cmbBaudRate.Items.Add(baud);
+            cmbBaudRate.Items.Add(baud);
 
-			baud = new BuadRateItem();
-			baud.NAME = "115200bps";
-			baud.BAUDRATE = 115200;
+            baud = new BuadRateItem();
+            baud.NAME = "57600bps";
+            baud.BAUDRATE = 57600;
 
-			if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
-			{
-				foundFlg = true;
-				foundIndex = 4;
-			}
+            if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
+            {
+                foundFlg = true;
+                foundIndex = 4;
+            }
 
-			cmbBaudRate.Items.Add(baud);
+            cmbBaudRate.Items.Add(baud);
 
-			if (foundFlg == true)
-			{
-				cmbBaudRate.SelectedIndex = foundIndex;
+            baud = new BuadRateItem();
+            baud.NAME = "115200bps";
+            baud.BAUDRATE = 115200;
 
-			}
-			else
-			{
-				cmbBaudRate.SelectedIndex = 1;
+            if (baud.BAUDRATE == SubViewCtrl.myComponents.CommBaudRate)
+            {
+                foundFlg = true;
+                foundIndex = 5;
+            }
 
-			}
+            cmbBaudRate.Items.Add(baud);
 
+            if (foundFlg == true)
+            {
+                cmbBaudRate.SelectedIndex = foundIndex;
 
-			localIPTextBox.Text = SubViewCtrl.myComponents.NetIP.ToString();
-			portTextBox.Text = SubViewCtrl.myComponents.NetPort.ToString();
+            }
+            else
+            {
+                cmbBaudRate.SelectedIndex = 1;
 
+            }
 
-			passwordTextBox.Text = SubViewCtrl.myComponents.Password;
 
-			var bMode = SubViewCtrl.myCommProtocol.myComponents.SelectByte;
-			if (bMode == CommProtocol.Components.RmAddr.Byte4)
-			{
-				adr4byteRadioButton.Checked = true;
-			}
-			else
-			{
-				adr2byteRadioButton.Checked = true;
+            localIPTextBox.Text = SubViewCtrl.myComponents.NetIP.ToString();
+            portTextBox.Text = SubViewCtrl.myComponents.NetPort.ToString();
 
-			}
 
-			var commMode = SubViewCtrl.myComponents.CommunicationMode;
-			if (commMode == SubViewControl.Components.CommMode.NetWork)
-			{
-				radioButtonLocalN.Checked = true;
-			}
-			else
-			{
-				radioButtonSerialP.Checked = true;
+            passwordTextBox.Text = SubViewCtrl.myComponents.Password;
 
-			}
+            var bMode = SubViewCtrl.myCommProtocol.myComponents.SelectByte;
+            if (bMode == CommProtocol.Components.RmAddr.Byte4)
+            {
+                adr4byteRadioButton.Checked = true;
+            }
+            else
+            {
+                adr2byteRadioButton.Checked = true;
 
+            }
 
-		}
+            var commMode = SubViewCtrl.myComponents.CommunicationMode;
+            if (commMode == SubViewControl.Components.CommMode.NetWork)
+            {
+                radioButtonLocalN.Checked = true;
+            }
+            else
+            {
+                radioButtonSerialP.Checked = true;
 
-		private void OptionForm_FormClosing(object sender, FormClosingEventArgs e)
-		{
-			SubViewCtrl.checkDataGridViewCells();
-		}
+            }
 
-		private void okButton_Click(object sender, EventArgs e)
-		{
-			if (radioButtonSerialP.Checked)
-			{
-				if (cmbPortName.SelectedItem != null)
-				{
-					SubViewCtrl.myComponents.CommPort = cmbPortName.SelectedItem.ToString();
 
-					BuadRateItem baud = (BuadRateItem)cmbBaudRate.SelectedItem;
-					SubViewCtrl.myComponents.CommBaudRate = baud.BAUDRATE;
+        }
 
-					SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.Serial;
+        private void OptionForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            SubViewCtrl.checkDataGridViewCells();
+        }
 
-				}
+        private void okButton_Click(object sender, EventArgs e)
+        {
+            if (radioButtonSerialP.Checked)
+            {
+                if (cmbPortName.SelectedItem != null)
+                {
+                    SubViewCtrl.myComponents.CommPort = cmbPortName.SelectedItem.ToString();
 
-			}
-			else if ( radioButtonLocalN.Checked )
-			{
-				string tmp;
+                    BuadRateItem baud = (BuadRateItem)cmbBaudRate.SelectedItem;
+                    SubViewCtrl.myComponents.CommBaudRate = baud.BAUDRATE;
 
-				tmp = localIPTextBox.Text;
-				System.Net.IPAddress address;
-				if (System.Net.IPAddress.TryParse(tmp, out address))
-				{
-					SubViewCtrl.myComponents.NetIP = address;
-				}
+                    SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.Serial;
 
-				tmp = portTextBox.Text;
-				int port;
-				if(int.TryParse(tmp, out port))
-				{
-					SubViewCtrl.myComponents.NetPort = port;
+                }
 
-				}
+            }
+            else if (radioButtonLocalN.Checked)
+            {
+                string tmp;
 
-				SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.NetWork;
-				
-				// Baudrate must be defined by Uart-Network ConverterUnit.
-				BuadRateItem baud = (BuadRateItem)cmbBaudRate.SelectedItem;
-				SubViewCtrl.myComponents.CommBaudRate = baud.BAUDRATE;
-				
-			}
+                tmp = localIPTextBox.Text;
+                System.Net.IPAddress address;
+                if (System.Net.IPAddress.TryParse(tmp, out address))
+                {
+                    SubViewCtrl.myComponents.NetIP = address;
+                }
 
-			SubViewCtrl.myComponents.Password = passwordTextBox.Text;
+                tmp = portTextBox.Text;
+                int port;
+                if (int.TryParse(tmp, out port))
+                {
+                    SubViewCtrl.myComponents.NetPort = port;
 
-			if (adr2byteRadioButton.Checked)
-			{
-				SubViewCtrl.myCommProtocol.myComponents.SelectByte = CommProtocol.Components.RmAddr.Byte2;
+                }
 
-			}
-			else
-			{
-				SubViewCtrl.myCommProtocol.myComponents.SelectByte = CommProtocol.Components.RmAddr.Byte4;
+                SubViewCtrl.myComponents.CommunicationMode = SubViewControl.Components.CommMode.NetWork;
 
-			}
+                // Baudrate must be defined by Uart-TCP/IP Bridge Unit.
+                BuadRateItem baud = (BuadRateItem)cmbBaudRate.SelectedItem;
+                SubViewCtrl.myComponents.CommBaudRate = baud.BAUDRATE;
 
-			this.Close();
+            }
 
-		}
+            SubViewCtrl.myComponents.Password = passwordTextBox.Text;
 
-		private void cancelButton_Click(object sender, EventArgs e)
-		{
-			this.Close();
+            if (adr2byteRadioButton.Checked)
+            {
+                SubViewCtrl.myCommProtocol.myComponents.SelectByte = CommProtocol.Components.RmAddr.Byte2;
 
-		}
+            }
+            else
+            {
+                SubViewCtrl.myCommProtocol.myComponents.SelectByte = CommProtocol.Components.RmAddr.Byte4;
 
-	}
+            }
+
+            this.Close();
+
+        }
+
+        private void cancelButton_Click(object sender, EventArgs e)
+        {
+            this.Close();
+
+        }
+
+    }
 }
