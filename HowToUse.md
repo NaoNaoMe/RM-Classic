@@ -81,12 +81,16 @@ This area has data table which contains several group(columns).
 
 - #### 1.5.1 Check Column
     Checked row data will be recieved from your target baord.
+
 - #### 1.5.2 Size Column
     Specify the size of the variable as it is defined in target application.
+
 - #### 1.5.3 Variable Column
     Specify the variable name as the variable identifier in target application.
+
 - #### 1.5.4 Address lock Column
     The application doesn't reload the address automatically when this colum is checked.
+    
 - #### 1.5.5 Address Column
 - #### 1.5.6 Offset Column
     The address column shows physical address of the variable in the target application memory. 
