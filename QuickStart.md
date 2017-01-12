@@ -1,9 +1,5 @@
 # RM Classic
 
-
-https://community.nxp.com/docs/DOC-330923
-
-
 RM Classic is a real-time debugging monitor for embedded software.
 
 This tool provides monitoring variables via serial communication interface to your target. You can read and write internal variables in embedded CPU.
