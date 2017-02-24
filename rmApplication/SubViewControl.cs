@@ -624,7 +624,8 @@ namespace rmApplication
                 {
                     string str = item.Cells[(int)DgvRowName.Offset].Value.ToString();
 
-                    if (TypeConvert.IsNumeric(str) == true)
+                    if ( (TypeConvert.IsNumeric(str) == true) ||
+                       (TypeConvert.IsHexString(str) == true) )
                     {
                         validFlg = true;
 
@@ -860,7 +861,18 @@ namespace rmApplication
                     try
                     {
                         intAddress = Convert.ToInt64(address, 16);
-                        intOffset = Convert.ToInt64(offset);
+
+                        if (TypeConvert.IsHexString(offset) == true)
+                        {
+                            intOffset = Convert.ToInt64(offset, 16);
+
+                        }
+                        else
+                        {
+                            intOffset = Convert.ToInt64(offset);
+
+                        }
+
 
                     }
                     catch (Exception ex)
@@ -2425,6 +2437,11 @@ namespace rmApplication
                         workaroundConditionCnt++;
 
                         if (TypeConvert.IsNumeric(inputText) == true)
+                        {
+                            dgv[e.ColumnIndex, e.RowIndex].ErrorText = null;
+
+                        }
+                        else if (TypeConvert.IsHexString(inputText) == true)
                         {
                             dgv[e.ColumnIndex, e.RowIndex].ErrorText = null;
 
