@@ -960,7 +960,17 @@ namespace rmApplication
             try
             {
                 intAddress = Convert.ToInt64(address, 16);
-                intOffset = Convert.ToInt64(offset);
+
+                if (TypeConvert.IsHexString(offset) == true)
+                {
+                    intOffset = Convert.ToInt64(offset, 16);
+
+                }
+                else
+                {
+                    intOffset = Convert.ToInt64(offset);
+
+                }
 
             }
             catch (Exception ex)

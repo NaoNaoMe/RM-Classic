@@ -345,25 +345,26 @@ namespace rmApplication
                     {
                         value = value.Remove(0, 2);
 
+                        foreach (char factor in value)
+                        {
+                            if (Uri.IsHexDigit(factor) == false)
+                            {
+                                ret = false;
+                                break;
+
+                            }
+                            else
+                            {
+                                ret = true;
+
+                            }
+
+                        }
+
                     }
 
                 }
 
-                foreach (char factor in value)
-                {
-                    if (Uri.IsHexDigit(factor) == false)
-                    {
-                        ret = false;
-                        break;
-
-                    }
-                    else
-                    {
-                        ret = true;
-
-                    }
-
-                }
 
             }
 
