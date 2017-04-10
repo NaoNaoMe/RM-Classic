@@ -80,17 +80,16 @@ namespace rmApplication
                 if (ofd.ShowDialog() == DialogResult.OK)
                 {
                     string pathName = ofd.FileName;
-
-                    XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
-
                     ViewSetting deserializedData = new ViewSetting();
 
                     try
                     {
-                        System.IO.StreamReader reader = new System.IO.StreamReader(pathName);
-                        deserializedData = (ViewSetting)serializer.Deserialize(reader);
-                        reader.Close();
+                        using (System.IO.StreamReader reader = new System.IO.StreamReader(pathName, Encoding.GetEncoding("utf-8")))
+                        {
+                            XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
+                            deserializedData = (ViewSetting)serializer.Deserialize(reader);
 
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -203,10 +202,12 @@ namespace rmApplication
 
                 try
                 {
-                    System.IO.FileStream fs = new System.IO.FileStream(sfd.FileName, System.IO.FileMode.Create);
-                    XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
-                    serializer.Serialize(fs, tmpViewSetting);
-                    fs.Close();
+                    using (System.IO.FileStream fs = new System.IO.FileStream(sfd.FileName, System.IO.FileMode.Create))
+                    {
+                        XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
+                        serializer.Serialize(fs, tmpViewSetting);
+
+                    }
 
                     string fileName = System.IO.Path.GetFileNameWithoutExtension(sfd.FileName);
                     string viewName = subViewControl1.getViewName(fileName);
@@ -264,18 +265,15 @@ namespace rmApplication
                 {
                     try
                     {
-                        System.IO.StreamWriter sw = new System.IO.StreamWriter(
-                            sfd.FileName,
-                            false,
-                            Encoding.GetEncoding("utf-8"));
-
-                        foreach (var item in textList)
+                        using (System.IO.StreamWriter sw = new System.IO.StreamWriter(sfd.FileName, false, Encoding.GetEncoding("utf-8")))
                         {
-                            sw.WriteLine(item);
+                            foreach (var item in textList)
+                            {
+                                sw.WriteLine(item);
+
+                            }
 
                         }
-
-                        sw.Close();
 
                     }
                     catch (Exception ex)

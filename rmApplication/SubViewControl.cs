@@ -328,13 +328,12 @@ namespace rmApplication
 
             try
             {
-                var sr = new System.IO.StreamReader(path, System.Text.Encoding.GetEncoding("utf-8"));
+                using (System.IO.StreamReader sr = new System.IO.StreamReader(path, Encoding.GetEncoding("utf-8")))
+                {
+                    string wholeText = sr.ReadToEnd();
+                    textArray = wholeText.Replace("\r\n", "\n").Split('\n');
 
-                string wholeText = sr.ReadToEnd();
-                textArray = wholeText.Replace("\r\n", "\n").Split('\n');
-
-                sr.Close();
-
+                }
             }
             catch (Exception ex)
             {
