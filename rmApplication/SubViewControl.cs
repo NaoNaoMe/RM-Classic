@@ -722,7 +722,7 @@ namespace rmApplication
 
             if (CheckedCellData != null)
             {
-                string header = "1.Rcv Status" + delimiter + "2.OS Timer" + delimiter + "3.Slave Count";
+                string header = "1.Rcv Status" + delimiter + "2.OS Timer" + delimiter + "3.Slave Count" + delimiter + "4.Time step";
 
                 foreach (var name in CheckedCellData)
                 {
@@ -1524,6 +1524,7 @@ namespace rmApplication
                 logCtrlButton.Image = Properties.Resources.Complete_and_ok_green;
                 logCtrlButton.Text = DATALOG_STOP_TEXT;
 
+                myCommProtocol.startStopWatch();    // Restart StopWatch for communication
                 LogStartTime = DateTime.MinValue;
 
             }
@@ -1837,6 +1838,7 @@ namespace rmApplication
                         lostLogBuff.Add(tmp.ToString() + " messages might be lost");
                         lostLogBuff.Add("-");       //for OS Timer
                         lostLogBuff.Add("-");       //for Count
+                        lostLogBuff.Add("-");       //for Time step
 
                     }
 
@@ -1868,6 +1870,7 @@ namespace rmApplication
                         logBuff.Add("OK");
                         logBuff.Add(rxStream.Time);
                         logBuff.Add(slvCnt.ToString());
+                        logBuff.Add(((float)myComponents.TimingValue/1000).ToString("F"));
 
                         for (int i = 0; i < maxIndex; i++)
                         {
