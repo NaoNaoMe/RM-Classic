@@ -2303,6 +2303,12 @@ namespace rmApplication
                     {
                         bool validFlg = false;
 
+                        //Clear Read/Write Values due to unmatch current size of values
+                        dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.ReadText].Value = null;
+                        dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.ReadValue].Value = null;
+                        dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteText].Value = null;
+                        dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].Value = null;
+
                         dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value = inputText;
                         workaroundConditionCnt++;
 
