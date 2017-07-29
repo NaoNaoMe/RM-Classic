@@ -153,7 +153,7 @@ namespace rmApplication
         private DateTime LogStartTime;
         private List<List<string>> RcvLogData;
         private int ContinueCnt;
-        private int LastSlvCnt;
+        private int NextSlvCnt;
         private int RxSilentCnt;
         private string WarningText;
         private int WarningShowUpCount;
@@ -1344,7 +1344,7 @@ namespace rmApplication
             timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
 
             ContinueCnt = 1;
-            LastSlvCnt = 0;
+            NextSlvCnt = 0;
             RxSilentCnt = 0;
 
             mainTimer.Interval = MAIN_CTRL_INTERVAL;
@@ -1803,7 +1803,7 @@ namespace rmApplication
             if (isLogMode == false)
             {
                 ContinueCnt = 1;
-                LastSlvCnt = 0;
+                NextSlvCnt = 0;
                 RxSilentCnt = 0;
                 RcvLogData = new List<List<string>>();
 
@@ -1837,23 +1837,23 @@ namespace rmApplication
 
                     int slvCnt = (int)(rxStream.Data[0] & 0x0F);
 
-                    if (LastSlvCnt == 0)
+                    if (NextSlvCnt == 0)
                     {
-                        LastSlvCnt = slvCnt + 1;
+                        NextSlvCnt = slvCnt + 1;
 
                     }
-                    else if (slvCnt == LastSlvCnt)
+                    else if (slvCnt == NextSlvCnt)
                     {
-                        LastSlvCnt = slvCnt + 1;
+                        NextSlvCnt = slvCnt + 1;
 
-                        if (LastSlvCnt >= 16)
+                        if (NextSlvCnt >= 16)
                         {
-                            LastSlvCnt = 1;
+                            NextSlvCnt = 1;
                         }
                     }
                     else
                     {
-                        int tmp = slvCnt - LastSlvCnt;
+                        int tmp = slvCnt - NextSlvCnt;
 
                         if (tmp < 0)
                         {
@@ -1861,7 +1861,7 @@ namespace rmApplication
 
                         }
 
-                        LastSlvCnt = slvCnt + 1;
+                        NextSlvCnt = slvCnt + 1;
 
                         lostLogBuff.Add(tmp.ToString() + " messages might be lost");
                         lostLogBuff.Add("-");       //for OS Timer
