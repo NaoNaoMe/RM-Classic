@@ -696,22 +696,6 @@ namespace rmApplication
 
         }
 
-        public bool checkTimingTextBox()
-        {
-            bool errFlg = true;
-            string timingNum = timingValTextBox.Text.ToString();
-
-            if (TypeConvert.IsNumeric(timingNum) == true)
-            {
-                errFlg = false;
-
-            }
-
-            return errFlg;
-
-        }
-
-
         private StringBuilder makeLogData(RecordMode mode)
         {
             StringBuilder text = new StringBuilder();
@@ -928,14 +912,6 @@ namespace rmApplication
                 return;
 
             }
-
-            if (TypeConvert.IsNumeric(timingNum) == false)
-            {
-                timingNum = INITIAL_TIMING_VALUE.ToString();
-
-            }
-
-            myComponents.TimingValue = int.Parse(timingNum);
 
             Exception ex_text = null;
             string timngVal = TypeConvert.ToHexChars(numeralSystem.UDEC, 2, timingNum, out ex_text);
@@ -1491,35 +1467,31 @@ namespace rmApplication
 
         private void timingValTextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (e.KeyChar == (char)Keys.Enter)
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+            {
+                e.Handled = true;
+            }
+            else if (e.KeyChar == (char)Keys.Enter)
             {
                 string timingNum = timingValTextBox.Text.ToString();
+                int timeStep;
 
-                if (checkTimingTextBox())
+                if(int.TryParse(timingNum, out timeStep))
                 {
-                    timingNum = INITIAL_TIMING_VALUE.ToString();
-                    timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
-                    PutWarningMessage("Invalid timing value. Initial value is set.");
-
-                }
-                else
-                {
-                    int num = int.Parse(timingNum);
-
-                    if (num > MAXIMUM_TIMING_VALUE)
+                    if (timeStep > MAXIMUM_TIMING_VALUE)
                     {
-                        num = MAXIMUM_TIMING_VALUE;
+                        timeStep = MAXIMUM_TIMING_VALUE;
 
-                        timingNum = num.ToString();
-                        timingValTextBox.Text = num.ToString();
+                        timingNum = timeStep.ToString();
+                        timingValTextBox.Text = timeStep.ToString();
                         PutWarningMessage("Timing value is limited by maximum value.");
 
                     }
 
+                    myComponents.TimingValue = int.Parse(timingNum);
+                    renewTimingSetting(timingNum);
+
                 }
-
-
-                renewTimingSetting(timingNum);
 
             }
 
@@ -1617,10 +1589,8 @@ namespace rmApplication
                     }
 
                     bool dgvErrFlg = checkDataGridViewCells();
-                    bool ttbErrFlg = checkTimingTextBox();
 
-                    if ((dgvErrFlg == false) &&
-                        (ttbErrFlg == false))
+                    if (dgvErrFlg == false)
                     {
                         bool retFlg = false;
 
@@ -1653,8 +1623,9 @@ namespace rmApplication
 
                             readDUTVersion();
 
-                            string timingNum = timingValTextBox.Text.ToString();
+                            string timingNum = myComponents.TimingValue.ToString();
                             renewTimingSetting(timingNum);
+                            timingValTextBox.Text = timingNum;
 
                             renewLogSetting();
 
