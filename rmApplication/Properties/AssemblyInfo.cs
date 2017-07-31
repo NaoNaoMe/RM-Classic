@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("RM Classic")]
-[assembly: AssemblyDescription("Build 7/29 2017")]
+[assembly: AssemblyDescription("Build 7/31 2017")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("RM Classic")]

@@ -411,6 +411,7 @@
             this.timingValTextBox.Name = "timingValTextBox";
             this.timingValTextBox.Size = new System.Drawing.Size(60, 27);
             this.timingValTextBox.Text = "500";
+            this.timingValTextBox.Leave += new System.EventHandler(this.timingValTextBox_Leave);
             this.timingValTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.timingValTextBox_KeyPress);
             // 
             // opclCommButton

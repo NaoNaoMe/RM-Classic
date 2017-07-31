@@ -1497,6 +1497,11 @@ namespace rmApplication
 
         }
 
+        private void timingValTextBox_Leave(object sender, EventArgs e)
+        {
+            timingValTextBox.Text = myComponents.TimingValue.ToString();
+        }
+
         private void logCtrlButton_Click(object sender, EventArgs e)
         {
             string DATALOG_STOP_TEXT = "Stop  Log";
