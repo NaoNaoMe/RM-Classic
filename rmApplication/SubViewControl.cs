@@ -135,8 +135,10 @@ namespace rmApplication
         private const string TARGET_VER_TAG = "_TgV";
         private const string SETTING_VER_TAG = "_StV";
 
+        private const int MINIMUM_TIMING_VALUE =    10;
         private const int INITIAL_TIMING_VALUE = 500;
         private const int MAXIMUM_TIMING_VALUE = 10000;
+        private const int MINIMUM_TIMEOUT_VALUE = 1000;
 
         private const int COMM_LOG_MAX = 500;
         private const int RCV_LOGDATA_MAX = 10000;
@@ -161,6 +163,8 @@ namespace rmApplication
 
         private string WorkaroundInputBuffer;
 
+        private bool CommTimeOutFlg = false;
+        
         public string getViewSettingFileName()
         {
             if (string.IsNullOrEmpty(myComponents.TargetVer))
@@ -1464,25 +1468,33 @@ namespace rmApplication
             {
                 e.Handled = true;
             }
-            else if (e.KeyChar == (char)Keys.Enter)
+
+            if (e.KeyChar == (char)Keys.Enter)
             {
-                string timingNum = timingValTextBox.Text.ToString();
+                string timingValueText = timingValTextBox.Text.ToString();
                 int timeStep;
 
-                if(int.TryParse(timingNum, out timeStep))
+                if (int.TryParse(timingValueText, out timeStep))
                 {
-                    if (timeStep > MAXIMUM_TIMING_VALUE)
+                    if (timeStep < MINIMUM_TIMING_VALUE)
+                    {
+                        timeStep = MINIMUM_TIMING_VALUE;
+
+                        PutWarningMessage("Timing value is limited by minimum value.");
+
+                    }
+                    else if (timeStep > MAXIMUM_TIMING_VALUE)
                     {
                         timeStep = MAXIMUM_TIMING_VALUE;
 
-                        timingNum = timeStep.ToString();
-                        timingValTextBox.Text = timeStep.ToString();
                         PutWarningMessage("Timing value is limited by maximum value.");
 
                     }
 
-                    myComponents.TimingValue = int.Parse(timingNum);
-                    renewTimingSetting(timingNum);
+                    timingValueText = timeStep.ToString();
+                    timingValTextBox.Text = timingValueText;
+                    myComponents.TimingValue = timeStep;
+                    renewTimingSetting(timingValueText);
 
                 }
 
@@ -1617,6 +1629,8 @@ namespace rmApplication
 
                             myComponents.CommActiveFlg = true;
 
+                            CommTimeOutFlg = false;
+
                             opclCommButton.Image = Properties.Resources.FlagThread_red;
                             opclCommButton.Text = COMM_CLOSE_TEXT;
 
@@ -1657,9 +1671,6 @@ namespace rmApplication
                         retFlg = sockets_SelectState(false);
 
                     }
-
-                    //Revise Timing
-                    timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
 
                     if (retFlg == true)
                     {
@@ -1728,7 +1739,8 @@ namespace rmApplication
             }
 
             if ((commResource_CheckState() == false) ||
-                (myComponents.CommActiveFlg == false))
+                (myComponents.CommActiveFlg == false) ||
+                (CommTimeOutFlg == true))
             {
                 dispRxDStatusLabel.BackColor = System.Drawing.Color.FromKnownColor(System.Drawing.KnownColor.Control);
                 dispTxDStatusLabel.BackColor = System.Drawing.Color.FromKnownColor(System.Drawing.KnownColor.Control);
@@ -1751,19 +1763,29 @@ namespace rmApplication
 
                 int tmpTimeoutCnt = myComponents.TimingValue * 10 / MAIN_CTRL_INTERVAL;
                 int maxTimeoutCnt = MAXIMUM_TIMING_VALUE * 2 / MAIN_CTRL_INTERVAL;
+                int minTimeoutCnt = MINIMUM_TIMEOUT_VALUE / MAIN_CTRL_INTERVAL;
 
                 if (tmpTimeoutCnt > maxTimeoutCnt)
                 {
                     tmpTimeoutCnt = maxTimeoutCnt;
                 }
 
+                if (tmpTimeoutCnt < minTimeoutCnt)
+                {
+                    tmpTimeoutCnt = minTimeoutCnt;
+                }
+
                 if (RxSilentCnt > tmpTimeoutCnt)
                 {
+                    RxSilentCnt = 0;
+
                     DateTime dtNow = DateTime.Now;
                     string strDataTime = dtNow.ToString("yyyy/MM/dd (ddd) HH:mm:ss");
 
                     stopLogMode();
                     PutUnerasableWarningMessage("Communication stopped at " + strDataTime);
+
+                    CommTimeOutFlg = true;
                 }
 
             }
