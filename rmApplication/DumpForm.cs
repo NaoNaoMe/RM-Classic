@@ -226,8 +226,10 @@ namespace rmApplication
                                 }
                             }
 
-                            textTmp = TypeConvert.FromHexChars(typeData, item, textTmp);
-                            arrayTextBuffer[i][j] = textTmp;
+                            string valueTmp;
+                            TypeConvert.FromHexChars(typeData, item, textTmp, out valueTmp);
+                            arrayTextBuffer[i][j] = valueTmp;
+
                             dividedText.RemoveRange(0, item);
                             i++;
                         }

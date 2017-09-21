@@ -488,13 +488,14 @@ namespace rmApplication
                     string type = item.Cells[(int)DgvRowName.Type].Value.ToString();
 
                     int intSize = int.Parse(size);
-                    Exception ex;
+                    string retText;
 
                     string retValue = item.Cells[(int)DgvRowName.WriteValue].Value.ToString();
-                    string retText = TypeConvert.ToHexChars(type, intSize, retValue, out ex);
-                    item.Cells[(int)DgvRowName.WriteText].Value = retText;
-                    //retValue = TypeConvert.FromHexChars(type, intSize, retText);
-                    //item.Cells[(int)DgvRowName.WriteValue].Value = retValue;
+                    if(TypeConvert.ToHexChars(type, intSize, retValue, out retText))
+                    {
+                        item.Cells[(int)DgvRowName.WriteText].Value = retText;
+
+                    }
 
                 }
 
@@ -867,11 +868,9 @@ namespace rmApplication
 
                     }
 
-                    Exception ex_text = null;
+                    var addressValidFlg = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((intAddress + intOffset).ToString()), out address);
 
-                    address = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((intAddress + intOffset).ToString()), out ex_text);
-
-                    if (ex_text != null)
+                    if (addressValidFlg == false)
                     {
                         return;
 
@@ -913,10 +912,14 @@ namespace rmApplication
 
             }
 
-            Exception ex_text = null;
-            string timngVal = TypeConvert.ToHexChars(numeralSystem.UDEC, 2, timingNum, out ex_text);
+            string timngVal;
 
-            myCommProtocol.setTiming(timngVal);
+            if (TypeConvert.ToHexChars(numeralSystem.UDEC, 2, timingNum, out timngVal))
+            {
+                myCommProtocol.setTiming(timngVal);
+
+
+            }
 
         }
 
@@ -955,24 +958,14 @@ namespace rmApplication
 
             }
 
-            Exception ex_text = null;
+            string writeText;
 
-            address = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((intAddress + intOffset).ToString()), out ex_text);
-
-            writeVal = TypeConvert.FromHexChars(numeralSystem.HEX, int.Parse(size), writeVal);
-
-            if (ex_text != null)
+            if((TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((intAddress + intOffset).ToString()), out address))&&
+                (TypeConvert.FromHexChars(numeralSystem.HEX, int.Parse(size), writeVal, out writeText)))
             {
-                return;
+                myCommProtocol.wirteData(size, address, writeText);
 
             }
-
-            if (string.IsNullOrEmpty(writeVal))
-            {
-                return;
-            }
-
-            myCommProtocol.wirteData(size, address, writeVal);
 
         }
 
@@ -1891,7 +1884,9 @@ namespace rmApplication
 
                             }
 
-                            string retValue = TypeConvert.FromHexChars(type, listNumSize[i], retText);
+                            string retValue;
+                            TypeConvert.FromHexChars(type, listNumSize[i], retText, out retValue);
+
 
                             CheckedCellData[i].Cells[(int)DgvRowName.ReadValue].Value = retValue;
 
@@ -2501,10 +2496,9 @@ namespace rmApplication
 
                     }
 
-                    string readVal = TypeConvert.FromHexChars(type, int.Parse(size), readText);
-                    string writeVal = TypeConvert.FromHexChars(type, int.Parse(size), writeText);
+                    string readVal;
 
-                    if (readVal != null)
+                    if(TypeConvert.FromHexChars(type, int.Parse(size), readText, out readVal))
                     {
                         dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.ReadValue].Value = readVal;
 
@@ -2515,7 +2509,9 @@ namespace rmApplication
 
                     }
 
-                    if (writeVal != null)
+                    string writeVal;
+
+                    if (TypeConvert.FromHexChars(type, int.Parse(size), writeText, out writeVal))
                     {
                         dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].Value = writeVal;
 
@@ -2557,29 +2553,27 @@ namespace rmApplication
                         size = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Size].Value.ToString();
                         type = dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.Type].Value.ToString();
 
-                        Exception ex_text = null;
-
-                        writeText = TypeConvert.ToHexChars(type, int.Parse(size), inputText, out ex_text);
-
-                        if (ex_text != null)
-                        {
-                            PutWarningMessage(ex_text.Message);
-                            dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].ErrorText = "Invalid Value.";
-
-                        }
-                        else if (writeText == null)
-                        {
-                            PutWarningMessage("Write data is invalid.");
-                            dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].ErrorText = "Invalid Value.";
-
-                        }
-                        else
+                        if (TypeConvert.ToHexChars(type, int.Parse(size), inputText, out writeText))
                         {
                             dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].ErrorText = null;
 
                             dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteText].Value = writeText;
-                            string writeValue = TypeConvert.FromHexChars(type, int.Parse(size), writeText);
-                            dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].Value = writeValue;
+                            string writeValue;
+                            if (TypeConvert.FromHexChars(type, int.Parse(size), writeText, out writeValue))
+                            {
+                                dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].Value = writeValue;
+
+                            }
+                            else
+                            {
+                                dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].Value = null;
+
+                            }
+
+                        }
+                        else
+                        {
+                            dgv.Rows[e.RowIndex].Cells[(int)DgvRowName.WriteValue].ErrorText = "Invalid Value.";
 
                         }
 

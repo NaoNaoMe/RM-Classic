@@ -29,21 +29,20 @@ namespace rmApplication
 
     public class TypeConvert
     {
-        public static string ToHexChars(string type, int size, string data, out Exception back_ex)
+        public static bool ToHexChars(string type, int size, string dataStrings, out string hexCharStrings)
         {
-            back_ex = null;
-            string ret = null;
+            hexCharStrings = null;
 
             if (type != numeralSystem.ASCII)
             {
-                if (Regex.IsMatch(data, @"[0-9a-fA-F.]+$") != true)
+                if (Regex.IsMatch(dataStrings, @"[0-9a-fA-F.]+$") != true)
                 {
-                    return ret;
+                    return false;
                 }
 
             }
 
-            data = data.Replace(" ", "");
+            dataStrings = dataStrings.Replace(" ", "");
 
             byte[] bytes = null;
 
@@ -53,7 +52,7 @@ namespace rmApplication
                 {
                     case numeralSystem.BIN:
                         {
-                            var value = Convert.ToUInt64(data, 2);
+                            var value = Convert.ToUInt64(dataStrings, 2);
                             bytes = BitConverter.GetBytes(value);
                         }
 
@@ -61,7 +60,7 @@ namespace rmApplication
 
                     case numeralSystem.DEC:
                         {
-                            var value = Convert.ToInt64(data);
+                            var value = Convert.ToInt64(dataStrings);
                             bytes = BitConverter.GetBytes(value);
                         }
 
@@ -69,7 +68,7 @@ namespace rmApplication
 
                     case numeralSystem.UDEC:
                         {
-                            var value = Convert.ToUInt64(data);
+                            var value = Convert.ToUInt64(dataStrings);
                             bytes = BitConverter.GetBytes(value);
                         }
 
@@ -77,7 +76,7 @@ namespace rmApplication
 
                     case numeralSystem.HEX:
                         {
-                            var value = Convert.ToUInt64(data, 16);
+                            var value = Convert.ToUInt64(dataStrings, 16);
                             bytes = BitConverter.GetBytes(value);
                         }
 
@@ -87,7 +86,7 @@ namespace rmApplication
                         {
                             if (size == 4)
                             {
-                                var value = float.Parse(data);
+                                var value = float.Parse(dataStrings);
                                 bytes = BitConverter.GetBytes(value);
                             }
                         }
@@ -98,7 +97,7 @@ namespace rmApplication
                         {
                             if (size == 8)
                             {
-                                var value = double.Parse(data);
+                                var value = double.Parse(dataStrings);
                                 bytes = BitConverter.GetBytes(value);
                             }
                         }
@@ -107,7 +106,7 @@ namespace rmApplication
 
                     case numeralSystem.ASCII:
                         {
-                            bytes = System.Text.Encoding.ASCII.GetBytes(data);
+                            bytes = System.Text.Encoding.ASCII.GetBytes(dataStrings);
 
                             var list = bytes.ToList();
 
@@ -138,14 +137,15 @@ namespace rmApplication
                 }
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                back_ex = ex;
+                return false;
 
             }
 
             if (bytes == null)
             {
+                return false;
 
             }
             else
@@ -161,40 +161,40 @@ namespace rmApplication
                 if (bytes.Length == size)
                 {
                     Array.Reverse(bytes, 0, bytes.Length);
-                    ret = BitConverter.ToString(bytes);
-                    ret = ret.Replace("-", "");
+                    hexCharStrings = BitConverter.ToString(bytes);
+                    hexCharStrings = hexCharStrings.Replace("-", "");
 
                 }
 
             }
 
-            return ret;
+            return true;
 
         }
 
-        public static string FromHexChars(string type, int size, string data)
+        public static bool FromHexChars(string type, int size, string hexCharStrings, out string dataStrings)
         {
-            string ret = null;
+            dataStrings = null;
 
-            if (string.IsNullOrEmpty(data))
+            if (string.IsNullOrEmpty(hexCharStrings))
             {
-                return ret;
+                return false;
 
             }
 
 
-            byte[] bytes = new byte[data.Length / 2];
+            byte[] bytes = new byte[hexCharStrings.Length / 2];
 
-            for (int i = 0; i < (data.Length / 2); i++)
+            for (int i = 0; i < (hexCharStrings.Length / 2); i++)
             {
                 int start = 2 * i;
-                bytes[i] = byte.Parse(data.Substring(start, 2), NumberStyles.HexNumber);
+                bytes[i] = byte.Parse(hexCharStrings.Substring(start, 2), NumberStyles.HexNumber);
 
             }
 
             if (bytes.Length != size)
             {
-                return ret;
+                return false;
 
             }
 
@@ -208,11 +208,11 @@ namespace rmApplication
                         var tmp = Convert.ToString((UInt16)bytes[i], 2);
                         tmp = tmp.PadLeft(8, '0');
 
-                        ret += tmp + " ";
+                        dataStrings += tmp + " ";
 
                     }
 
-                    ret = ret.Remove((ret.Length - 1), 1);
+                    dataStrings = dataStrings.Remove((dataStrings.Length - 1), 1);
 
                     break;
 
@@ -230,17 +230,17 @@ namespace rmApplication
 
                     if (size == 1)
                     {
-                        ret = ((SByte)dec_sum).ToString();
+                        dataStrings = ((SByte)dec_sum).ToString();
 
                     }
                     else if (size == 2)
                     {
-                        ret = ((Int16)dec_sum).ToString();
+                        dataStrings = ((Int16)dec_sum).ToString();
 
                     }
                     else if (size == 4)
                     {
-                        ret = ((Int32)dec_sum).ToString();
+                        dataStrings = ((Int32)dec_sum).ToString();
 
                     }
                     else
@@ -262,7 +262,7 @@ namespace rmApplication
 
                     udec_sum /= 256;
 
-                    ret = udec_sum.ToString();
+                    dataStrings = udec_sum.ToString();
 
                     break;
 
@@ -271,10 +271,10 @@ namespace rmApplication
                     {
                         var tmp = Convert.ToString((UInt16)bytes[i], 16);
                         tmp = tmp.PadLeft(2, '0');
-                        ret += tmp;
+                        dataStrings += tmp;
                     }
 
-                    ret = ret.ToUpper();
+                    dataStrings = dataStrings.ToUpper();
 
                     break;
 
@@ -282,7 +282,7 @@ namespace rmApplication
                     if (bytes.Length == 4)
                     {
                         var tmp = BitConverter.ToSingle(bytes, 0);
-                        ret = tmp.ToString();
+                        dataStrings = tmp.ToString();
                     }
 
                     break;
@@ -291,15 +291,15 @@ namespace rmApplication
                     if (bytes.Length == 8)
                     {
                         var tmp = BitConverter.ToDouble(bytes, 0);
-                        ret = tmp.ToString();
+                        dataStrings = tmp.ToString();
                     }
 
                     break;
 
                 case numeralSystem.ASCII:
                     Array.Reverse(bytes);
-                    ret = System.Text.Encoding.ASCII.GetString(bytes);
-                    ret = ret.TrimEnd('\0');
+                    dataStrings = System.Text.Encoding.ASCII.GetString(bytes);
+                    dataStrings = dataStrings.TrimEnd('\0');
 
                     break;
 
@@ -308,7 +308,7 @@ namespace rmApplication
 
             }
 
-            return ret;
+            return true;
 
         }
 
@@ -351,7 +351,6 @@ namespace rmApplication
                             {
                                 ret = false;
                                 break;
-
                             }
                             else
                             {
