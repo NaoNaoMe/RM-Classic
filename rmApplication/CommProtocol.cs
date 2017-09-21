@@ -10,15 +10,26 @@ namespace rmApplication
     {
         public struct RxDataParam
         {
-            public string Time;
+            public long Time;
             public List<byte> Data;
 
         }
 
         public struct SetLogParam
         {
-            public string Size;
+            public int Size;
             public string Address;
+        }
+
+        public struct LogDataParam
+        {
+            public string Status;
+            public long OsTime;
+            public int SlvCnt;
+            public long SlvTime;
+            public List<string> rawData;
+            public List<string> logData;
+
         }
 
         public class Components
@@ -41,9 +52,12 @@ namespace rmApplication
 
             public Queue<string> CommLog { set; get; }
             public Queue<RxDataParam> ReceiveStream { set; get; }
+            public Queue<LogDataParam> LogDataStream { set; get; }
 
             public string DutVersion { set; get; }
             public string DumpData { set; get; }
+
+            public int TimingValue { set; get; }
 
             public Components()
             {
@@ -52,9 +66,12 @@ namespace rmApplication
 
                 CommLog = new Queue<string>();
                 ReceiveStream = new Queue<RxDataParam>();
+                LogDataStream = new Queue<LogDataParam>();
 
                 DutVersion = "";
                 DumpData = null;
+
+                TimingValue = 500;
 
             }
 
@@ -65,15 +82,24 @@ namespace rmApplication
 
                 CommLog = data.CommLog;
                 ReceiveStream = data.ReceiveStream;
+                LogDataStream = data.LogDataStream;
 
                 DutVersion = data.DutVersion;
                 DumpData = data.DumpData;
+
+                TimingValue = data.TimingValue;
 
             }
 
         }
 
         public Components myComponents;
+
+        private List<int> ExceptedSizeList;
+
+        private int NextSlvCnt;
+        private long OsRxTimeOffset;
+        private long SlvRxTime;
 
         private enum RmInstr : byte
         {
@@ -162,11 +188,11 @@ namespace rmApplication
         }
 
 
-        private string setCommLog(List<byte> byteList, string dir)
+        private long setCommLog(List<byte> byteList, string dir)
         {
-            float msec = (float)sw.ElapsedMilliseconds;
+            var msec = sw.ElapsedMilliseconds;
 
-            string time = (msec / 1000).ToString("000.000");
+            string time = ((double)msec/1000).ToString("000.000");
 
             string byteStrings = BitConverter.ToString(byteList.ToArray());
 
@@ -174,7 +200,7 @@ namespace rmApplication
 
             myComponents.CommLog.Enqueue(dat);
 
-            return time;
+            return msec;
 
         }
 
@@ -268,7 +294,7 @@ namespace rmApplication
                                 // delete useless crc data size
                                 RcvFrame.RemoveRange((RcvFrame.Count - 1), 1);
 
-                                string time = setCommLog(RcvFrame, "Rx");
+                                var time = setCommLog(RcvFrame, "Rx");
 
                                 RxDataParam rxData = new RxDataParam();
 
@@ -473,6 +499,8 @@ namespace rmApplication
             int dataIndex = 0;
             int frame_contents = 0;
 
+            ExceptedSizeList = new List<int>();
+
             for (int i = 0; i < frame_num; i++)
             {
                 List<byte> frame = new List<byte>();
@@ -508,7 +536,9 @@ namespace rmApplication
 
                 for (int j = 0; j < frame_contents; j++)
                 {
-                    frame.Add(byte.Parse(argParam[dataIndex].Size));
+                    ExceptedSizeList.Add(argParam[dataIndex].Size);
+
+                    frame.Add((byte)argParam[dataIndex].Size);
 
                     string address = argParam[dataIndex].Address;
 
@@ -612,7 +642,7 @@ namespace rmApplication
                     intAddress = Convert.ToInt64(address, 16);
 
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     err_flg = true;
                     break;
@@ -712,6 +742,10 @@ namespace rmApplication
 
             if (myComponents.CommMode == Components.RmMode.COMMAND)
             {
+                NextSlvCnt = 0;
+                OsRxTimeOffset = 0;
+                SlvRxTime = 0;
+
                 if (CommSentFlg == false)
                 {
 
@@ -774,7 +808,82 @@ namespace rmApplication
             }
             else if (myComponents.CommMode == Components.RmMode.LOG)
             {
+                while (myComponents.ReceiveStream.Count != 0)
+                {
+                    RxDataParam rxStream = myComponents.ReceiveStream.Dequeue();
 
+                    LogDataParam receiveData = new LogDataParam();
+
+                    var soh = rxStream.Data[0];
+                    rxStream.Data.RemoveAt(0);
+
+                    bool validflg;
+                    List<string> rxData = interpretRxFrameToHexChars(rxStream.Data, ExceptedSizeList, out validflg);
+
+                    if(validflg == false)
+                    {
+                        continue;
+
+                    }
+
+                    receiveData.rawData = new List<string>(rxData);
+
+                    int slvCnt = (int)(soh & 0x0F);
+
+                    if (NextSlvCnt == 0)
+                    {
+                        // This first time to receive frames.
+                        NextSlvCnt = slvCnt + 1;
+                        OsRxTimeOffset = rxStream.Time;
+
+                        receiveData.Status = "Start of Data";
+
+                    }
+                    else if (slvCnt == NextSlvCnt)
+                    {
+                        NextSlvCnt = slvCnt + 1;
+
+                        if (NextSlvCnt >= 16)
+                        {
+                            NextSlvCnt = 1;
+                        }
+
+                        SlvRxTime += myComponents.TimingValue;
+
+                        receiveData.Status = "OK";
+
+                    }
+                    else
+                    {
+                        int tmp = slvCnt - NextSlvCnt;
+
+                        if (tmp < 0)
+                        {
+                            tmp = 15 + tmp;
+
+                        }
+
+                        NextSlvCnt = slvCnt + 1;
+
+                        if (NextSlvCnt >= 16)
+                        {
+                            NextSlvCnt = 1;
+                        }
+
+                        SlvRxTime += myComponents.TimingValue * (tmp+1);
+
+                        receiveData.Status = tmp.ToString() + " messages might be lost";
+
+                    }
+
+                    receiveData.SlvCnt = slvCnt;
+                    receiveData.SlvTime = SlvRxTime;
+
+                    receiveData.OsTime = rxStream.Time - OsRxTimeOffset;
+
+                    myComponents.LogDataStream.Enqueue(receiveData);
+
+                }
 
             }
 

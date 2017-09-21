@@ -28,7 +28,6 @@ namespace rmApplication
             public string Password { set; get; }
 
             public bool CommActiveFlg { set; get; }
-            public bool LoggingActiveFlg { set; get; }
             public bool CustomizingModeFlg { set; get; }
             public string ValidMapPath { set; get; }
             public DateTime ValidMapLastWrittenDate { set; get; }
@@ -38,7 +37,6 @@ namespace rmApplication
             public string SettingName { set; get; }
             public string SettingVer { set; get; }
             public string TargetVer { set; get; }
-            public int TimingValue { set; get; }
 
             public Components()
             {
@@ -50,7 +48,6 @@ namespace rmApplication
                 Password = "0000FFFF";
 
                 CommActiveFlg = false;
-                LoggingActiveFlg = false;
                 CustomizingModeFlg = false;
                 ValidMapPath = "";
                 ValidMapLastWrittenDate = DateTime.MinValue;
@@ -60,7 +57,6 @@ namespace rmApplication
                 SettingName = "Sample";
                 SettingVer = "001";
                 TargetVer = "";
-                TimingValue = INITIAL_TIMING_VALUE;
 
             }
 
@@ -74,7 +70,6 @@ namespace rmApplication
                 Password = data.Password;
 
                 CommActiveFlg = data.CommActiveFlg;
-                LoggingActiveFlg = data.LoggingActiveFlg;
                 CustomizingModeFlg = data.CustomizingModeFlg;
                 ValidMapPath = data.ValidMapPath;
                 ValidMapLastWrittenDate = data.ValidMapLastWrittenDate;
@@ -84,7 +79,6 @@ namespace rmApplication
                 SettingName = data.SettingName;
                 SettingVer = data.SettingVer;
                 TargetVer = data.TargetVer;
-                TimingValue = data.TimingValue;
 
             }
 
@@ -136,7 +130,7 @@ namespace rmApplication
         private const string SETTING_VER_TAG = "_StV";
 
         private const int MINIMUM_TIMING_VALUE =    10;
-        private const int INITIAL_TIMING_VALUE = 500;
+        private const int INITIAL_TIMING_VALUE =   500;
         private const int MAXIMUM_TIMING_VALUE = 10000;
         private const int MINIMUM_TIMEOUT_VALUE = 1000;
 
@@ -152,10 +146,7 @@ namespace rmApplication
         private AutoCompleteStringCollection AutoCompleteSourceForVariable;
         private DataGridViewRow[] CheckedCellData;
         private SocketsAsyncParam SocketsParam;
-        private DateTime LogStartTime;
-        private List<List<string>> RcvLogData;
         private int ContinueCnt;
-        private int NextSlvCnt;
         private int RxSilentCnt;
         private string WarningText;
         private int WarningShowUpCount;
@@ -163,8 +154,14 @@ namespace rmApplication
 
         private string WorkaroundInputBuffer;
 
+        private bool LoggingActiveFlg = false;
+        private DateTime LogStartTime;
+        private Queue<CommProtocol.LogDataParam> RcvLogData;
+        private bool TimerInitialize = false;
+        private long OsRxTimeOffset;
+        private long SlvRxTimeOffset;
         private bool CommTimeOutFlg = false;
-        
+
         public string getViewSettingFileName()
         {
             if (string.IsNullOrEmpty(myComponents.TargetVer))
@@ -710,6 +707,11 @@ namespace rmApplication
                 return text;
             }
 
+            if (RcvLogData.Count <= 0)
+            {
+                return text;
+            }
+
             string note = "Start Logging time: " + LogStartTime.ToString();
 
             text.AppendLine(note);
@@ -725,43 +727,43 @@ namespace rmApplication
                 delimiter = ",";
             }
 
-            if (CheckedCellData != null)
+            string header = "1.Rcv Status" + delimiter + "2.OS Time" + delimiter + "3.Slave Count" + delimiter + "4.Slave Time";
+
+            for (int i = 0; i < dataGridView.Rows.Count; i++)
             {
-                string header = "1.Rcv Status" + delimiter + "2.OS Timer" + delimiter + "3.Slave Count" + delimiter + "4.Time step";
-
-                foreach (var name in CheckedCellData)
+                if (Convert.ToBoolean(dataGridView.Rows[i].Cells[(int)DgvRowName.Check].Value) == true)
                 {
-                    header = header + delimiter + name.Cells[(int)DgvRowName.Name].Value;
-                }
+                    header += delimiter;
+                    header += dataGridView.Rows[i].Cells[(int)DgvRowName.Name].Value;
 
-                text.AppendLine(header);
+                }
 
             }
 
-            if (RcvLogData.Count != 0)
+            text.AppendLine(header);
+
+            while (RcvLogData.Count != 0)
             {
-                foreach (var list in RcvLogData)
+                string line = "";
+
+                var item = RcvLogData.Dequeue();
+
+                line += item.Status;
+                line += delimiter;
+                line += ((double)item.OsTime / 1000).ToString();
+                line += delimiter;
+                line += item.SlvCnt.ToString();
+                line += delimiter;
+                line += ((double)item.SlvTime / 1000).ToString();
+
+                foreach (var data in item.logData)
                 {
-                    string line = "";
-
-                    foreach (var data in list)
-                    {
-                        if (line == "")
-                        {
-                            line = data;
-
-                        }
-                        else
-                        {
-                            line = line + delimiter + data;
-
-                        }
-
-                    }
-
-                    text.AppendLine(line);
+                    line += delimiter;
+                    line += data;
 
                 }
+
+                text.AppendLine(line);
 
             }
 
@@ -769,6 +771,47 @@ namespace rmApplication
 
         }
 
+        private void pushLogData(CommProtocol.LogDataParam pushedData)
+        {
+            if (LoggingActiveFlg == false)
+            {
+                TimerInitialize = false;
+
+            }
+            else
+            {
+                if (TimerInitialize == false)
+                {
+                    TimerInitialize = true;
+
+                    LogStartTime = DateTime.Now;
+
+                    RcvLogData = new Queue<CommProtocol.LogDataParam>();
+
+                    OsRxTimeOffset = pushedData.OsTime;
+                    SlvRxTimeOffset = pushedData.SlvTime;
+
+                }
+
+                pushedData.OsTime -= OsRxTimeOffset;
+                pushedData.SlvTime -= SlvRxTimeOffset;
+
+                DataGridViewRow[] checkedRowData = (from DataGridViewRow x in dataGridView.Rows where (bool)x.Cells[(int)DgvRowName.Check].Value == true select x).ToArray();
+
+                if (pushedData.logData.Count == checkedRowData.Length)
+                {
+                    if (RcvLogData.Count > 10000)
+                    {
+                        RcvLogData.Dequeue();
+                    }
+
+                    RcvLogData.Enqueue(pushedData);
+
+                }
+
+            }
+
+        }
 
         private void startLogMode()
         {
@@ -872,17 +915,27 @@ namespace rmApplication
 
                     }
 
-                    var addressValidFlg = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((intAddress + intOffset).ToString()), out address);
+                    int size;
 
-                    if (addressValidFlg == false)
+                    var addressValidFlg = TypeConvert.ToHexChars(numeralSystem.UDEC, 4, ((intAddress + intOffset).ToString()), out address);
+                    var sizeValidFlg = int.TryParse(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString(), out size);
+
+                    if ((addressValidFlg == true) &&
+                        (sizeValidFlg == true))
                     {
-                        return;
+                        tmpParam.Size = size;
+                        tmpParam.Address = address;
+                        listParam.Add(tmpParam);
 
                     }
+                    else
+                    {
+                        PutWarningMessage("Invalid data found");
 
-                    tmpParam.Size = CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString();
-                    tmpParam.Address = address;
-                    listParam.Add(tmpParam);
+                        errFlg = true;
+                        break;
+
+                    }
 
                 }
 
@@ -1317,7 +1370,6 @@ namespace rmApplication
             timingValTextBox.Text = INITIAL_TIMING_VALUE.ToString();
 
             ContinueCnt = 1;
-            NextSlvCnt = 0;
             RxSilentCnt = 0;
 
             mainTimer.Interval = MAIN_CTRL_INTERVAL;
@@ -1493,7 +1545,7 @@ namespace rmApplication
 
                     timingValueText = timeStep.ToString();
                     timingValTextBox.Text = timingValueText;
-                    myComponents.TimingValue = timeStep;
+                    myCommProtocol.myComponents.TimingValue = timeStep;
                     renewTimingSetting(timingValueText);
 
                 }
@@ -1504,7 +1556,7 @@ namespace rmApplication
 
         private void timingValTextBox_Leave(object sender, EventArgs e)
         {
-            timingValTextBox.Text = myComponents.TimingValue.ToString();
+            timingValTextBox.Text = myCommProtocol.myComponents.TimingValue.ToString();
         }
 
         private void logCtrlButton_Click(object sender, EventArgs e)
@@ -1512,11 +1564,11 @@ namespace rmApplication
             string DATALOG_STOP_TEXT = "Stop  Log";
             string DATALOG_START_TEXT = "Start Log";
 
-            if (myComponents.LoggingActiveFlg == true)
+            if (LoggingActiveFlg == true)
             {
                 logCtrlButton.Image = Properties.Resources.Complete_and_ok_gray;
                 logCtrlButton.Text = DATALOG_START_TEXT;
-                myComponents.LoggingActiveFlg = false;
+                LoggingActiveFlg = false;
 
                 var text = makeLogData(RecordMode.ClipBoard);
 
@@ -1530,12 +1582,9 @@ namespace rmApplication
             }
             else
             {
-                myComponents.LoggingActiveFlg = true;
+                LoggingActiveFlg = true;
                 logCtrlButton.Image = Properties.Resources.Complete_and_ok_green;
                 logCtrlButton.Text = DATALOG_STOP_TEXT;
-
-                myCommProtocol.startStopWatch();    // Restart StopWatch for communication
-                LogStartTime = DateTime.MinValue;
 
             }
 
@@ -1636,7 +1685,7 @@ namespace rmApplication
 
                             readDUTVersion();
 
-                            string timingNum = myComponents.TimingValue.ToString();
+                            string timingNum = myCommProtocol.myComponents.TimingValue.ToString();
                             renewTimingSetting(timingNum);
                             timingValTextBox.Text = timingNum;
 
@@ -1678,7 +1727,7 @@ namespace rmApplication
 
                     }
 
-                    if (myComponents.LoggingActiveFlg == true)
+                    if (LoggingActiveFlg == true)
                     {
                         logCtrlButton.PerformClick();
 
@@ -1761,7 +1810,7 @@ namespace rmApplication
                 dispRxDStatusLabel.BackColor = System.Drawing.Color.FromKnownColor(System.Drawing.KnownColor.Control);
                 RxSilentCnt++;
 
-                int tmpTimeoutCnt = myComponents.TimingValue * 10 / MAIN_CTRL_INTERVAL;
+                int tmpTimeoutCnt = myCommProtocol.myComponents.TimingValue * 10 / MAIN_CTRL_INTERVAL;
                 int maxTimeoutCnt = MAXIMUM_TIMING_VALUE * 2 / MAIN_CTRL_INTERVAL;
                 int minTimeoutCnt = MINIMUM_TIMEOUT_VALUE / MAIN_CTRL_INTERVAL;
 
@@ -1786,7 +1835,51 @@ namespace rmApplication
                     PutUnerasableWarningMessage("Communication stopped at " + strDataTime);
 
                     CommTimeOutFlg = true;
+
                 }
+
+            }
+
+            while (myCommProtocol.myComponents.LogDataStream.Count != 0)
+            {
+                var logdata = myCommProtocol.myComponents.LogDataStream.Dequeue();
+
+                logdata.logData = new List<string>();
+
+                if (logdata.rawData.Count != CheckedCellData.Length)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < logdata.rawData.Count; i++)
+                {
+                    string retText = logdata.rawData[i];
+
+                    CheckedCellData[i].Cells[(int)DgvRowName.ReadText].Value = retText;
+
+                    string type = numeralSystem.HEX;
+                    int size = 1;
+
+                    if (string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Type].Value as string) == false)
+                    {
+                        type = CheckedCellData[i].Cells[(int)DgvRowName.Type].Value.ToString();
+
+                    }
+
+                    if (string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value as string) == false)
+                    {
+                        int.TryParse(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString(), out size);
+
+                    }
+
+                    string retValue;
+                    TypeConvert.FromHexChars(type, size, retText, out retValue);
+                    logdata.logData.Add(retValue);
+                    CheckedCellData[i].Cells[(int)DgvRowName.ReadValue].Value = retValue;
+
+                }
+
+                pushLogData(logdata);
 
             }
 
@@ -1794,166 +1887,26 @@ namespace rmApplication
 
             if (isLogMode == false)
             {
-                ContinueCnt = 1;
-                NextSlvCnt = 0;
-                RxSilentCnt = 0;
-                RcvLogData = new List<List<string>>();
+                ContinueCnt = 0;
 
             }
             else
             {
-                if (ContinueCnt > CONTINUE_CNT_MAX)
+                if (ContinueCnt >= CONTINUE_CNT_MAX)
                 {
-                    ContinueCnt = 1;
+                    ContinueCnt = 0;
 
                     List<byte> peekTxBuff = myCommProtocol.getTxData();
 
                     if (peekTxBuff == null)
                     {
                         startLogMode();
-
                     }
 
                 }
                 else
                 {
                     ContinueCnt++;
-
-                }
-
-                while (myCommProtocol.myComponents.ReceiveStream.Count != 0)
-                {
-                    CommProtocol.RxDataParam rxStream = myCommProtocol.myComponents.ReceiveStream.Dequeue();
-
-                    List<string> lostLogBuff = new List<string>();
-
-                    int slvCnt = (int)(rxStream.Data[0] & 0x0F);
-
-                    if (NextSlvCnt == 0)
-                    {
-                        NextSlvCnt = slvCnt + 1;
-
-                    }
-                    else if (slvCnt == NextSlvCnt)
-                    {
-                        NextSlvCnt = slvCnt + 1;
-
-                        if (NextSlvCnt >= 16)
-                        {
-                            NextSlvCnt = 1;
-                        }
-                    }
-                    else
-                    {
-                        int tmp = slvCnt - NextSlvCnt;
-
-                        if (tmp < 0)
-                        {
-                            tmp = 15 + tmp;
-
-                        }
-
-                        NextSlvCnt = slvCnt + 1;
-
-                        lostLogBuff.Add(tmp.ToString() + " messages might be lost");
-                        lostLogBuff.Add("-");       //for OS Timer
-                        lostLogBuff.Add("-");       //for Count
-                        lostLogBuff.Add("-");       //for Time step
-
-                    }
-
-                    rxStream.Data.RemoveAt(0);
-
-                    List<int> listNumSize = new List<int>();
-                    int maxIndex = CheckedCellData.Length;
-
-                    for (int i = 0; i < maxIndex; i++)
-                    {
-                        int numSize = 0;
-
-                        if ((CheckedCellData[i].Index != -1) &&
-                            (string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value as string) == false))
-                        {
-                            int.TryParse(CheckedCellData[i].Cells[(int)DgvRowName.Size].Value.ToString(), out numSize);
-                        }
-
-                        listNumSize.Add(numSize);
-
-                    }
-
-                    bool validflg;
-                    List<string> rxData = myCommProtocol.interpretRxFrameToHexChars(rxStream.Data, listNumSize, out validflg);
-                    List<string> logBuff = new List<string>();
-
-                    if (validflg == true)
-                    {
-                        logBuff.Add("OK");
-                        logBuff.Add(rxStream.Time);
-                        logBuff.Add(slvCnt.ToString());
-                        logBuff.Add(((float)myComponents.TimingValue/1000).ToString("F"));
-
-                        for (int i = 0; i < maxIndex; i++)
-                        {
-                            string retText = rxData[i];
-
-                            CheckedCellData[i].Cells[(int)DgvRowName.ReadText].Value = retText;
-
-                            string type = numeralSystem.HEX;
-
-                            if (string.IsNullOrEmpty(CheckedCellData[i].Cells[(int)DgvRowName.Type].Value as string) == false)
-                            {
-                                type = CheckedCellData[i].Cells[(int)DgvRowName.Type].Value.ToString();
-
-                            }
-
-                            string retValue;
-                            TypeConvert.FromHexChars(type, listNumSize[i], retText, out retValue);
-
-
-                            CheckedCellData[i].Cells[(int)DgvRowName.ReadValue].Value = retValue;
-
-                            logBuff.Add(retValue);
-
-                        }
-
-                    }
-                    else
-                    {
-                        logBuff.Add("Invalid DataLength");
-                        logBuff.Add(rxStream.Time);
-                        logBuff.Add(slvCnt.ToString());
-
-                    }
-
-                    if (myComponents.LoggingActiveFlg == true)
-                    {
-                        if (LogStartTime == DateTime.MinValue)
-                        {
-                            LogStartTime = DateTime.Now;
-
-                        }
-
-                        if (lostLogBuff.Count != 0)
-                        {
-                            RcvLogData.Add(lostLogBuff);
-
-                        }
-
-                        RcvLogData.Add(logBuff);
-
-                        if (RcvLogData.Count > RCV_LOGDATA_MAX)
-                        {
-                            RcvLogData.RemoveAt(0);
-
-                        }
-
-                    }
-                    else
-                    {
-                        RcvLogData = new List<List<string>>();
-
-                    }
-
                 }
 
             }
