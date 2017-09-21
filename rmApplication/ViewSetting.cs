@@ -82,16 +82,16 @@ namespace rmApplication
     public class ViewSetting
     {
         [XmlElement("DataSetting")]
-        public BindingList<DataSetting> DataSetting { get; set; }
+        public BindingList<DataSetting> DataList { get; set; }
 
         public ViewSetting()
         {
-            DataSetting = new BindingList<DataSetting>();
+            DataList = new BindingList<DataSetting>();
         }
 
         public ViewSetting(ViewSetting data)
         {
-            DataSetting = new BindingList<DataSetting>(data.DataSetting);
+            DataList = new BindingList<DataSetting>(data.DataList);
 
         }
 
@@ -101,7 +101,7 @@ namespace rmApplication
     {
         public static void replaceEmptyWithNull(ref ViewSetting data)
         {
-            foreach (var item in data.DataSetting)
+            foreach (var item in data.DataList)
             {
                 if (string.IsNullOrEmpty(item.Group))
                 {

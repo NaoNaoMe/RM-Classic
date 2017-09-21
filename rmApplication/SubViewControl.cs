@@ -246,17 +246,17 @@ namespace rmApplication
 
             var tmpVSettingFactor = new ViewSetting();
 
-            foreach (var factor in tmp.DataSetting)
+            foreach (var factor in tmp.DataList)
             {
                 if (groupName == null)
                 {
                     groupName = factor.Group;
-                    tmpVSettingFactor.DataSetting.Add(factor);
+                    tmpVSettingFactor.DataList.Add(factor);
 
                     if (groupName == null)
                     {
                         groupName = SubViewControl.GROUP_TEMPORARY_TAG;
-                        tmpVSettingFactor.DataSetting[0].Group = groupName;
+                        tmpVSettingFactor.DataList[0].Group = groupName;
 
                     }
 
@@ -273,12 +273,12 @@ namespace rmApplication
 
                     tmpVSettingFactor = new ViewSetting();
 
-                    tmpVSettingFactor.DataSetting.Add(factor);
+                    tmpVSettingFactor.DataList.Add(factor);
 
                 }
                 else
                 {
-                    tmpVSettingFactor.DataSetting.Add(factor);
+                    tmpVSettingFactor.DataList.Add(factor);
 
                 }
 
@@ -405,7 +405,7 @@ namespace rmApplication
         {
             foreach (var factor in myComponents.ViewSettingList)
             {
-                foreach (var itemDS in factor.DataSetting)
+                foreach (var itemDS in factor.DataList)
                 {
                     if ((myComponents.MapList == null) ||
                         (myComponents.MapList.Count <= 0))
@@ -465,7 +465,7 @@ namespace rmApplication
 
             }
 
-            this.dataGridView.DataSource = myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataSetting;
+            this.dataGridView.DataSource = myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataList;
 
             for (int i = 0; i < dataGridView.Rows.Count; i++)
             {
@@ -2616,7 +2616,7 @@ namespace rmApplication
 
             DataSetting factor = new DataSetting();
             factor.Type = numeralSystem.HEX;
-            myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataSetting.Insert(rowValue + 1, factor);
+            myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataList.Insert(rowValue + 1, factor);
             this.dataGridView.ClearSelection();
 
         }
@@ -2625,9 +2625,9 @@ namespace rmApplication
         {
             Int32 rowValue = dataGridView.Rows.GetFirstRow(DataGridViewElementStates.Selected);
 
-            DataSetting factor = new DataSetting(myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataSetting[rowValue]);
+            DataSetting factor = new DataSetting(myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataList[rowValue]);
             factor.Group = null;
-            myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataSetting.Insert(rowValue + 1, factor);
+            myComponents.ViewSettingList[pageValComboBox.SelectedIndex].DataList.Insert(rowValue + 1, factor);
             this.dataGridView.ClearSelection();
 
         }
@@ -2682,10 +2682,10 @@ namespace rmApplication
 
                 for (int i = 0; i < COLUMN_NUM; i++)
                 {
-                    tmpVSettingFactor.DataSetting.Add(new DataSetting());
+                    tmpVSettingFactor.DataList.Add(new DataSetting());
                 }
 
-                tmpVSettingFactor.DataSetting[0].Group = groupName;
+                tmpVSettingFactor.DataList[0].Group = groupName;
 
                 myComponents.ViewSettingList.Insert((index + 1), tmpVSettingFactor);
 
@@ -2712,14 +2712,14 @@ namespace rmApplication
 
                 var tmpVSettingFactor = new ViewSetting();
 
-                foreach (var row in myComponents.ViewSettingList[index].DataSetting)
+                foreach (var row in myComponents.ViewSettingList[index].DataList)
                 {
                     DataSetting factor = new DataSetting(row);
-                    tmpVSettingFactor.DataSetting.Add(factor);
+                    tmpVSettingFactor.DataList.Add(factor);
 
                 }
 
-                tmpVSettingFactor.DataSetting[0].Group = groupName;
+                tmpVSettingFactor.DataList[0].Group = groupName;
 
                 myComponents.ViewSettingList.Insert((index + 1), tmpVSettingFactor);
 

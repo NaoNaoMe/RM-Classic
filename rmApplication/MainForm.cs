@@ -34,10 +34,10 @@ namespace rmApplication
 
             for (int i = 0; i < 16; i++)
             {
-                tmpVSettingFactor.DataSetting.Add(new DataSetting());
+                tmpVSettingFactor.DataList.Add(new DataSetting());
             }
 
-            tmpVSettingFactor.DataSetting[0].Group = GROUP_INITIAL_TAG;
+            tmpVSettingFactor.DataList[0].Group = GROUP_INITIAL_TAG;
 
             subViewControl1.loadViewSettingFile(tmpVSettingFactor);
 
@@ -190,9 +190,9 @@ namespace rmApplication
 
                 foreach (var factor in subViewControl1.myComponents.ViewSettingList)
                 {
-                    foreach (var item in factor.DataSetting)
+                    foreach (var item in factor.DataList)
                     {
-                        tmpViewSetting.DataSetting.Add(item);
+                        tmpViewSetting.DataList.Add(item);
 
                     }
 
