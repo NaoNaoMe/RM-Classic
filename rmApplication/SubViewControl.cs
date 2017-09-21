@@ -2592,6 +2592,8 @@ namespace rmApplication
 
                             }
 
+                            WorkaroundInputBuffer = writeValue;
+
                         }
                         else
                         {
