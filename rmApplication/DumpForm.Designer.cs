@@ -84,7 +84,7 @@
             this.addressTextBox.Name = "addressTextBox";
             this.addressTextBox.Size = new System.Drawing.Size(141, 19);
             this.addressTextBox.TabIndex = 4;
-            this.addressTextBox.Text = "20000000";
+            this.addressTextBox.Text = "0x20000000";
             // 
             // sizeTextBox
             // 

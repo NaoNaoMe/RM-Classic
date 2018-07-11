@@ -605,15 +605,13 @@ namespace rmApplication
             {
                 frame_num++;
             }
-            else if (last_frame_contents == 0)
+            else
             {
                 last_frame_contents = payload_max;
             }
 
             Int64 intAddress = 0;
             Int64 intOffset = 0;
-
-            bool err_flg = false;
 
             for (int i = 0; i < frame_num; i++)
             {
@@ -637,51 +635,26 @@ namespace rmApplication
 
                 }
 
-                try
-                {
-                    intAddress = Convert.ToInt64(address, 16);
-
-                }
-                catch (Exception)
-                {
-                    err_flg = true;
-                    break;
-
-                }
+                intAddress = Convert.ToInt64(address, 16);
 
                 var value = Convert.ToInt64(intAddress + intOffset);
-                var bytes = BitConverter.GetBytes(value);
+                var bytes = BitConverter.GetBytes(value).ToList();
 
-                var list = bytes.ToList();
-                list.RemoveRange(4, (list.Count - 4));
-                bytes = list.ToArray();
-                Array.Reverse(bytes, 0, bytes.Length);
-                string byteStrings = BitConverter.ToString(bytes);
+                bytes.RemoveRange(4, (bytes.Count - 4));
 
-                address = byteStrings.Replace("-", "");
-
-                if (myComponents.SelectByte == Components.RmAddr.Byte4)
+                if (myComponents.SelectByte == Components.RmAddr.Byte2)
                 {
-
-                }
-                else
-                {
-                    address = address.Substring(address.Length - 4);
+                    while(bytes.Count > 2)
+                    {
+                        bytes.RemoveAt(bytes.Count - 1);
+                    }
 
                 }
 
+                frame.AddRange(bytes);
+                frame.Add((byte)payload_size);
 
-                addData = BinaryEditor.HexStringToBytes(address);
-                addData = BinaryEditor.Swap(addData);
-                frame.AddRange(addData);
-                byte bdata = (byte)payload_size;
-                frame.Add(bdata);
-
-                if (err_flg != true)
-                {
-                    TxDataStream.Enqueue(frame);
-
-                }
+                TxDataStream.Enqueue(frame);
 
             }
 

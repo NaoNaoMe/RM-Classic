@@ -126,7 +126,16 @@ namespace rmApplication
             if (SubViewCtrl.myComponents.CommActiveFlg == false)
             {
                 return;
+            }
 
+            if (TypeConvert.IsHexString(address) == false)
+            {
+                return;
+            }
+
+            if (TypeConvert.IsNumeric(size) == false)
+            {
+                return;
             }
 
             dumpTextBox.Text = "";
