@@ -8,15 +8,13 @@ namespace rmApplication
 {
     public class SymbolFactor
     {
-        public string VariableName { set; get; }
-
+        public string Symbol { set; get; }
         public string Address { set; get; }
-
         public string Size { set; get; }
 
         public SymbolFactor()
         {
-            VariableName = string.Empty;
+            Symbol = string.Empty;
             Address = "0x00000000";
             Size = "1";
 
@@ -24,7 +22,7 @@ namespace rmApplication
 
         public SymbolFactor(SymbolFactor data)
         {
-            VariableName = data.VariableName;
+            Symbol = data.Symbol;
             Address = data.Address;
             Size = data.Size;
 

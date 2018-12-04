@@ -49,12 +49,18 @@ namespace rmApplication
             public bool IsSuccess;
         }
 
+        private struct InitializeResponse
+        {
+            public bool IsSuccess;
+            public bool IsEchoed;
+            public string VersionName;
+        }
+
 
         public delegate void InitializeCompletedFunction(string message);
         public InitializeCompletedFunction InitializeCompletedCallBack;
 
         public delegate void LogCommunicationTimeoutFunction();
-        public LogCommunicationTimeoutFunction LogCommunicationTimeoutCallBack;
 
         public delegate void CollectDumpCompletedFunction(List<byte> bytes);
         public CollectDumpCompletedFunction CollectDumpCompletedCallBack;
@@ -65,12 +71,20 @@ namespace rmApplication
 
         public CommunicationTasks TaskState { get; private set; }
 
+        public bool IsCommAvailable
+        {
+            get
+            {
+                return myCommMainCtrl.IsOpen;
+            }
+        }
+
         private ConcurrentQueue<CommunicationTasks> myTaskQueue;
+
+        private uint myPassNumber;
 
         private CommMainCtrl myCommMainCtrl;
         private CommInstructions myCommInstructions;
-
-        private Configuration mySettings;
 
         private int currentTimeStep;
 
@@ -80,9 +94,10 @@ namespace rmApplication
 
         public BusinessLogic()
         {
-            mySettings = new Configuration();
-            myCommInstructions = new CommInstructions(mySettings.RmRange);
-            myCommMainCtrl = new CommMainCtrl(mySettings);
+            var config = new Configuration();
+            myPassNumber = config.PassNumber;
+            myCommInstructions = new CommInstructions(config.RmRange);
+            myCommMainCtrl = new CommMainCtrl(config);
 
             myTaskQueue = new ConcurrentQueue<CommunicationTasks>();
 
@@ -92,23 +107,19 @@ namespace rmApplication
             mylogData = new ConcurrentQueue<LogData>();
 
             TaskState = CommunicationTasks.Nothing;
+
         }
 
-        public bool UpdateResource(Configuration setting)
+        public bool UpdateResource(Configuration config)
         {
-            if (myCommMainCtrl.IsOpen == true)
+            if (myCommMainCtrl.IsOpen)
                 return false;
 
-            mySettings = new Configuration(setting);
-            myCommInstructions = new CommInstructions(mySettings.RmRange);
-            myCommMainCtrl = new CommMainCtrl(mySettings);
+            myPassNumber = config.PassNumber;
+            myCommInstructions = new CommInstructions(config.RmRange);
+            myCommMainCtrl = new CommMainCtrl(config);
 
             return true;
-        }
-
-        public Configuration GetBusinessLogicSettings()
-        {
-            return mySettings;
         }
 
         public void ClearWaitingTasks()
@@ -138,8 +149,9 @@ namespace rmApplication
             WriteDataRequest.Enqueue(myCommInstructions.MakeWirteDataRequest(param.Address, param.Size, param.Value));
         }
 
-        public async Task RunAsync(bool isBreakable)
+        public async Task<string> RunAsync(bool isBreakable)
         {
+            string msg = string.Empty;
             bool isSuccess;
             myCancellationTokenSource = new CancellationTokenSource();
 
@@ -161,12 +173,17 @@ namespace rmApplication
                         switch (request)
                         {
                             case CommunicationTasks.Open:
-                                var isOpen = await myCommMainCtrl.OpenAsync(myCancellationTokenSource.Token);
-
-                                if (isBreakable && !isOpen)
+                                if(!myCommMainCtrl.IsOpen)
                                 {
-                                    ClearWaitingTasks();
-                                    EnqueueTask(CommunicationTasks.Terminate);
+                                    var isOpen = await myCommMainCtrl.OpenAsync(myCancellationTokenSource.Token);
+
+                                    if (isBreakable && !isOpen)
+                                    {
+                                        msg = "Failed to open a communication resource.";
+                                        ClearWaitingTasks();
+                                        EnqueueTask(CommunicationTasks.Terminate);
+                                    }
+
                                 }
 
                                 break;
@@ -176,16 +193,27 @@ namespace rmApplication
                                 break;
 
                             case CommunicationTasks.Initialize:
-                                var versionName = await InitializeAsync(myCancellationTokenSource.Token);
+                                var response = await InitializeAsync(myPassNumber ,myCancellationTokenSource.Token);
 
-                                if (isBreakable &&
-                                    string.IsNullOrEmpty(versionName))
+                                if(response.IsSuccess)
                                 {
-                                    ClearWaitingTasks();
-                                    EnqueueTask(CommunicationTasks.Terminate);
+                                    InitializeCompletedCallBack?.Invoke(response.VersionName);
+                                }
+                                else 
+                                {
+                                    if (isBreakable)
+                                    {
+                                        if (response.IsEchoed)
+                                            msg = "The request was echoed back." + Environment.NewLine + "The Tx and Rx lines might be shorted together.";
+                                        else
+                                            msg = "Failed to initialize.";
+
+                                        ClearWaitingTasks();
+                                        EnqueueTask(CommunicationTasks.Terminate);
+                                    }
+
                                 }
 
-                                InitializeCompletedCallBack?.Invoke(versionName);
                                 break;
 
                             case CommunicationTasks.TimeStep:
@@ -193,6 +221,7 @@ namespace rmApplication
 
                                 if (isBreakable && !isSuccess)
                                 {
+                                    msg = "Failed to change time-step.";
                                     ClearWaitingTasks();
                                     EnqueueTask(CommunicationTasks.Terminate);
                                 }
@@ -204,6 +233,7 @@ namespace rmApplication
 
                                 if (isBreakable && !isSuccess)
                                 {
+                                    msg = "Failed to configure current settings.";
                                     ClearWaitingTasks();
                                     EnqueueTask(CommunicationTasks.Terminate);
                                 }
@@ -223,14 +253,14 @@ namespace rmApplication
 
                                 if (isBreakable && !activity.IsSuccess)
                                 {
+                                    msg = "Something happened during logging.";
                                     ClearWaitingTasks();
                                     EnqueueTask(CommunicationTasks.Terminate);
                                 }
 
                                 if (isBreakable && activity.IsTimeout)
                                 {
-                                    LogCommunicationTimeoutCallBack?.Invoke();
-
+                                    msg = "Communication timeout.";
                                     ClearWaitingTasks();
                                     EnqueueTask(CommunicationTasks.Terminate);
                                 }
@@ -270,17 +300,22 @@ namespace rmApplication
 
             }
 
+            return msg;
         }
 
-        private async Task<String> InitializeAsync(CancellationToken ct)
+        private async Task<InitializeResponse> InitializeAsync(uint passNumber, CancellationToken ct)
         {
-            string versionName = string.Empty;
+            InitializeResponse response = new InitializeResponse();
+            response.IsSuccess = false;
+            response.IsEchoed = false;
+            response.VersionName = string.Empty;
+
             List<byte> txFrame = new List<byte>();
             List<byte> rxFrame = new List<byte>();
 
             myCommMainCtrl.PurgeReceiveBuffer();
 
-            txFrame = myCommInstructions.MakeTryConnectionRequest(mySettings.PassNumber);
+            txFrame = myCommInstructions.MakeTryConnectionRequest(passNumber);
 
             myCommMainCtrl.Push(txFrame);
 
@@ -300,23 +335,32 @@ namespace rmApplication
 
                 if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
                 {
-                    rxFrame.RemoveAt(0);    // remove unnecessary header data
-
-                    var endIndex = rxFrame.Count() - 1;
-                    if (rxFrame[endIndex] == 0x00)
+                    if(txFrame.SequenceEqual(rxFrame))
                     {
-                        rxFrame.RemoveAt(endIndex);
+                        response.IsEchoed = true;
+                    }
+                    else
+                    {
+                        rxFrame.RemoveAt(0);    // remove unnecessary header data
+
+                        var endIndex = rxFrame.Count() - 1;
+                        if (rxFrame[endIndex] == 0x00)
+                        {
+                            rxFrame.RemoveAt(endIndex);
+                        }
+
+                        response.IsSuccess = true;
+                        response.VersionName = System.Text.Encoding.ASCII.GetString(rxFrame.ToArray());
+
                     }
 
-                    versionName = System.Text.Encoding.ASCII.GetString(rxFrame.ToArray());
                     break;
 
                 }
 
             }
 
-
-            return versionName;
+            return response;
         }
 
         private async Task<bool> SetTimeStepAsync(uint timeStep, CancellationToken ct)

@@ -34,7 +34,7 @@ namespace rmApplication
                     {
                         var data = new SymbolFactor();
 
-                        data.VariableName = splitLine[0];
+                        data.Symbol = splitLine[0];
                         data.Address = "0x" + splitLine[1];
                         data.Size = splitLine[2];
 
@@ -64,11 +64,11 @@ namespace rmApplication
 
             foreach (var item in symbolList)
             {
-                if ((!string.IsNullOrEmpty(item.VariableName)) &&
+                if ((!string.IsNullOrEmpty(item.Symbol)) &&
                     (!string.IsNullOrEmpty(item.Address)) &&
                     (!string.IsNullOrEmpty(item.Size)))
                 {
-                    textList.Add(item.VariableName + " " + item.Address + " " + item.Size);
+                    textList.Add(item.Symbol + " " + item.Address + " " + item.Size);
                 }
 
             }

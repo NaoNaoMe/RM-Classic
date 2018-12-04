@@ -8,6 +8,7 @@ namespace rmApplication
 {
     public class Configuration
     {
+        public uint PassNumber { get; set; }
         public CommMainCtrl.CommunicationMode CommMode { get; set; }
         public CommInstructions.RmAddr RmRange { get; set; }
         public int BaudRate { get; set; }
@@ -17,13 +18,13 @@ namespace rmApplication
         public System.Net.IPAddress ClientAddress { get; set; }
         public int ClientPort { get; set; }
         
-        public uint PassNumber { get; set; }
-        
         public System.Net.IPAddress ServerAddress { get; set; }
         public int ServerPort { get; set; }
 
         public Configuration()
         {
+            PassNumber = 0x0000FFFF;
+
             CommMode = CommMainCtrl.CommunicationMode.Serial;
             RmRange = CommInstructions.RmAddr.Byte2;
             BaudRate = 0;
@@ -33,8 +34,6 @@ namespace rmApplication
             ClientAddress = System.Net.IPAddress.Parse("0.0.0.0");
             ClientPort = 0;
 
-            PassNumber = 0x0000FFFF;
-            
             ServerAddress = System.Net.IPAddress.Parse("127.0.0.2");
             ServerPort = 4001;
 
@@ -42,6 +41,8 @@ namespace rmApplication
 
         public Configuration(Configuration conf)
         {
+            PassNumber = conf.PassNumber;
+
             CommMode = conf.CommMode;
             RmRange = conf.RmRange;
             BaudRate = conf.BaudRate;
@@ -51,8 +52,6 @@ namespace rmApplication
             ClientAddress = conf.ClientAddress;
             ClientPort = conf.ClientPort;
 
-            PassNumber = conf.PassNumber;
-            
             ServerAddress = conf.ServerAddress;
             ServerPort = conf.ServerPort;
 

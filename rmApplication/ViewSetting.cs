@@ -16,8 +16,11 @@ namespace rmApplication
         [XmlElement("Check")]
         public bool Check { set; get; }
 
-        [XmlElement("Variable")]
+        [XmlElement("Variable")]    // obsolute
         public string Variable { set; get; }
+
+        [XmlElement("Symbol")]
+        public string Symbol { set; get; }
 
         [XmlElement("Address")]
         public string Address { set; get; }
@@ -54,11 +57,12 @@ namespace rmApplication
             Group = null;
             Check = false;
             Variable = null;
+            Symbol = null;
             Address = null;
             Offset = "0";
             Size = "1";
             Name = null;
-            Type = "Hex";
+            Type = UserType.Hex.ToString();
             ReadRaw = null;
             Read = null;
             WriteRaw = null;
@@ -71,6 +75,7 @@ namespace rmApplication
             Group = ds.Group;
             Check = ds.Check;
             Variable = ds.Variable;
+            Symbol = ds.Symbol;
             Address = ds.Address;
             Offset = ds.Offset;
             Size = ds.Size;
@@ -93,7 +98,7 @@ namespace rmApplication
         {
             Group = 0,
             Check,
-            Variable,
+            Symbol,
             Address,
             Offset,
             Size,

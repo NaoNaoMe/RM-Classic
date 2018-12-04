@@ -84,13 +84,13 @@ namespace rmApplication
         }
 
 
-        public List<byte> MakeTryConnectionRequest(uint passnumber)
+        public List<byte> MakeTryConnectionRequest(uint passNumber)
         {
             List<byte> frame = new List<byte>();
 
             frame.Add(GenerateOpCode(RmInstr.ReadInfo));
 
-            List<byte> bytes = BitConverter.GetBytes(passnumber).ToList();
+            List<byte> bytes = BitConverter.GetBytes(passNumber).ToList();
 
             if (!BitConverter.IsLittleEndian)
                 bytes.Reverse();
@@ -518,7 +518,6 @@ namespace rmApplication
 
             return true;
         }
-
 
 
     }

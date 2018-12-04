@@ -206,10 +206,8 @@ namespace rmApplication
 
                     }
 
-                    if (isBreak == true)
-                    {
+                    if (isBreak)
                         break;
-                    }
 
                     List<byte> bytes = new List<byte>();
 
@@ -228,16 +226,14 @@ namespace rmApplication
 
                     }
 
+                    if(bytes.Count == 0)
+                        break;
+
                     foreach (var item in bytes)
-                    {
                         rxFIFO.Enqueue(item);
 
-                    }
-
-                    if (ct.IsCancellationRequested == true)
-                    {
+                    if (ct.IsCancellationRequested)
                         break;
-                    }
 
                 }
 

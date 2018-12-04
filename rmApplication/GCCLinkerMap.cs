@@ -40,7 +40,7 @@ namespace rmApplication
                             IsHexString(splitLine[3]))
                         {
                             var data = new SymbolFactor();
-                            data.VariableName = splietsplitLine[2];
+                            data.Symbol = splietsplitLine[2];
                             data.Address = splitLine[2];
                             data.Size = Convert.ToInt64(splitLine[3], 16).ToString();
 
@@ -74,7 +74,7 @@ namespace rmApplication
                                 IsHexString(splitLine[2]))
                             {
                                 var data = new SymbolFactor();
-                                data.VariableName = name;
+                                data.Symbol = name;
                                 data.Address = splitLine[1];
                                 data.Size = Convert.ToInt64(splitLine[2], 16).ToString();
 

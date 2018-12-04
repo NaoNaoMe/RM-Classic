@@ -111,7 +111,7 @@ namespace rmApplication
 
                 foreach (var factor in subViewCtrl.MapList)
                 {
-                    autoCompleteSourceForSymbol.Add(factor.VariableName);
+                    autoCompleteSourceForSymbol.Add(factor.Symbol);
 
                 }
 
@@ -190,9 +190,9 @@ namespace rmApplication
             {
                 if (subViewCtrl.MapList != null)
                 {
-                    string tmpVariable = symbolTextBox.Text;
+                    string tmpSymbol = symbolTextBox.Text;
 
-                    var result = subViewCtrl.MapList.Find(item => item.VariableName == tmpVariable);
+                    var result = subViewCtrl.MapList.Find(item => item.Symbol == tmpSymbol);
 
                     if (result != null)
                     {

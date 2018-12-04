@@ -301,7 +301,7 @@ namespace rmApplication
                 {
                     tmpSerial.PortName = port;
                     tmpSerial.Open();
-                    MessageBox.Show("Success!!");
+                    MessageBox.Show(port.ToString() + " is availble.");
                     tmpSerial.Close();
 
                 }

@@ -44,7 +44,7 @@ namespace rmApplication
                     {
                         var data = new SymbolFactor();
 
-                        data.VariableName = splitLine[8];
+                        data.Symbol = splitLine[8];
                         data.Address = "0x" + splitLine[2];
                         data.Size = splitLine[3];
 

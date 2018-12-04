@@ -212,16 +212,22 @@ namespace rmApplication
                     {
                         requestTask = BusinessLogic.CommunicationTasks.Open;
 
-                        logic.ClearWaitingTasks();
-                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
-                        logic.CancelCurrentTask();
+                        if (!logic.IsCommAvailable)
+                        {
+                            logic.ClearWaitingTasks();
+                            logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
+                            logic.CancelCurrentTask();
+                        }
                     }
                     else
                     {
                         if (logic.TaskState != BusinessLogic.CommunicationTasks.Open)
                         {
                             requestTask = BusinessLogic.CommunicationTasks.Nothing;
-                            answer = okText;
+                            if (logic.IsCommAvailable)
+                                answer = okText;
+                            else
+                                answer = failedText;
                         }
                     }
                     break;
@@ -383,53 +389,40 @@ namespace rmApplication
                             logic.EnqueueTask(BusinessLogic.CommunicationTasks.Dump);
                             logic.CancelCurrentTask();
 
-                            answer = okText;
                         }
 
-                    }
-                    else
-                    {
-                        if (logic.TaskState != BusinessLogic.CommunicationTasks.Dump)
-                        {
-                            requestTask = BusinessLogic.CommunicationTasks.Nothing;
-                            answer = okText;
-                        }
                     }
 
                     break;
                 case CommandDumpGet:
                     if (requestTask == BusinessLogic.CommunicationTasks.Dump)
+                        answer = busyText;
+
+                    if (logic.TaskState != BusinessLogic.CommunicationTasks.Dump)
+                    {
                         requestTask = BusinessLogic.CommunicationTasks.Nothing;
 
-                    if (logic.TaskState == BusinessLogic.CommunicationTasks.Dump)
-                    {
-                        answer = busyText;
-                    }
-                    else
-                    {
                         answer = string.Empty;
                         int count = 0;
                         while (count < 16)
                         {
                             if (DumpDataBuff.Count <= 0)
+                            {
+                                answer = emptyText;
                                 break;
+                            }
+                            else
+                            {
+                                answer += DumpDataBuff.Dequeue().ToString("X2");
+                                count++;
 
-                            answer += DumpDataBuff.Dequeue().ToString() + ",";
-                            count++;
+                            }
 
-                        }
-
-                        if (string.IsNullOrEmpty(answer))
-                        {
-                            answer = emptyText;
-                        }
-                        else
-                        {
-                            answer = answer.Remove((answer.Length - 1), 1);
                         }
 
                     }
                     break;
+
                 default:
                     break;
             }
@@ -447,19 +440,25 @@ namespace rmApplication
             var factors = line.Split(',');
 
             bool isSuccess = false;
-            if(factors.Count() == 8)
+            if(factors.Count() == 10)
             {
                 isSuccess = true;
                 var tmp = new DataSetting();
 
                 tmp.Group = factors[0];
-                tmp.Size = factors[1];
-                tmp.Variable = factors[2];
+
+                bool isCheck = false;
+                if(bool.TryParse(factors[1], out isCheck))
+                    tmp.Check = isCheck;
+
+                tmp.Symbol = factors[2];
                 tmp.Address = factors[3];
                 tmp.Offset = factors[4];
-                tmp.Name = factors[5];
-                tmp.Type = factors[6];
-                tmp.Write = factors[7];
+                tmp.Size = factors[5];
+                tmp.Name = factors[6];
+                tmp.Type = factors[7];
+                tmp.Write = factors[8];
+                tmp.Description = factors[9];
 
                 viewSettingBuffer.Settings.Add(tmp);
 
@@ -515,43 +514,49 @@ namespace rmApplication
             config = new Configuration();
             var factors = text.Split(',');
 
-            if (factors.Count() < 3)
+            if (factors.Count() < 4)
+                return false;
+
+            uint passNumber;
+            if (uint.TryParse(factors[0], out passNumber))
+                config.PassNumber = passNumber;
+            else
                 return false;
 
             CommMainCtrl.CommunicationMode mode;
-            if (Enum.TryParse<CommMainCtrl.CommunicationMode>(factors[0], out mode))
+            if (Enum.TryParse<CommMainCtrl.CommunicationMode>(factors[1], out mode))
                 config.CommMode = mode;
             else
                 return false;
 
             CommInstructions.RmAddr range;
-            if (Enum.TryParse<CommInstructions.RmAddr>(factors[1], out range))
+            if (Enum.TryParse<CommInstructions.RmAddr>(factors[2], out range))
                 config.RmRange = range;
             else
                 return false;
 
             int baudRate;
-            if (int.TryParse(factors[2], out baudRate))
+            if (int.TryParse(factors[3], out baudRate))
                 config.BaudRate = baudRate;
             else
                 return false;
 
-            if (mode == CommMainCtrl.CommunicationMode.Serial && factors.Count() == 4)
+            if (mode == CommMainCtrl.CommunicationMode.Serial && factors.Count() == 5)
             {
-                config.SerialPortName = factors[3];
+                config.SerialPortName = factors[4];
                 return true;
 
             }
-            else if (mode == CommMainCtrl.CommunicationMode.Serial && factors.Count() == 5)
+            else if (mode == CommMainCtrl.CommunicationMode.LocalNet && factors.Count() == 6)
             {
                 System.Net.IPAddress clientAddress;
-                if (System.Net.IPAddress.TryParse(factors[3], out clientAddress))
+                if (System.Net.IPAddress.TryParse(factors[4], out clientAddress))
                     config.ClientAddress = clientAddress;
                 else
                     return false;
 
                 int clientPort;
-                if (int.TryParse(factors[4], out clientPort))
+                if (int.TryParse(factors[5], out clientPort))
                     config.ClientPort = clientPort;
                 else
                     return false;

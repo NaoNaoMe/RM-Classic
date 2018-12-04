@@ -81,16 +81,17 @@ namespace rmApplication
 
         public List<byte> Encode(List<byte> rawBytes)
         {
-            List<byte> encodedData = new List<byte>();
+            List<byte> tmpBytes = new List<byte>(rawBytes);
 
-            byte crc = Crc8.Calculate(rawBytes);
-            rawBytes.Add(crc);
+            tmpBytes.Add(Crc8.Calculate(tmpBytes));
+
+            List<byte> encodedData = new List<byte>();
 
             encodedData.Add((byte)FrameChar.END);
 
-            for (int i = 0; i < rawBytes.Count; i++)
+            for (int i = 0; i < tmpBytes.Count; i++)
             {
-                switch (rawBytes[i])
+                switch (tmpBytes[i])
                 {
                     case (byte)FrameChar.END:
                         encodedData.Add((byte)FrameChar.ESC);
@@ -102,7 +103,7 @@ namespace rmApplication
                         break;
 
                     default:
-                        encodedData.Add(rawBytes[i]);
+                        encodedData.Add(tmpBytes[i]);
                         break;
 
                 }

@@ -99,7 +99,6 @@ namespace rmApplication
 
             Logic = new BusinessLogic();
             Logic.InitializeCompletedCallBack = InitializeCompleted;
-            Logic.LogCommunicationTimeoutCallBack = LogCommunicationTimeout;
             Logic.CollectDumpCompletedCallBack = DumpCollectionCompleted;
 
             myRemoteCtrl = new RemoteControl(Logic);
@@ -133,18 +132,6 @@ namespace rmApplication
 
         }
 
-        private void LogCommunicationTimeout()
-        {
-            if (IsRemote)
-                return;
-
-            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-            MessageBox.Show("Communication Timeout." + Environment.NewLine + dateTime,
-                            "Caution",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning);
-        }
-
         private void DumpCollectionCompleted(List<byte> bytes)
         {
             if(IsRemote)
@@ -158,6 +145,8 @@ namespace rmApplication
 
             if (dumpFormInstance != null)
                 dumpFormInstance.UploadHexbox(bytes);
+
+            periodAveraging.Clear();
 
         }
 
@@ -214,7 +203,7 @@ namespace rmApplication
             // 
             // SymbolColumn
             // 
-            this.symbolColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Variable.ToString();
+            this.symbolColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Symbol.ToString();
             this.symbolColumn.HeaderText = DgvRowName.Symbol.ToString();
             this.symbolColumn.Name = DgvRowName.Symbol.ToString();
             this.symbolColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
@@ -325,12 +314,12 @@ namespace rmApplication
             contextMenuStrip.Size = new System.Drawing.Size(61, 4);
 
             contextMenuStrip.Items.Clear();
-            contextMenuStrip.Items.Add("Delete this Item", null, OnDeleteItemButtonPressed);
-            contextMenuStrip.Items.Add("Insert an Item to next row", null, OnInsertItemButtonPressed);
-            contextMenuStrip.Items.Add("Copy this Item to next row", null, OnCopyItemButtonPressed);
-            contextMenuStrip.Items.Add("Delete this Page", null, OnDeletePageButtonPressed);
-            contextMenuStrip.Items.Add("Insert an Page to next", null, OnInsertPageButtonPressed);
-            contextMenuStrip.Items.Add("Copy this Page to next", null, OnCopyPageButtonPressed);
+            contextMenuStrip.Items.Add("Delete this item", null, OnDeleteItemButtonPressed);
+            contextMenuStrip.Items.Add("Insert an item", null, OnInsertItemButtonPressed);
+            contextMenuStrip.Items.Add("Duplicate this item", null, OnDuplicateItemButtonPressed);
+            contextMenuStrip.Items.Add("Delete this page", null, OnDeletePageButtonPressed);
+            contextMenuStrip.Items.Add("Insert a page", null, OnInsertPageButtonPressed);
+            contextMenuStrip.Items.Add("Duplicate this page", null, OnDuplicatePageButtonPressed);
         }
 
         public async void RunRemoteServerAsync()
@@ -421,6 +410,16 @@ namespace rmApplication
         public void LoadViewSettingFile(ViewSetting tmp)
         {
             ViewSettingList = new List<ViewSetting>();
+
+            foreach (var setting in tmp.Settings)
+            {
+                // element "Variable" is obsolute
+                if (!string.IsNullOrEmpty(setting.Variable))
+                {
+                    setting.Symbol = setting.Variable;
+                    setting.Variable = null;
+                }
+            }
 
             var view = new ViewSetting();
             var pageList = new List<string>();
@@ -555,7 +554,7 @@ namespace rmApplication
                 List<string> symbolList = new List<string>();
 
                 foreach (var factor in MapList)
-                    symbolList.Add(factor.VariableName);
+                    symbolList.Add(factor.Symbol);
 
                 autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
                 autoCompleteSourceForSymbol.AddRange(symbolList.ToArray());
@@ -568,11 +567,11 @@ namespace rmApplication
                         foreach (var setting in item.Settings)
                         {
 
-                            if (string.IsNullOrEmpty(setting.Variable))
+                            if (string.IsNullOrEmpty(setting.Symbol))
                                 continue;
 
-                            string tmpVariable = setting.Variable.ToString();
-                            SymbolFactor result = MapList.Find(key => key.VariableName == tmpVariable);
+                            string tmpSymbol = setting.Symbol.ToString();
+                            SymbolFactor result = MapList.Find(key => key.Symbol == tmpSymbol);
 
                             if (result == null)
                             {
@@ -794,7 +793,7 @@ namespace rmApplication
         {
             if (ViewSettingList.Count <= currentPageIndex)
             {
-                this.mainDataGridView.DataSource = new List<ViewSetting>();
+                mainDataGridView.DataSource = new List<ViewSetting>();
             }
             else
             {
@@ -898,7 +897,7 @@ namespace rmApplication
 
                 }
 
-                this.mainDataGridView.DataSource = ViewSettingList[currentPageIndex].Settings;
+                mainDataGridView.DataSource = ViewSettingList[currentPageIndex].Settings;
 
             }
 
@@ -908,11 +907,8 @@ namespace rmApplication
 
         private void viewPageComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if ((viewPageComboBox.Items.Count > 0) &&
-                (viewPageComboBox.SelectedIndex <= -1))
-            {
-                viewPageComboBox.SelectedIndex = 0;
-            }
+            if (viewPageComboBox.Items.Count == 0)
+                return;
 
             currentPageIndex = viewPageComboBox.SelectedIndex;
 
@@ -1259,7 +1255,18 @@ namespace rmApplication
                 if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out parameters))
                 {
                     Logic.LogConfigParameter = parameters;
-                    await Logic.RunAsync(true);
+                    var msg = await Logic.RunAsync(true);
+
+                    if(!string.IsNullOrEmpty(msg))
+                    {
+                        string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                        MessageBox.Show(msg + Environment.NewLine + dateTime,
+                                        "Caution",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Warning);
+
+                    }
+
                 }
 
                 if (isFormClosing)
@@ -1392,7 +1399,7 @@ namespace rmApplication
                     header += logTextDelimiter;
                     if (string.IsNullOrEmpty(setting.Name))
                     {
-                        header += setting.Variable;
+                        header += setting.Symbol;
                     }
                     else
                     {
@@ -1747,7 +1754,7 @@ namespace rmApplication
                 }
                 else
                 {
-                    SymbolFactor result = MapList.Find(key => key.VariableName == inputText);
+                    SymbolFactor result = MapList.Find(key => key.Symbol == inputText);
 
                     if (result != null)
                     {
@@ -2004,13 +2011,19 @@ namespace rmApplication
                 return;
 
             DataSetting setting = new DataSetting();
-            setting.Type = UserType.Hex.ToString();
-            ViewSettingList[currentPageIndex].Settings.Insert(rowValue + 1, setting);
+
+            if (rowValue == 0)
+            {
+                setting.Group = ViewSettingList[currentPageIndex].Settings[0].Group;
+                ViewSettingList[currentPageIndex].Settings[0].Group = string.Empty;
+            }
+
+            ViewSettingList[currentPageIndex].Settings.Insert(rowValue, setting);
             this.mainDataGridView.ClearSelection();
 
         }
 
-        private void OnCopyItemButtonPressed(object sender, EventArgs e)
+        private void OnDuplicateItemButtonPressed(object sender, EventArgs e)
         {
             if (ViewSettingList.Count <= 0)
                 return;
@@ -2029,6 +2042,17 @@ namespace rmApplication
 
         private void OnDeletePageButtonPressed(object sender, EventArgs e)
         {
+            if ((viewPageComboBox.Items.Count == 1) &&
+                (viewPageComboBox.SelectedIndex == -0))
+            {
+                MessageBox.Show("Can not delete.",
+                "Caution",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+
+                return;
+            }
+
             var index = viewPageComboBox.SelectedIndex;
 
             if (index != -1)
@@ -2041,10 +2065,13 @@ namespace rmApplication
 
                 if (result == DialogResult.Yes)
                 {
-                    this.mainDataGridView.DataSource = null;
                     ViewSettingList.RemoveAt(index);
                     viewPageComboBox.Items.RemoveAt(index);
-                    viewPageComboBox.SelectedIndex = index - 1;
+
+                    if (index == 0)
+                        viewPageComboBox.SelectedIndex = 0;
+                    else
+                        viewPageComboBox.SelectedIndex = index - 1;
 
                 }
 
@@ -2054,7 +2081,7 @@ namespace rmApplication
 
         private void OnInsertPageButtonPressed(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Do you want to insert a page next to this page?",
+            DialogResult result = MessageBox.Show("Do you want to insert a page?",
                             "Question",
                             MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation,
@@ -2084,12 +2111,12 @@ namespace rmApplication
 
         }
 
-        private void OnCopyPageButtonPressed(object sender, EventArgs e)
+        private void OnDuplicatePageButtonPressed(object sender, EventArgs e)
         {
             if (ViewSettingList.Count <= 0)
                 return;
 
-            DialogResult result = MessageBox.Show("Do you want to copy this page to next page?",
+            DialogResult result = MessageBox.Show("Do you want to duplicate this page?",
                             "Question",
                             MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation,
