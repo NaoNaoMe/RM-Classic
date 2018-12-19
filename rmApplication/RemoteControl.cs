@@ -126,7 +126,7 @@ namespace rmApplication
             {
                 try
                 {
-                    if (remote.IsClientConnected())
+                    if (remote.IsClientConnected)
                     {
                         var text = await remote.ReadTextClientAsync(remoteCancellationTokenSource.Token);
 

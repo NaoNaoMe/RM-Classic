@@ -10,7 +10,19 @@ namespace rmApplication
 {
     class TCPClientResource
     {
-        private System.Net.Sockets.TcpClient client;
+        public bool IsConnected
+        {
+            get
+            {
+                if (client == null)
+                    return false;
+
+                return client.Connected;
+
+            }
+        }
+
+        private TcpClient client;
         private bool crlfEnable;
 
         public TCPClientResource(bool isCRLF)
@@ -48,7 +60,7 @@ namespace rmApplication
 
             try
             {
-                System.Net.Sockets.NetworkStream stream = client.GetStream();
+                NetworkStream stream = client.GetStream();
 
                 var txBuff = bytes.ToArray();
 
@@ -72,7 +84,7 @@ namespace rmApplication
 
             try
             {
-                client = new System.Net.Sockets.TcpClient();
+                client = new TcpClient();
                 await client.ConnectAsync(ip, port).ContinueWith(t => t.IsCompleted, ct);
                 isSuccess = client.Connected;
             }
@@ -136,7 +148,7 @@ namespace rmApplication
 
         public List<byte> ReadBytesListener()
         {
-            List<byte> bytes = new List<byte>(); ;
+            List<byte> bytes = new List<byte>();
 
             if (client == null)
                 return bytes;
@@ -253,14 +265,6 @@ namespace rmApplication
             }
 
             return bytes;
-        }
-
-        public bool IsConnected()
-        {
-            if (client == null)
-                return false;
-
-            return client.Connected;
         }
 
         public void Close()

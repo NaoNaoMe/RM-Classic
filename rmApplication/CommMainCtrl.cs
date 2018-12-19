@@ -24,17 +24,17 @@ namespace rmApplication
 
         private Queue<byte> rxFIFO;
 
-        private Configuration mySettings;
+        private Configuration config;
 
-        private Queue<string> messageLog;
+        private Queue<string> debugMessageLog;
 
         public CommMainCtrl(Configuration tmp)
         {
-            mySettings = new Configuration(tmp);
+            config = new Configuration(tmp);
             myCommProtocol = new CommProtocol();
             rxFIFO = new Queue<byte>();
 
-            switch (mySettings.CommMode)
+            switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
                     mySerialPort = new SerialPortResource();
@@ -46,7 +46,7 @@ namespace rmApplication
 
             }
 
-            messageLog = new Queue<string>();
+            debugMessageLog = new Queue<string>();
 
             IsOpen = false;
         }
@@ -55,12 +55,12 @@ namespace rmApplication
         {
             IsOpen = false;
 
-            switch (mySettings.CommMode)
+            switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
                     if (mySerialPort != null)
                     {
-                        if (mySerialPort.Open(mySettings.SerialPortName, mySettings.BaudRate))
+                        if (mySerialPort.Open(config.SerialPortName, config.BaudRate))
                             IsOpen = true;
 
                     }
@@ -69,7 +69,7 @@ namespace rmApplication
                 case CommunicationMode.LocalNet:
                     if (myTCPClient != null)
                     {
-                        if (await myTCPClient.AcceptListenerAsync(mySettings.ClientAddress, mySettings.ClientPort, ct))
+                        if (await myTCPClient.AcceptListenerAsync(config.ClientAddress, config.ClientPort, ct))
                             IsOpen = true;
 
                     }
@@ -84,7 +84,9 @@ namespace rmApplication
         {
             IsOpen = false;
 
-            switch (mySettings.CommMode)
+            rxFIFO.Clear();
+
+            switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
                     if (mySerialPort != null)
@@ -126,7 +128,7 @@ namespace rmApplication
         {
             RecordMessage("Tx", bytes);
 
-            switch (mySettings.CommMode)
+            switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
                     if (mySerialPort != null)
@@ -148,7 +150,7 @@ namespace rmApplication
 
             List<byte> bytes = new List<byte>();
 
-            switch (mySettings.CommMode)
+            switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
                     if (mySerialPort != null)
@@ -211,7 +213,7 @@ namespace rmApplication
 
                     List<byte> bytes = new List<byte>();
 
-                    switch (mySettings.CommMode)
+                    switch (config.CommMode)
                     {
                         case CommunicationMode.Serial:
                             if (mySerialPort != null)
@@ -254,10 +256,10 @@ namespace rmApplication
 
             string logText = time + " " + dir + " " + newText;
 
-            messageLog.Enqueue(logText);
+            debugMessageLog.Enqueue(logText);
 
-            while (messageLog.Count > 1000)
-                messageLog.Dequeue();
+            while (debugMessageLog.Count > 1000)
+                debugMessageLog.Dequeue();
 
         }
     }

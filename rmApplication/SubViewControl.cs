@@ -1317,8 +1317,6 @@ namespace rmApplication
                 //Debug
                 //System.Diagnostics.Debug.WriteLine("{0}, {1}, {2}", osTime, slvTime, status);
 
-                var chartData = new Queue<uint>(rawData);
-
                 int index = 0;
                 foreach (var setting in ViewSettingList[currentPageIndex].Settings)
                 {

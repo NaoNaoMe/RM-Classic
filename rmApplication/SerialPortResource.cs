@@ -10,7 +10,19 @@ namespace rmApplication
 {
     class SerialPortResource
     {
-        private SerialPort port;
+        public bool IsOpen
+        {
+            get
+            {
+                if (comm == null)
+                    return false;
+
+                return comm.IsOpen;
+
+            }
+        }
+
+        private SerialPort comm;
 
         public SerialPortResource()
         {
@@ -35,15 +47,15 @@ namespace rmApplication
         {
             bool isSuccess = false;
 
-            if (port == null)
+            if (comm == null)
                 return isSuccess;
 
-            if (!port.IsOpen)
+            if (!comm.IsOpen)
                 return isSuccess;
 
             try
             {
-                port.Write(bytes.ToArray(), 0, bytes.Count());
+                comm.Write(bytes.ToArray(), 0, bytes.Count());
                 isSuccess = true;
             }
             catch (Exception ex)
@@ -61,21 +73,21 @@ namespace rmApplication
             if ((string.IsNullOrEmpty(commPort) == false) &&
                 (commBaudRate != 0))
             {
-                port = new SerialPort();
+                comm = new SerialPort();
 
-                port.PortName = commPort;
-                port.BaudRate = commBaudRate;
+                comm.PortName = commPort;
+                comm.BaudRate = commBaudRate;
 
-                port.DataBits = 8;
-                port.Parity = Parity.None;
-                port.StopBits = StopBits.One;
-                port.Handshake = Handshake.None;
+                comm.DataBits = 8;
+                comm.Parity = Parity.None;
+                comm.StopBits = StopBits.One;
+                comm.Handshake = Handshake.None;
 
-                port.Encoding = Encoding.ASCII;
+                comm.Encoding = Encoding.ASCII;
 
                 try
                 {
-                    port.Open();
+                    comm.Open();
 
                     isOpen = true;
 
@@ -93,12 +105,12 @@ namespace rmApplication
 
         public void PurgeReceiveBuffer()
         {
-            int size = port.BytesToRead;
+            int size = comm.BytesToRead;
 
             if (size > 0)
             {
                 var tmp = new byte[size];
-                port.Read(tmp, 0, size);
+                comm.Read(tmp, 0, size);
             }
         }
 
@@ -117,20 +129,20 @@ namespace rmApplication
         {
             List<byte> bytes = new List<byte>(); ;
 
-            if (port == null)
+            if (comm == null)
                 return bytes;
 
-            if (!port.IsOpen)
+            if (!comm.IsOpen)
                 return bytes;
 
             try
             {
-                int size = port.BytesToRead;
+                int size = comm.BytesToRead;
 
                 if (size > 0)
                 {
                     var tmp = new byte[size];
-                    port.Read(tmp, 0, size);
+                    comm.Read(tmp, 0, size);
 
                     foreach (var item in tmp)
                     {
@@ -163,10 +175,10 @@ namespace rmApplication
         {
             List<byte> bytes = new List<byte>();
 
-            if (port == null)
+            if (comm == null)
                 return bytes;
 
-            if (!port.IsOpen)
+            if (!comm.IsOpen)
                 return bytes;
 
             await Task.Run(() =>
@@ -177,12 +189,12 @@ namespace rmApplication
                     {
                         ct.ThrowIfCancellationRequested();
 
-                        int size = port.BytesToRead;
+                        int size = comm.BytesToRead;
 
                         if (size > 0)
                         {
                             var tmp = new byte[size];
-                            port.Read(tmp, 0, size);
+                            comm.Read(tmp, 0, size);
 
                             foreach (var item in tmp)
                             {
@@ -212,21 +224,13 @@ namespace rmApplication
             return bytes;
         }
 
-        public bool IsOpen()
-        {
-            if (port == null)
-                return false;
-
-            return port.IsOpen;
-        }
-
         public void Close()
         {
             try
             {
-                if (port.IsOpen == true)
-                    port.Close();
-                port.Dispose();
+                if (comm.IsOpen == true)
+                    comm.Close();
+                comm.Dispose();
 
             }
             catch (Exception ex)

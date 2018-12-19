@@ -38,6 +38,30 @@ namespace rmApplication
 
     class TCPListenerResource
     {
+        public bool IsClientConnected
+        {
+            get
+            {
+                if (client == null)
+                    return false;
+
+                return client.Connected;
+
+            }
+        }
+
+        public bool IsListenerActive
+        {
+            get
+            {
+                if (listener == null)
+                    return false;
+
+                return listener.Active;
+
+            }
+        }
+
         private TcpListenerEx listener;
         private TcpClient client;
         private bool crlfEnable;
@@ -78,7 +102,7 @@ namespace rmApplication
 
             try
             {
-                System.Net.Sockets.NetworkStream stream = client.GetStream();
+                NetworkStream stream = client.GetStream();
 
                 var txBuff = bytes.ToArray();
 
@@ -104,7 +128,7 @@ namespace rmApplication
             {
                 try
                 {
-                    client = new System.Net.Sockets.TcpClient();
+                    client = new TcpClient();
                     client = await listener.AcceptTcpClientAsync();
                     isSuccess = true;
                 }
@@ -285,14 +309,6 @@ namespace rmApplication
             return bytes;
         }
 
-        public bool IsClientConnected()
-        {
-            if (client == null)
-                return false;
-
-            return client.Connected;
-        }
-
         public void CloseClient()
         {
             if (client != null)
@@ -338,15 +354,6 @@ namespace rmApplication
                 System.Diagnostics.Debug.WriteLine(ex);
             }
 
-        }
-
-        public bool IsListenerActive()
-        {
-            if (listener == null)
-                return false;
-
-            return listener.Active;
-            
         }
 
     }
