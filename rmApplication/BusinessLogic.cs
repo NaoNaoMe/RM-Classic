@@ -509,27 +509,34 @@ namespace rmApplication
             List<byte> txFrame = new List<byte>();
             List<byte> rxFrame = new List<byte>();
 
+            bool isRequestAssert = true;
             bool isRetry = false;
             int retryCount = 0;
             while (true)
             {
-                if(!isRetry)
+                if(isRequestAssert)
                 {
-                    if (!myCommInstructions.IsAvailableDumpDataRequest(out txFrame))
-                        break;
-                }
+                    if (!isRetry)
+                    {
+                        if (!myCommInstructions.IsAvailableDumpDataRequest(out txFrame))
+                            break;
+                    }
 
-                myCommMainCtrl.Push(txFrame);
+                    myCommMainCtrl.Push(txFrame);
+
+                }
 
                 CancellationTokenSource dumpCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
                 rxFrame = await myCommMainCtrl.PullAsync(dumpCts.Token);
 
                 if (dumpCts.IsCancellationRequested)
                 {
+                    isRequestAssert = true;
                     isRetry = true;
                 }
                 else if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
                 {
+                    isRequestAssert = true;
                     isRetry = false;
                     retryCount = 0;
 
@@ -538,15 +545,16 @@ namespace rmApplication
                 }
                 else
                 {
+                    isRequestAssert = false;
                     isRetry = true;
                 }
 
                 if(isRetry)
                 {
+                    retryCount++;
                     if (retryCount > 10)
                         break;
 
-                    retryCount++;
                 }
 
             }
