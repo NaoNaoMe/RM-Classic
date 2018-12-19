@@ -62,7 +62,7 @@ namespace rmApplication
         private ConcurrentQueue<string> logTextDataBuff;
         private int logDataBuffSize;
 
-        private Queue<byte> DumpDataBuff;
+        private ConcurrentQueue<byte> DumpDataBuff;
 
         public RemoteControl(BusinessLogic tmp)
         {
@@ -78,7 +78,7 @@ namespace rmApplication
             logTextDataBuff = new ConcurrentQueue<string>();
             logDataBuffSize = 500;
 
-            DumpDataBuff = new Queue<byte>();
+            DumpDataBuff = new ConcurrentQueue<byte>();
 
             requestTask = BusinessLogic.CommunicationTasks.Nothing;
         }
@@ -107,7 +107,7 @@ namespace rmApplication
 
         public void ClearDumpDataBuff()
         {
-            DumpDataBuff.Clear();
+            DumpDataBuff = new ConcurrentQueue<byte>();
         }
 
         public void EnqueueDumpDataBuff(byte abyte)
@@ -201,8 +201,6 @@ namespace rmApplication
                     {
                         if(logic.UpdateResource(config))
                             answer = okText;
-                        else
-                            answer = busyText;
                     }
 
                     break;
@@ -248,7 +246,7 @@ namespace rmApplication
                     if(string.IsNullOrEmpty(DeviceVersion))
                         answer = busyText;
                     else
-                        answer = DeviceVersion;
+                        answer = okText + " " +DeviceVersion;
                     break;
                 case CommandRegister:
                     if (AddDataSetting(parameters))
@@ -331,7 +329,7 @@ namespace rmApplication
                     }
                     else
                     {
-                        answer = data;
+                        answer = okText + " " + data;
                     }
 
                     break;
@@ -371,15 +369,14 @@ namespace rmApplication
 
                     break;
                 case CommandDumpSet:
-                    answer = busyText;
-                    if (requestTask != BusinessLogic.CommunicationTasks.Dump)
+                    if (requestTask == BusinessLogic.CommunicationTasks.Dump)
+                    {
+                        answer = busyText;
+                    }
+                    else
                     {
                         var param = new BusinessLogic.DataParameter();
-                        if (!ValidateDumpConfigrations(parameters, out param))
-                        {
-                            answer = failedText;
-                        }
-                        else
+                        if (ValidateDumpConfigrations(parameters, out param))
                         {
                             requestTask = BusinessLogic.CommunicationTasks.Dump;
 
@@ -389,32 +386,41 @@ namespace rmApplication
                             logic.EnqueueTask(BusinessLogic.CommunicationTasks.Dump);
                             logic.CancelCurrentTask();
 
+                            answer = okText;
                         }
 
                     }
 
                     break;
                 case CommandDumpGet:
-                    if (requestTask == BusinessLogic.CommunicationTasks.Dump)
+                    if (logic.TaskState == BusinessLogic.CommunicationTasks.Dump)
+                    {
                         answer = busyText;
-
-                    if (logic.TaskState != BusinessLogic.CommunicationTasks.Dump)
+                    }
+                    else
                     {
                         requestTask = BusinessLogic.CommunicationTasks.Nothing;
 
-                        answer = string.Empty;
-                        int count = 0;
-                        while (count < 16)
+                        if (DumpDataBuff.Count <= 0)
                         {
-                            if (DumpDataBuff.Count <= 0)
+                            answer = emptyText;
+                        }
+                        else
+                        {
+                            answer = okText + " ";
+                            int count = 0;
+                            while (count < 16)
                             {
-                                answer = emptyText;
-                                break;
-                            }
-                            else
-                            {
-                                answer += DumpDataBuff.Dequeue().ToString("X2");
-                                count++;
+                                byte abyte;
+                                if (DumpDataBuff.TryDequeue(out abyte))
+                                {
+                                    answer += abyte.ToString("X2");
+                                    count++;
+                                }
+                                else
+                                {
+                                    break;
+                                }
 
                             }
 
