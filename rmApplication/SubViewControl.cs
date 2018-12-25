@@ -19,7 +19,7 @@ namespace rmApplication
         public bool IsCommunicationActive {  get; private set; }
         public bool IsCustomizingMode {  get; private set; }
         public bool IsRemote {  get; private set; }
-        public string ValidCsvPath { get; private set; }
+        public string ValidMapPath { get; private set; }
         public DateTime ValidMapLastWrittenDate { get; private set; }
         public List<SymbolFactor> MapList { get; private set; }
         public List<ViewSetting> ViewSettingList { get; private set; }
@@ -499,13 +499,13 @@ namespace rmApplication
                 (MapList.Count > 0))
             {
                 if (!IsRemote)
-                    MessageBox.Show("The address csv file information is erased.",
+                    MessageBox.Show("The address map file information is erased.",
                                         "Caution",
                                         MessageBoxButtons.OK,
                                         MessageBoxIcon.Warning);
 
                 MapList = new List<SymbolFactor>();
-                ValidCsvPath = null;
+                ValidMapPath = null;
                 ValidMapLastWrittenDate = DateTime.MinValue;
                 autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
 
@@ -548,7 +548,7 @@ namespace rmApplication
 
             if (isValid == true)
             {
-                ValidCsvPath = path;
+                ValidMapPath = path;
                 ValidMapLastWrittenDate = date;
 
                 List<string> symbolList = new List<string>();
@@ -611,7 +611,7 @@ namespace rmApplication
             }
             else
             {
-                ValidCsvPath = null;
+                ValidMapPath = null;
                 ValidMapLastWrittenDate = DateTime.MinValue;
                 autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
 
@@ -1012,21 +1012,21 @@ namespace rmApplication
                 if (string.IsNullOrEmpty(receivedVersionViewControl.TextBox))
                     targetVersionViewControl.TextBox = receivedVersionViewControl.TextBox;
 
-                if (System.IO.File.Exists(ValidCsvPath) != true)
+                if (System.IO.File.Exists(ValidMapPath) != true)
                 {
-                    MessageBox.Show("The address csv file is not found.",
+                    MessageBox.Show("The address map file is not found.",
                                     "Caution",
                                     MessageBoxButtons.OK,
                                     MessageBoxIcon.Warning);
 
                     MapList = new List<SymbolFactor>();
-                    ValidCsvPath = null;
+                    ValidMapPath = null;
                     ValidMapLastWrittenDate = DateTime.MinValue;
                     autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
                 }
                 else
                 {
-                    DateTime now = System.IO.File.GetLastWriteTime(ValidCsvPath);
+                    DateTime now = System.IO.File.GetLastWriteTime(ValidMapPath);
 
                     if (now <= ValidMapLastWrittenDate)
                         return;
@@ -1040,9 +1040,9 @@ namespace rmApplication
                     if (result != DialogResult.Yes)
                         return;
 
-                    if (!LoadMapFile(ValidCsvPath))
+                    if (!LoadMapFile(ValidMapPath))
                     {
-                        MessageBox.Show("Can't read address csv file",
+                        MessageBox.Show("Can't read address map file",
                                             "Caution",
                                             MessageBoxButtons.OK,
                                             MessageBoxIcon.Warning);
@@ -1198,9 +1198,9 @@ namespace rmApplication
 
             if (!IsCommunicationActive)
             {
-                if (System.IO.File.Exists(ValidCsvPath) == true)
+                if (System.IO.File.Exists(ValidMapPath) == true)
                 {
-                    DateTime now = System.IO.File.GetLastWriteTime(ValidCsvPath);
+                    DateTime now = System.IO.File.GetLastWriteTime(ValidMapPath);
 
                     if (now > ValidMapLastWrittenDate)
                     {
@@ -1212,9 +1212,9 @@ namespace rmApplication
 
                         if (result == DialogResult.Yes)
                         {
-                            if (LoadMapFile(ValidCsvPath) == false)
+                            if (LoadMapFile(ValidMapPath) == false)
                             {
-                                MessageBox.Show("Can't read address csv file",
+                                MessageBox.Show("Can't read address map file",
                                                     "Caution",
                                                     MessageBoxButtons.OK,
                                                     MessageBoxIcon.Warning);
