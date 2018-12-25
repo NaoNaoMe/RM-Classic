@@ -1009,8 +1009,32 @@ namespace rmApplication
                 mainDataGridView.ContextMenuStrip = contextMenuStrip;
                 mainDataGridView.MouseDown += new System.Windows.Forms.MouseEventHandler(mainDataGridView_MouseDown);
 
-                if (string.IsNullOrEmpty(receivedVersionViewControl.TextBox))
-                    targetVersionViewControl.TextBox = receivedVersionViewControl.TextBox;
+                var receivedVer = receivedVersionViewControl.TextBox;
+                var targetVer = targetVersionViewControl.TextBox;
+
+                if (!string.IsNullOrEmpty(receivedVer))
+                {
+                    if(string.IsNullOrEmpty(targetVer))
+                        targetVersionViewControl.TextBox = receivedVer;
+                    else
+                    {
+                        if(targetVer != receivedVer)
+                        {
+                            DialogResult result = MessageBox.Show("The target version name is unmatch the received version name.\n" +
+                                                                  "Do you want to use the received name as the target name?",
+                                            "Question",
+                                            MessageBoxButtons.YesNo,
+                                            MessageBoxIcon.Exclamation,
+                                            MessageBoxDefaultButton.Button2);
+
+                            if (result == DialogResult.Yes)
+                                targetVersionViewControl.TextBox = receivedVer;
+
+                        }
+
+                    }
+
+                }
 
                 if (System.IO.File.Exists(ValidMapPath) != true)
                 {
