@@ -426,90 +426,35 @@ namespace rmApplication
             return isValid;
         }
 
-
-        private Queue<List<byte>> DumpDataRequestQueue;
-
-        public bool UpdateDumpDataConfiguration(uint address, uint size)
+        public List<byte> MakeDumpDataRequest(uint address, uint size)
         {
-            int maxPayload = MaxPayloadSize;
-            int totalFrameCnt;
-            int lastFrameSize;
+            List<byte> frame = new List<byte>();
 
-            int totalSize = (int)size;
+            frame.Add(GenerateOpCode(RmInstr.ReadDump));
 
-            totalFrameCnt = totalSize / maxPayload;
-            lastFrameSize = totalSize - (totalFrameCnt * maxPayload);
+            var bytes = BitConverter.GetBytes(address).ToList();
 
-            if (lastFrameSize != 0)
+            if (!BitConverter.IsLittleEndian)
+                bytes.Reverse();
+
+            if (ByteRange == RmAddr.Byte2)
             {
-                totalFrameCnt++;
-            }
-            else
-            {
-                lastFrameSize = maxPayload;
-            }
-
-            DumpDataRequestQueue = new Queue<List<byte>>();
-
-            for (int cnt = 0; cnt < totalFrameCnt; cnt++)
-            {
-                List<byte> frame = new List<byte>();
-
-                frame.Add(GenerateOpCode(RmInstr.ReadDump));
-
-                uint offset = (uint)(maxPayload * cnt);
-
-                int requestSize;
-                if (cnt == (totalFrameCnt - 1))
+                while (bytes.Count > 2)
                 {
-                    requestSize = lastFrameSize;
-
-                }
-                else
-                {
-                    requestSize = maxPayload;
-
+                    bytes.RemoveAt((bytes.Count - 1));
                 }
 
-                var bytes = BitConverter.GetBytes(address + offset).ToList();
-
-                if (!BitConverter.IsLittleEndian)
-                    bytes.Reverse();
-
-                if (ByteRange == RmAddr.Byte2)
-                {
-                    while (bytes.Count > 2)
-                    {
-                        bytes.RemoveAt((bytes.Count - 1));
-                    }
-
-                }
-
-                frame.AddRange(bytes);
-                frame.Add((byte)requestSize);
-
-                DumpDataRequestQueue.Enqueue(frame);
-
             }
 
-            return true;
+            frame.AddRange(bytes);
 
-        }
+            if (size > MaxPayloadSize)
+                size = (uint)MaxPayloadSize;
 
+            frame.Add((byte)size);
 
-        public bool IsAvailableDumpDataRequest(out List<byte> frame)
-        {
-            frame = new List<byte>();
+            return frame;
 
-            if (DumpDataRequestQueue.Count <= 0)
-            {
-                return false;
-
-            }
-
-            frame = DumpDataRequestQueue.Dequeue();
-
-            return true;
         }
 
 

@@ -521,24 +521,21 @@ namespace rmApplication
 
             myCommMainCtrl.PurgeReceiveBuffer();
 
-            if (!myCommInstructions.UpdateDumpDataConfiguration(parameter.Address, parameter.Size))
-                return dumpData;
-
             List<byte> txFrame = new List<byte>();
             List<byte> rxFrame = new List<byte>();
+
+            uint address = parameter.Address;
+            uint size = parameter.Size;
 
             bool isRequestAssert = true;
             bool isRetry = false;
             int retryCount = 0;
             while (true)
             {
-                if(isRequestAssert)
+                if (isRequestAssert)
                 {
                     if (!isRetry)
-                    {
-                        if (!myCommInstructions.IsAvailableDumpDataRequest(out txFrame))
-                            break;
-                    }
+                        txFrame = myCommInstructions.MakeDumpDataRequest(address, size);
 
                     myCommMainCtrl.Push(txFrame);
 
@@ -560,6 +557,15 @@ namespace rmApplication
 
                     rxFrame.RemoveAt(0);    // remove unnecessary header data
                     dumpData.AddRange(rxFrame);
+
+                    if(size <= (uint)rxFrame.Count)
+                    {
+                        break;
+                    }
+
+                    address += (uint)rxFrame.Count;
+                    size -= (uint)rxFrame.Count;
+
                 }
                 else
                 {
@@ -567,7 +573,7 @@ namespace rmApplication
                     isRetry = true;
                 }
 
-                if(isRetry)
+                if (isRetry)
                 {
                     retryCount++;
                     if (retryCount > 10)
