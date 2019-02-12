@@ -233,7 +233,7 @@ namespace rmApplication
                 return false;
             }
 
-            if(LogDataSizeQueue.Count > 32)
+            if(LogDataSizeQueue.Count > MaxElementNum)
             {
                 return false;
             }
@@ -283,36 +283,26 @@ namespace rmApplication
             if(LogDataImageQueue.Count <= 0)
             {
                 return false;
-
             }
 
-            int maxFrameDataCnt = 20;  // size = 1, address = 4 total 5 bytes : 5 * 4 slots = 20
-            int maxFrameCnt = 8;
+            int maxFrameDataCnt = 20;  // size = 1, address = 4 => total 5 bytes => 5 * 4 slots = 20
 
             if (ByteRange == RmAddr.Byte2)
             {
-                maxFrameDataCnt = 24;  // size = 1, address = 2 total 3 bytes : 3 * 8 slots = 24
-                maxFrameCnt = 4;
+                maxFrameDataCnt = 24;  // size = 1, address = 2 => total 3 bytes => 3 * 8 slots = 24
             }
 
             LogDataRequestQueue = new Queue<List<byte>>();
 
-            int frameCnt = LogDataImageQueue.Count / maxFrameDataCnt;
+            int totalFrameCnt = LogDataImageQueue.Count / maxFrameDataCnt;
 
-            if(LogDataImageQueue.Count > frameCnt * maxFrameDataCnt)
+            if(LogDataImageQueue.Count > totalFrameCnt * maxFrameDataCnt)
             {
-                frameCnt++;
+                totalFrameCnt++;
             }
 
-            if(frameCnt > maxFrameCnt)
-            {
-                return false;
-
-            }
-
-            maxFrameCnt = frameCnt;
-
-            while (frameCnt != 0)
+            int frameCnt = 1;
+            while (frameCnt <= totalFrameCnt)
             {
                 List<byte> frame = new List<byte>();
 
@@ -320,19 +310,19 @@ namespace rmApplication
 
                 byte frameCode = 0x00;
 
-                if(frameCnt == maxFrameCnt)
+                if(frameCnt == 1)
                 {
-                    //Begining
+                    // Begin
                     frameCode |= 0x10;
                 }
 
-                if (frameCnt <= 1)
+                if (frameCnt >= totalFrameCnt)
                 {
-                    //Ending
+                    // End
                     frameCode |= 0x20;
                 }
 
-                frameCode |= (byte)(maxFrameCnt- frameCnt);
+                frameCode |= (byte)(frameCnt-1);
 
                 frame.Add(frameCode);
 
@@ -350,7 +340,7 @@ namespace rmApplication
                 }
 
                 LogDataRequestQueue.Enqueue(frame);
-                frameCnt--;
+                frameCnt++;
 
             }
 

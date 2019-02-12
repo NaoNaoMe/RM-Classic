@@ -58,6 +58,12 @@ namespace rmApplication
             Description
         }
 
+        private enum Area2DisplayMode
+        {
+            Time,
+            Counts
+        }
+
         private int timeStep;
 
         private int logLength;
@@ -82,6 +88,8 @@ namespace rmApplication
         private PeriodAveraging periodAveraging;
 
         private bool isFormClosing;
+
+        private Area2DisplayMode displayMode;
 
         public SubViewControl()
         {
@@ -121,6 +129,8 @@ namespace rmApplication
             periodAveraging = new PeriodAveraging();
 
             isFormClosing = false;
+
+            displayMode = Area2DisplayMode.Time;
         }
 
         private void InitializeCompleted(string version)
@@ -622,6 +632,11 @@ namespace rmApplication
 
         public void UpdateInformation()
         {
+            UpdateInformation(displayMode);
+        }
+
+        private void UpdateInformation(Area2DisplayMode mode)
+        {
             string communicationInfo = "-";
 
             if (ViewSettingList.Count > currentPageIndex)
@@ -638,31 +653,44 @@ namespace rmApplication
 
                 }
 
-                if (totalSize > 0 && Config.BaudRate > 0)
+                if (totalSize > 0)
                 {
-                    // MaxSize: SlipCode(1byte) + (MSCnt(1byte) + payload(?byte) + crc(1byte)) * 2 + SlipCode(1byte)
-                    // MinSize: SlipCode(1byte) +  MSCnt(1byte) + payload(?byte) + crc(1byte)      + SlipCode(1byte)
-                    double frameMinSize = 1 + (1 + totalSize + 1) + 1;
-                    double frameMaxSize = 1 + (1 + totalSize + 1) * 2 + 1;
-                    double abyteTxTime = (1 / (double)Config.BaudRate) * 10;
-                    double targetTxMinTime = frameMinSize * abyteTxTime * 1000;
-                    double targetTxMaxTime = frameMaxSize * abyteTxTime * 1000;
-
-                    communicationInfo =
-                        "Target Tx Time =" + targetTxMinTime.ToString("F2") + " to " + targetTxMaxTime.ToString("F2") + "ms" + " / "
-                        + Config.BaudRate.ToString() + "bps";
-
-                    if (Config.CommMode == CommMainCtrl.CommunicationMode.Serial)
+                    if(mode == Area2DisplayMode.Counts)
                     {
-                        communicationInfo += " @ " + Config.SerialPortName.ToString();
+                        communicationInfo = "Checked cells = " + totalChecked.ToString() + " / TotalSize(byte) = " + totalSize.ToString();
                     }
                     else
                     {
-                        communicationInfo += " @ " + Config.ClientAddress.ToString() + ":" + Config.ClientPort.ToString();
+                        if (Config.BaudRate > 0)
+                        {
+                            // MaxSize: SlipCode(1byte) + (MSCnt(1byte) + payload(?byte) + crc(1byte)) * 2 + SlipCode(1byte)
+                            // MinSize: SlipCode(1byte) +  MSCnt(1byte) + payload(?byte) + crc(1byte)      + SlipCode(1byte)
+                            double frameMinSize = 1 + (1 + totalSize + 1) + 1;
+                            double frameMaxSize = 1 + (1 + totalSize + 1) * 2 + 1;
+                            double abyteTxTime = (1 / (double)Config.BaudRate) * 10;
+                            double targetTxMinTime = frameMinSize * abyteTxTime * 1000;
+                            double targetTxMaxTime = frameMaxSize * abyteTxTime * 1000;
+
+                            communicationInfo =
+                                "Target Tx Time =" + targetTxMinTime.ToString("F2") + " to " + targetTxMaxTime.ToString("F2") + "ms" + " / "
+                                + Config.BaudRate.ToString() + "bps";
+
+                            if (Config.CommMode == CommMainCtrl.CommunicationMode.Serial)
+                            {
+                                communicationInfo += " @ " + Config.SerialPortName.ToString();
+                            }
+                            else
+                            {
+                                communicationInfo += " @ " + Config.ClientAddress.ToString() + ":" + Config.ClientPort.ToString();
+                            }
+
+                            //+"MemoryType: " + Config.RmRange.ToString();
+                        }
+
                     }
 
-                    //+"MemoryType: " + Config.RmRange.ToString();
                 }
+
             }
 
             area2ToolStripStatusLabel.Text = communicationInfo;
@@ -1120,8 +1148,6 @@ namespace rmApplication
                 if (IsCommunicationActive)
                 {
                     RefreshLogData();
-                    //RefreshDataGridView();
-                    //UpdateInformation();
 
                     Logic.ClearWaitingTasks();
                     Logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
@@ -1546,12 +1572,13 @@ namespace rmApplication
                     {
                         int totalChecked = 0;
                         int totalSize = 0;
+                        int size;
                         foreach(DataGridViewRow item in dgv.Rows)
                         {
+                            // Correct current configuration
                             if (Convert.ToBoolean(item.Cells[ckColumnIndex].Value))
                             {
                                 totalChecked++;
-                                int size;
                                 if (int.TryParse(item.Cells[sizeColumnIndex].Value.ToString(), out size))
                                 {
                                     totalSize += size;
@@ -1561,8 +1588,22 @@ namespace rmApplication
 
                         }
 
-                        if ( (totalSize <= CommInstructions.MaxPayloadSize) &&
-                            (totalChecked <= CommInstructions.MaxElementNum) )
+                        bool isSizeOK = false;
+                        if (!string.IsNullOrEmpty(dgv[sizeColumnIndex, e.RowIndex].Value as string))
+                        {
+                            var sizeObj = dgv[sizeColumnIndex, e.RowIndex].Value;
+                            if (int.TryParse(sizeObj.ToString(), out size))
+                            {
+                                isSizeOK = true;
+                                totalChecked++;
+                                totalSize += size;
+                            }
+
+                        }
+
+                        if ( isSizeOK &&
+                            (totalChecked <= CommInstructions.MaxElementNum) &&
+                            (totalSize <= CommInstructions.MaxPayloadSize) )
                         {
                             isUpdate = true;
                             dgv[ckColumnIndex, e.RowIndex].Value = true;
@@ -2170,5 +2211,15 @@ namespace rmApplication
 
         }
 
+        private void area2ToolStripStatusLabel_Click(object sender, EventArgs e)
+        {
+            if(displayMode == Area2DisplayMode.Counts)
+                displayMode = Area2DisplayMode.Time;
+            else
+                displayMode = Area2DisplayMode.Counts;
+
+            UpdateInformation(displayMode);
+
+        }
     }
 }

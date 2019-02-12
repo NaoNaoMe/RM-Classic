@@ -134,6 +134,7 @@
             this.area2ToolStripStatusLabel.Size = new System.Drawing.Size(302, 20);
             this.area2ToolStripStatusLabel.Spring = true;
             this.area2ToolStripStatusLabel.Text = "-";
+            this.area2ToolStripStatusLabel.Click += new System.EventHandler(this.area2ToolStripStatusLabel_Click);
             // 
             // activityToolStripProgressBar
             // 
