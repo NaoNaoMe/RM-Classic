@@ -51,6 +51,9 @@ namespace rmApplication
         private const string CommandDumpSet = "dumpset";
         private const string CommandDumpGet = "dumpget";
 
+        private const string CommandBypassRequest = "bypassrequest";
+        private const string CommandBypassResponse = "bypassresponse";
+
         private CancellationTokenSource remoteCancellationTokenSource;
         private TCPListenerResource remote;
         private BusinessLogic logic;
@@ -427,6 +430,53 @@ namespace rmApplication
                         }
 
                     }
+                    break;
+
+                case CommandBypassRequest:
+                    if (requestTask == BusinessLogic.CommunicationTasks.Bypass)
+                    {
+                        answer = busyText;
+                    }
+                    else
+                    {
+                        if (System.Text.RegularExpressions.Regex.IsMatch(parameters, @"\A\b[0-9a-fA-F]+\b\Z") &&
+                            (parameters.Length % 2) == 0)
+                        {
+                            requestTask = BusinessLogic.CommunicationTasks.Bypass;
+
+                            logic.BypassRequest.Enqueue(parameters);
+
+                            logic.ClearWaitingTasks();
+                            logic.EnqueueTask(BusinessLogic.CommunicationTasks.Bypass);
+                            logic.CancelCurrentTask();
+
+                            answer = okText;
+                        }
+
+                    }
+                    break;
+
+                case CommandBypassResponse:
+                    if (logic.TaskState == BusinessLogic.CommunicationTasks.Bypass)
+                    {
+                        answer = busyText;
+                    }
+                    else
+                    {
+                        requestTask = BusinessLogic.CommunicationTasks.Nothing;
+
+                        string outputText;
+                        if (logic.BypassResponse.TryDequeue(out outputText))
+                        {
+                            answer = okText + " " + outputText;
+                        }
+                        else
+                        {
+                            answer = emptyText;
+                        }
+
+                    }
+
                     break;
 
                 default:

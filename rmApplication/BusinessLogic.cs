@@ -40,6 +40,7 @@ namespace rmApplication
             Config,
             Dump,
             Logging,
+            Bypass,
             Terminate
         }
 
@@ -79,6 +80,9 @@ namespace rmApplication
             }
         }
 
+        public ConcurrentQueue<string> BypassRequest { get; set; }
+        public ConcurrentQueue<string> BypassResponse { get; private set; }
+
         private ConcurrentQueue<CommunicationTasks> myTaskQueue;
 
         private uint myPassNumber;
@@ -108,6 +112,8 @@ namespace rmApplication
 
             TaskState = CommunicationTasks.Nothing;
 
+            BypassRequest = new ConcurrentQueue<string>();
+            BypassResponse = new ConcurrentQueue<string>();
         }
 
         public bool UpdateResource(Configuration config)
@@ -263,6 +269,18 @@ namespace rmApplication
                                     msg = "Communication timeout.";
                                     ClearWaitingTasks();
                                     EnqueueTask(CommunicationTasks.Terminate);
+                                }
+
+                                break;
+
+                            case CommunicationTasks.Bypass:
+
+                                string inputText;
+                                if(BypassRequest.TryDequeue(out inputText))
+                                {
+                                    var outputText = await BypassFunctionAsync(inputText);
+                                    if (!string.IsNullOrEmpty(outputText))
+                                        BypassResponse.Enqueue(outputText);
                                 }
 
                                 break;
@@ -722,6 +740,82 @@ namespace rmApplication
             else
                 return true;
 
+        }
+
+        private async Task<string> BypassFunctionAsync(string inputText)
+        {
+            string outputText = string.Empty;
+
+            if (string.IsNullOrEmpty(inputText))
+                return outputText;
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(inputText, @"\A\b[0-9a-fA-F]+\b\Z") ||
+                (inputText.Length % 2) != 0)
+            {
+                return outputText;
+            }
+
+            List<byte> bytes = new List<byte>();
+            for (int i = 0; i < inputText.Length; i+=2)
+                bytes.Add(Convert.ToByte(inputText.Substring(i, 2), 16));
+
+            myCommMainCtrl.PurgeReceiveBuffer();
+
+            List<byte> txFrame = new List<byte>();
+            List<byte> rxFrame = new List<byte>();
+
+            bool isRequestAssert = true;
+            bool isRetry = false;
+            int retryCount = 0;
+            while (true)
+            {
+                if(isRequestAssert)
+                {
+                    txFrame = myCommInstructions.MakeBypassRequest(bytes);
+
+                    myCommMainCtrl.Push(txFrame);
+
+                }
+
+                CancellationTokenSource dumpCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+                rxFrame = await myCommMainCtrl.PullAsync(dumpCts.Token);
+
+                if (dumpCts.IsCancellationRequested)
+                {
+                    isRequestAssert = true;
+                    isRetry = true;
+                }
+                else if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
+                {
+                    isRequestAssert = true;
+                    isRetry = false;
+                    retryCount = 0;
+
+                    rxFrame.RemoveAt(0);    // remove unnecessary header data
+
+                    outputText = string.Empty;
+                    foreach (var abyte in rxFrame)
+                        outputText += abyte.ToString("X2");
+
+                    break;
+                }
+                else
+                {
+                    isRequestAssert = false;
+                    isRetry = true;
+                }
+
+                if (isRetry)
+                {
+                    retryCount++;
+                    if (retryCount > 3)
+                        break;
+
+                }
+
+            }
+
+            return outputText;
         }
 
     }

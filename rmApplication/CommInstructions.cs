@@ -25,7 +25,8 @@ namespace rmApplication
             Write = 4,
             SetAddr = 5,
             ReadInfo = 6,
-            ReadDump = 7
+            ReadDump = 7,
+            Bypass = 8
         };
 
         private RmAddr ByteRange;
@@ -517,6 +518,19 @@ namespace rmApplication
             frame = DumpDataRequestQueue.Dequeue();
 
             return true;
+        }
+
+
+        public List<byte> MakeBypassRequest(List<byte> bytes)
+        {
+            List<byte> frame = new List<byte>();
+
+            frame.Add(GenerateOpCode(RmInstr.Bypass));
+
+            frame.AddRange(bytes);
+
+            return frame;
+
         }
 
 
