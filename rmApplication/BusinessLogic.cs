@@ -18,7 +18,7 @@ namespace rmApplication
         {
             public uint Address;
             public uint Size;
-            public uint Value;
+            public ulong Value;
         }
 
         public struct LogData
@@ -26,7 +26,7 @@ namespace rmApplication
             public string Status;
             public long OsTime;
             public long SlvTime;
-            public Queue<uint> RawData;
+            public Queue<ulong> RawData;
 
         }
 
@@ -662,7 +662,7 @@ namespace rmApplication
                         var msec = rxSW.ElapsedMilliseconds;
 
                         var tmp = new LogData();
-                        tmp.RawData = new Queue<uint>();
+                        tmp.RawData = new Queue<ulong>();
                         int lostCnt;
 
                         if(myCommInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
@@ -700,7 +700,7 @@ namespace rmApplication
                         activity.IsTimeout = true;
 
                         var tmp = new LogData();
-                        tmp.RawData = new Queue<uint>();
+                        tmp.RawData = new Queue<ulong>();
                         tmp.Status = "Timeout";
                         tmp.SlvTime = 0;
                         tmp.OsTime = 0;

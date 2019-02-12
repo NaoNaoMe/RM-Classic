@@ -81,6 +81,7 @@ namespace rmApplication
             typeTable.Rows.Add(UserType.UsD);
             typeTable.Rows.Add(UserType.Dec);
             typeTable.Rows.Add(UserType.FLT);
+            typeTable.Rows.Add(UserType.DBL);
 
             (dumpDataGridView.Columns[(int)FixedColumns.Type] as DataGridViewComboBoxColumn).ValueType = typeof(string);
             (dumpDataGridView.Columns[(int)FixedColumns.Type] as DataGridViewComboBoxColumn).ValueMember = "Display";
@@ -147,7 +148,8 @@ namespace rmApplication
                 {
                     if ((num != 1) &&
                         (num != 2) &&
-                        (num != 4))
+                        (num != 4) &&
+                        (num != 8))
                     {
                         dgv.Rows[e.RowIndex].Cells[(int)FixedColumns.Size].Value = 1;
                     }
@@ -345,23 +347,43 @@ namespace rmApplication
 
                         if(tms320c28xEndianRadioButton.Checked)
                         {
+                            byte tmp;
                             switch (config.Size)
                             {
                                 case 1:
                                     break;
                                 case 2:
-                                    byteList.Reverse();
+                                    tmp = byteList[0];
+                                    byteList[0] = byteList[1];
+                                    byteList[1] = tmp;
+
                                     break;
                                 case 4:
-                                    // Convert to big-endian
-                                    var b2 = byteList[2];
-                                    var b3 = byteList[3];
-                                    byteList[2] = byteList[0];
-                                    byteList[3] = byteList[1];
-                                    byteList[0] = b2;
-                                    byteList[1] = b3;
+                                    tmp = byteList[0];
+                                    byteList[0] = byteList[1];
+                                    byteList[1] = tmp;
 
-                                    byteList.Reverse();
+                                    tmp = byteList[2];
+                                    byteList[2] = byteList[3];
+                                    byteList[3] = tmp;
+
+                                    break;
+                                case 8:
+                                    tmp = byteList[0];
+                                    byteList[0] = byteList[1];
+                                    byteList[1] = tmp;
+
+                                    tmp = byteList[2];
+                                    byteList[2] = byteList[3];
+                                    byteList[3] = tmp;
+
+                                    tmp = byteList[4];
+                                    byteList[4] = byteList[5];
+                                    byteList[5] = tmp;
+
+                                    tmp = byteList[6];
+                                    byteList[6] = byteList[7];
+                                    byteList[7] = tmp;
 
                                     break;
                                 default:
@@ -375,11 +397,11 @@ namespace rmApplication
 
                         }
 
-                        uint rowData = 0;
+                        ulong rowData = 0;
                         int digit = 0;
                         foreach(var tmp in byteList)
                         {
-                            rowData += (uint)(tmp * Math.Pow(2, (digit * 8)));
+                            rowData += (ulong)(tmp * Math.Pow(2, (digit * 8)));
                             digit++;
                         }
 

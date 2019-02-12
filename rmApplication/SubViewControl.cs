@@ -264,6 +264,7 @@ namespace rmApplication
             typeTable.Rows.Add(UserType.Dec);
             typeTable.Rows.Add(UserType.Bin);
             typeTable.Rows.Add(UserType.FLT);
+            typeTable.Rows.Add(UserType.DBL);
 
             this.typeColumn.ValueType = typeof(string);
             this.typeColumn.ValueMember = "Display";
@@ -593,7 +594,8 @@ namespace rmApplication
                             {
                                 if ((result.Size == "1") ||
                                     (result.Size == "2") ||
-                                    (result.Size == "4"))
+                                    (result.Size == "4") ||
+                                    (result.Size == "8"))
                                 {
                                     setting.Size = result.Size;
 
@@ -793,12 +795,12 @@ namespace rmApplication
             if (address >= (UInt64)UInt32.MaxValue)
                 address = (UInt64)UInt32.MaxValue;
 
-            UInt32 data;
-            if (UserUint.TryParse(type, size, writeText, out data))
+            ulong data;
+            if (UserUlong.TryParse(type, size, writeText, out data))
                 return false;
 
 
-            if (!UInt32.TryParse(writeText, out data))
+            if (!ulong.TryParse(writeText, out data))
                 return false;
 
             result.Address = (uint)address;
@@ -894,8 +896,8 @@ namespace rmApplication
                     {
                         string inputText = setting.Write;
 
-                        UInt32 result;
-                        if (UserUint.TryParse(type, size, inputText, out result))
+                        UInt64 result;
+                        if (UserUlong.TryParse(type, size, inputText, out result))
                         {
                             setting.WriteRaw = result.ToString();
                             UserString.TryParse(type, size, result, out inputText);
@@ -1348,7 +1350,7 @@ namespace rmApplication
             Queue<long> osTimeBuffer = new Queue<long>();
             long osTime = 0;
             long slvTime = 0;
-            Queue<uint> rawData = new Queue<uint>();
+            Queue<ulong> rawData = new Queue<ulong>();
             BusinessLogic.LogData logData = new BusinessLogic.LogData();
 
             while (Logic.GetLogData(out logData))
@@ -1685,8 +1687,8 @@ namespace rmApplication
                 if(address >= (UInt64)UInt32.MaxValue)
                     address = (UInt64)UInt32.MaxValue;
 
-                UInt32 data;
-                if (!UInt32.TryParse(writerawObj.ToString(), out data))
+                ulong data;
+                if (!ulong.TryParse(writerawObj.ToString(), out data))
                     return;
 
                 var param = new BusinessLogic.DataParameter();
@@ -1744,7 +1746,7 @@ namespace rmApplication
         {
             DataGridView dgv = (DataGridView)sender;
             int groupColumnIndex = dgv.Columns[DgvRowName.Group.ToString()].Index;
-            int symblColumnIndex = dgv.Columns[DgvRowName.Symbol.ToString()].Index;
+            int symbolColumnIndex = dgv.Columns[DgvRowName.Symbol.ToString()].Index;
             int addressColumnIndex = dgv.Columns[DgvRowName.Address.ToString()].Index;
             int offsetColumnIndex = dgv.Columns[DgvRowName.Offset.ToString()].Index;
             int sizeColumnIndex = dgv.Columns[DgvRowName.Size.ToString()].Index;
@@ -1806,7 +1808,7 @@ namespace rmApplication
                 }
 
             }
-            else if (e.ColumnIndex == symblColumnIndex)
+            else if (e.ColumnIndex == symbolColumnIndex)
             {
                 dgv[e.ColumnIndex, e.RowIndex].Value = inputText;
 
@@ -1895,6 +1897,10 @@ namespace rmApplication
                 {
                     //ignore
                 }
+                else if (size != 8 && type == UserType.DBL)
+                {
+                    //ignore
+                }
                 else
                 {
                     dgv[e.ColumnIndex, e.RowIndex].Value = inputText;
@@ -1904,8 +1910,8 @@ namespace rmApplication
                     if (dgv[readrawColumnIndex, e.RowIndex].Value != null)
                     {
                         raw = dgv[readrawColumnIndex, e.RowIndex].Value.ToString();
-                        UInt32 result;
-                        if (UInt32.TryParse(raw, out result))
+                        ulong result;
+                        if (ulong.TryParse(raw, out result))
                         {
                             string value;
                             if (UserString.TryParse(type, size, result, out value))
@@ -1920,8 +1926,8 @@ namespace rmApplication
                     if (dgv[writerawColumnIndex, e.RowIndex].Value != null)
                     {
                         raw = dgv[writerawColumnIndex, e.RowIndex].Value.ToString();
-                        UInt32 result;
-                        if (UInt32.TryParse(raw, out result))
+                        ulong result;
+                        if (ulong.TryParse(raw, out result))
                         {
                             string value;
                             if (UserString.TryParse(type, size, result, out value))
@@ -1950,8 +1956,8 @@ namespace rmApplication
                         int size = int.Parse(dgv[sizeColumnIndex, e.RowIndex].Value.ToString());
                         UserType type = (UserType)Enum.Parse(typeof(UserType), dgv[typeColumnIndex, e.RowIndex].Value.ToString());
 
-                        UInt32 result;
-                        if (UserUint.TryParse(type, size, inputText, out result))
+                        ulong result;
+                        if (UserUlong.TryParse(type, size, inputText, out result))
                         {
                             dgv[writerawColumnIndex, e.RowIndex].Value = result;
                             UserString.TryParse(type, size, result, out inputText);
@@ -1959,7 +1965,7 @@ namespace rmApplication
                         }
                         else
                         {
-                            result = UInt32.Parse(dgv[writerawColumnIndex, e.RowIndex].Value.ToString());
+                            result = ulong.Parse(dgv[writerawColumnIndex, e.RowIndex].Value.ToString());
                             UserString.TryParse(type, size, result, out inputText);
                         }
 
@@ -1996,7 +2002,8 @@ namespace rmApplication
             {
                 if ((tmp == 1) ||
                     (tmp == 2) ||
-                    (tmp == 4))
+                    (tmp == 4) ||
+                    (tmp == 8))
                 {
                     result = (int)tmp;
                 }

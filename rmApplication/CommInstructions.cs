@@ -153,13 +153,14 @@ namespace rmApplication
         }
 
 
-        public List<byte> MakeWirteDataRequest(uint address, uint size, uint value)
+        public List<byte> MakeWirteDataRequest(uint address, uint size, ulong value)
         {
             List<byte> frame = new List<byte>();
 
             if ((size != 1) &&
                 (size != 2) &&
-                (size != 4))
+                (size != 4) &&
+                (size != 8))
             {
                 return frame;
             }
@@ -228,7 +229,8 @@ namespace rmApplication
         {
             if ((size != 1) &&
                 (size != 2) &&
-                (size != 4))
+                (size != 4) &&
+                (size != 8))
             {
                 return false;
             }
@@ -364,7 +366,7 @@ namespace rmApplication
         }
 
 
-        public bool CheckLogSequence(List<byte> decodedData, ref Queue<uint> dataList, out int lostCnt)
+        public bool CheckLogSequence(List<byte> decodedData, ref Queue<ulong> dataList, out int lostCnt)
         {
             bool isValid = true;
             int slvCnt = decodedData[0] & 0x0F;
@@ -403,12 +405,12 @@ namespace rmApplication
                     if (!BitConverter.IsLittleEndian)
                         tmp.Reverse();
 
-                    while(tmp.Count < 4)
+                    while(tmp.Count < 8)
                     {
                         tmp.Add(0x00);
                     }
 
-                    dataList.Enqueue(BitConverter.ToUInt32(tmp.ToArray(), 0));
+                    dataList.Enqueue(BitConverter.ToUInt64(tmp.ToArray(), 0));
 
                     decodedData.RemoveRange(0, (int)size);
                 }

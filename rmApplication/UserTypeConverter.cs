@@ -13,22 +13,23 @@ namespace rmApplication
         Dec,
         UsD,
         Hex,
-        FLT
+        FLT,
+        DBL
     }
 
-    public class UserUint
+    public class UserUlong
     {
-        public static bool TryParse(UserType type, int size, string text, out uint result)
+        public static bool TryParse(UserType type, int size, string text, out ulong result)
         {
             result = 0;
 
             if (string.IsNullOrEmpty(text))
                 return false;
 
+            text = text.Replace(" ", "");
+
             if (!Regex.IsMatch(text, @"^[0-9a-fA-F.]+$"))
                 return false;
-
-            text = text.Replace(" ", "");
 
             try
             {
@@ -36,8 +37,8 @@ namespace rmApplication
                 {
                     case UserType.Bin:
                         {
-                            UInt64 min = 0;
-                            UInt64 max = 0;
+                            UInt64 min = UInt64.MinValue;
+                            UInt64 max = UInt64.MaxValue;
                             var tmp = Convert.ToUInt64(text, 2);
 
                             switch (size)
@@ -63,15 +64,15 @@ namespace rmApplication
                             else if (tmp > max)
                                 tmp = max;
 
-                            result = (uint)tmp;
+                            result = tmp;
                         }
 
                         break;
 
                     case UserType.Dec:
                         {
-                            Int64 min = 0;
-                            Int64 max = 0;
+                            Int64 min = Int64.MinValue;
+                            Int64 max = Int64.MaxValue;
                             var tmp = Convert.ToInt64(text);
 
                             switch(size)
@@ -97,7 +98,7 @@ namespace rmApplication
                             else if (tmp > max)
                                 tmp = max;
 
-                            result = (uint)tmp;
+                            result = (ulong)tmp;
 
                         }
 
@@ -105,8 +106,8 @@ namespace rmApplication
 
                     case UserType.UsD:
                         {
-                            UInt64 min = 0;
-                            UInt64 max = 0;
+                            UInt64 min = UInt64.MinValue;
+                            UInt64 max = UInt64.MaxValue;
                             var tmp = Convert.ToUInt64(text);
 
                             switch (size)
@@ -132,15 +133,15 @@ namespace rmApplication
                             else if (tmp > max)
                                 tmp = max;
 
-                            result = (uint)tmp;
+                            result = tmp;
                         }
 
                         break;
 
                     case UserType.Hex:
                         {
-                            UInt64 min = 0;
-                            UInt64 max = 0;
+                            UInt64 min = UInt64.MinValue;
+                            UInt64 max = UInt64.MaxValue;
                             var tmp = Convert.ToUInt64(text, 16);
 
                             switch (size)
@@ -166,7 +167,7 @@ namespace rmApplication
                             else if (tmp > max)
                                 tmp = max;
 
-                            result = (uint)tmp;
+                            result = tmp;
                         }
 
                         break;
@@ -175,6 +176,14 @@ namespace rmApplication
                         {
                             var tmp = float.Parse(text);
                             result = BitConverter.ToUInt32(BitConverter.GetBytes(tmp), 0);
+                        }
+
+                        break;
+
+                    case UserType.DBL:
+                        {
+                            var tmp = double.Parse(text);
+                            result = BitConverter.ToUInt64(BitConverter.GetBytes(tmp), 0);
                         }
 
                         break;
@@ -200,7 +209,7 @@ namespace rmApplication
 
     public class UserString
     {
-        public static bool TryParse(string typeText, string sizeText, uint value, out string result)
+        public static bool TryParse(string typeText, string sizeText, ulong value, out string result)
         {
             result = string.Empty;
 
@@ -225,7 +234,7 @@ namespace rmApplication
             return isValid;
         }
 
-        public static bool TryParse(UserType type, int size, uint value, out string result)
+        public static bool TryParse(UserType type, int size, ulong value, out string result)
         {
             result = string.Empty;
 
@@ -234,23 +243,35 @@ namespace rmApplication
             switch (type)
             {
                 case UserType.Bin:
-                    result = Convert.ToString(value, 2);
-                    result = result.PadLeft(32, '0');
+                    result = Convert.ToString((long)value, 2);
+                    result = result.PadLeft(64, '0');
 
                     if (size == 1)
                     {
-                        result = result.Remove(0, 24);
+                        result = result.Remove(0, 56);
                     }
                     else if (size == 2)
                     {
-                        result = result.Remove(0, 16);
+                        result = result.Remove(0, 48);
                         result = result.Insert(8, " ");
+                        result = result.Insert(17, " ");
                     }
                     else if (size == 4)
                     {
+                        result = result.Remove(0, 32);
                         result = result.Insert(8, " ");
                         result = result.Insert(17, " ");
                         result = result.Insert(26, " ");
+                    }
+                    else if (size == 8)
+                    {
+                        result = result.Insert(8, " ");     // 8+0
+                        result = result.Insert(17, " ");    // 16+1
+                        result = result.Insert(26, " ");    // 24+2
+                        result = result.Insert(35, " ");    // 32+3
+                        result = result.Insert(44, " ");    // 40+4
+                        result = result.Insert(53, " ");    // 48+5
+                        result = result.Insert(62, " ");    // 56+6
                     }
 
                     break;
@@ -259,21 +280,18 @@ namespace rmApplication
                     if (size == 1)
                     {
                         result = ((SByte)value).ToString();
-
                     }
                     else if (size == 2)
                     {
                         result = ((Int16)value).ToString();
-
                     }
                     else if (size == 4)
                     {
                         result = ((Int32)value).ToString();
-
                     }
                     else
                     {
-
+                        result = ((Int64)value).ToString();
                     }
 
                     break;
@@ -284,17 +302,21 @@ namespace rmApplication
                     break;
 
                 case UserType.Hex:
-                    result = Convert.ToString(value, 16);
-                    result = result.PadLeft(8, '0');
+                    result = Convert.ToString((long)value, 16);
+                    result = result.PadLeft(16, '0');
                     result = result.ToUpper();
 
                     if (size == 1)
                     {
-                        result = result.Remove(0, 6);
+                        result = result.Remove(0, 14);
                     }
                     else if (size == 2)
                     {
-                        result = result.Remove(0, 4);
+                        result = result.Remove(0, 12);
+                    }
+                    else if (size == 4)
+                    {
+                        result = result.Remove(0, 8);
                     }
 
                     break;
@@ -303,6 +325,19 @@ namespace rmApplication
                     if(size == 4)
                     {
                         var tmp = BitConverter.ToSingle(BitConverter.GetBytes(value), 0);
+                        result = tmp.ToString();
+                    }
+                    else
+                    {
+                        isValid = false;
+                    }
+
+                    break;
+
+                case UserType.DBL:
+                    if (size == 8)
+                    {
+                        var tmp = BitConverter.ToDouble(BitConverter.GetBytes(value), 0);
                         result = tmp.ToString();
                     }
                     else
