@@ -251,8 +251,6 @@ namespace rmApplication
 
             OpenFileDialog ofd = new OpenFileDialog();
 
-            ofd.FileName = "test.xml";
-            // ofd.InitialDirectory = @"D:\";
             ofd.Filter =
                 "xml File(*.xml)|*.xml|All Files(*.*)|*.*";
             ofd.FilterIndex = 1;
@@ -297,10 +295,8 @@ namespace rmApplication
 
             OpenFileDialog ofd = new OpenFileDialog();
 
-            ofd.FileName = "test.map";
-            //ofd.InitialDirectory = @"D:\";
             ofd.Filter =
-                "Map File(*.map)|*.map|All Files(*.*)|*.*";
+                "RM Map File(*.rmmap)|*.rmmap|Map File(*.map)|*.map|All Files(*.*)|*.*";
             ofd.FilterIndex = 1;
             ofd.Title = "Open Map File";
             if (!string.IsNullOrEmpty(pathMapFileName))
@@ -417,9 +413,9 @@ namespace rmApplication
 
             sfd.Title = "Save Map File";
             //sfd.InitialDirectory = @"D:\";
-            sfd.FileName = "test.map";
+            sfd.FileName = "test.rmmap";
             sfd.Filter =
-                "Map File(*.map)|*.map|All Files(*.*)|*.*";
+                "RM Map File(*.rmmap)|*.rmmap|All Files(*.*)|*.*";
             sfd.FilterIndex = 1;
             if (!string.IsNullOrEmpty(pathMapFileName))
                 sfd.InitialDirectory = System.IO.Path.GetDirectoryName(pathMapFileName);

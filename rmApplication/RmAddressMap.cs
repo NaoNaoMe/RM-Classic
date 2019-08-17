@@ -7,20 +7,15 @@ using System.Threading.Tasks;
 
 namespace rmApplication
 {
-    class RmAddressMap
+    public class RmAddressMap
     {
-        private static string keyword = "RM Address Map";
-
         public static bool Interpret(string[] textArray, List<SymbolFactor> symbolList)
         {
-            if (textArray[0].IndexOf(keyword) == -1)
-                return false;
-
             for (int i = 1; i < textArray.Length; i++)
             {
-                string[] splitLine = textArray[i].Split(' ');
+                string[] splitLine = textArray[i].Split(',');
 
-                if (splitLine.Length == 3)
+                if (splitLine.Length == 4)
                 {
                     if (splitLine[1].Length < 2)
                         continue;
@@ -30,13 +25,15 @@ namespace rmApplication
 
                     if (!string.IsNullOrEmpty(splitLine[0]) &&
                         Regex.IsMatch(splitLine[1], @"^[0-9a-fA-F]+$") &&
-                        Regex.IsMatch(splitLine[2], @"^[0-9]+$"))
+                        Regex.IsMatch(splitLine[2], @"^[0-9]+$") &&
+                        Regex.IsMatch(splitLine[3], @"^[0-9]+$"))
                     {
                         var data = new SymbolFactor();
 
                         data.Symbol = splitLine[0];
                         data.Address = "0x" + splitLine[1];
-                        data.Size = splitLine[2];
+                        data.Offset = splitLine[2];
+                        data.Size = splitLine[3];
 
                         symbolList.Add(data);
 
@@ -60,15 +57,14 @@ namespace rmApplication
                 return false;
             }
 
-            textList.Add("##" + keyword);
-
             foreach (var item in symbolList)
             {
                 if ((!string.IsNullOrEmpty(item.Symbol)) &&
                     (!string.IsNullOrEmpty(item.Address)) &&
+                    (!string.IsNullOrEmpty(item.Offset)) &&
                     (!string.IsNullOrEmpty(item.Size)))
                 {
-                    textList.Add(item.Symbol + " " + item.Address + " " + item.Size);
+                    textList.Add(item.Symbol + "," + item.Address + ","  + item.Offset + "," + item.Size);
                 }
 
             }

@@ -145,7 +145,7 @@
     <Compile Include="NoticeViewControl.Designer.cs">
       <DependentUpon>NoticeViewControl.cs</DependentUpon>
     </Compile>
-    <Compile Include="SymbolTable.cs" />
+    <Compile Include="SymbolFactor.cs" />
     <Compile Include="TCPClientResource.cs" />
     <Compile Include="TCPListenerResource.cs" />
     <Compile Include="GCCLinkerMap.cs" />

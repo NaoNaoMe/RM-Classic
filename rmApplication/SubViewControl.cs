@@ -622,6 +622,7 @@ namespace rmApplication
                                 }
 
                                 setting.Address = result.Address;
+                                setting.Offset = result.Offset;
 
                             }
 
@@ -1867,6 +1868,7 @@ namespace rmApplication
                         }
 
                         dgv[addressColumnIndex, e.RowIndex].Value = result.Address;
+                        dgv[offsetColumnIndex, e.RowIndex].Value = result.Offset;
 
                     }
                     else
