@@ -22,33 +22,31 @@ namespace rmApplication
             }
         }
 
-        private TcpClient client;
-        private bool crlfEnable;
+        public string Delimiter;
 
-        public TCPClientResource(bool isCRLF)
+        private StringBuilder receivedTextBuffer;
+        private TcpClient client;
+
+        public TCPClientResource()
         {
-            crlfEnable = isCRLF;
+            Delimiter = string.Empty;
         }
 
-        public bool Publish(string text)
+        public async Task<bool> WriteAsync(string text)
         {
             bool isSuccess = false;
 
             if (string.IsNullOrEmpty(text))
                 return isSuccess;
 
-            string terminator = string.Empty;
-            if (crlfEnable)
-                terminator = "\r\n";
+            var bytes = new List<Byte>(Encoding.UTF8.GetBytes(text + Delimiter));
 
-            var bytes = new List<Byte>(Encoding.UTF8.GetBytes(text + terminator));
-
-            isSuccess = Publish(bytes);
+            isSuccess = await WriteAsync(bytes);
 
             return isSuccess;
         }
 
-        public bool Publish(List<byte> bytes)
+        public async Task<bool> WriteAsync(List<byte> bytes)
         {
             bool isSuccess = false;
 
@@ -64,7 +62,7 @@ namespace rmApplication
 
                 var txBuff = bytes.ToArray();
 
-                stream.Write(txBuff, 0, txBuff.Length);
+                await stream.WriteAsync(txBuff, 0, txBuff.Length);
 
                 isSuccess = true;
 
@@ -78,12 +76,14 @@ namespace rmApplication
             return isSuccess;
         }
 
-        public async Task<bool> AcceptListenerAsync(System.Net.IPAddress ip, int port, CancellationToken ct)
+        public async Task<bool> ConnectAsync(System.Net.IPAddress ip, int port, CancellationToken ct)
         {
             bool isSuccess = false;
 
             try
             {
+                receivedTextBuffer = new StringBuilder();
+
                 client = new TcpClient();
                 await client.ConnectAsync(ip, port).ContinueWith(t => t.IsCompleted, ct);
                 isSuccess = client.Connected;
@@ -102,6 +102,9 @@ namespace rmApplication
 
         public void PurgeReceiveBuffer()
         {
+            if (receivedTextBuffer != null)
+                receivedTextBuffer.Clear();
+
             if (client == null)
                 return;
 
@@ -110,12 +113,20 @@ namespace rmApplication
 
             try
             {
-                NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[1024];
-
-                if (stream.DataAvailable)
+                while (true)
                 {
-                    var readBytes = stream.Read(buffer, 0, buffer.Length);
+                    NetworkStream stream = client.GetStream();
+                    byte[] buffer = new byte[1024];
+
+                    if (stream.DataAvailable)
+                    {
+                        var readBytes = stream.Read(buffer, 0, buffer.Length);
+                    }
+                    else
+                    {
+                        break;
+                    }
+
                 }
 
             }
@@ -126,27 +137,7 @@ namespace rmApplication
 
         }
 
-        public string ReadTextListener()
-        {
-            string text = string.Empty;
-
-            var bytes = ReadBytesListener();
-
-            string rawText = Encoding.UTF8.GetString(bytes.ToArray());
-
-            if (!crlfEnable)
-            {
-                text = rawText;
-            }
-            else if (rawText.Contains("\r\n"))
-            {
-                text = rawText.Substring(0, rawText.IndexOf("\r\n"));
-            }
-
-            return text;
-        }
-
-        public List<byte> ReadBytesListener()
+        public List<byte> ReadBytes()
         {
             List<byte> bytes = new List<byte>();
 
@@ -187,44 +178,67 @@ namespace rmApplication
             return bytes;
         }
 
-        public async Task<string> ReadTextListenerAsync(CancellationToken ct)
+        public async Task<string> ReadTextAsync(CancellationToken ct)
         {
-            string text = string.Empty;
-
-            while(true)
+            if (string.IsNullOrEmpty(Delimiter))
             {
-                var bytes = await ReadBytesListenerAsync(ct);
+                var bytes = await ReadBytesAsync(ct);
+                return Encoding.UTF8.GetString(bytes.ToArray());
+            }
 
-                string rawText = Encoding.UTF8.GetString(bytes.ToArray());
+            string output = string.Empty;
+            string rawText = receivedTextBuffer.ToString();
 
-                if (!crlfEnable)
-                {
-                    text = rawText;
-                    break;
-                }
+            int firstOccurrence = rawText.IndexOf(Delimiter);
+
+            if (firstOccurrence != -1)
+            {
+                output = rawText.Substring(0, firstOccurrence);
+                receivedTextBuffer.Clear();
+
+                var startindex = firstOccurrence + Delimiter.Length;
+                var length = rawText.Length - startindex;
+
+                if (length > 0)
+                    receivedTextBuffer.Append(rawText.Substring(startindex, length));
+
+                return output;
+            }
+
+            while (true)
+            {
+                var bytes = await ReadBytesAsync(ct);
+
+                rawText = Encoding.UTF8.GetString(bytes.ToArray());
 
                 if (string.IsNullOrEmpty(rawText))
+                    break;
+
+                firstOccurrence = rawText.IndexOf(Delimiter);
+
+                if (firstOccurrence != -1)
                 {
-                    text = string.Empty;
+                    receivedTextBuffer.Append(rawText.Substring(0, firstOccurrence));
+                    output = receivedTextBuffer.ToString();
+                    receivedTextBuffer.Clear();
+
+                    var startindex = firstOccurrence + Delimiter.Length;
+                    var length = rawText.Length - startindex;
+
+                    if (length > 0)
+                        receivedTextBuffer.Append(rawText.Substring(startindex, length));
+
                     break;
                 }
 
-                if (rawText.Contains("\r\n"))
-                {
-                    text += rawText.Substring(0, rawText.IndexOf("\r\n"));
-                    break;
-                }
-                else
-                {
-                    text += rawText;
-                }
+                receivedTextBuffer.Append(rawText);
 
             }
 
-            return text;
+            return output;
         }
 
-        public async Task<List<byte>> ReadBytesListenerAsync(CancellationToken ct)
+        public async Task<List<byte>> ReadBytesAsync(CancellationToken ct)
         {
             List<byte> bytes = new List<byte>();
 
@@ -237,7 +251,7 @@ namespace rmApplication
             try
             {
                 NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[256];
+                byte[] buffer = new byte[1024];
 
                 var readTask = stream.ReadAsync(buffer, 0, buffer.Length, ct);
                 await await Task.WhenAny(readTask, Task.Delay(-1, ct));
@@ -257,7 +271,7 @@ namespace rmApplication
             }
             catch (OperationCanceledException)
             {
-                System.Diagnostics.Debug.WriteLine("Canceled ReadBytesListenerAsync");
+                System.Diagnostics.Debug.WriteLine("Canceled ReadBytesAsync");
             }
             catch (Exception ex)
             {
@@ -267,7 +281,7 @@ namespace rmApplication
             return bytes;
         }
 
-        public void Close()
+        public void Disconncet()
         {
             if (client != null)
             {

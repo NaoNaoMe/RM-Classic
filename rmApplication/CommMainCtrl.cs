@@ -41,7 +41,7 @@ namespace rmApplication
                     break;
 
                 case CommunicationMode.LocalNet:
-                    myTCPClient = new TCPClientResource(false);
+                    myTCPClient = new TCPClientResource();
                     break;
 
             }
@@ -60,7 +60,16 @@ namespace rmApplication
                 case CommunicationMode.Serial:
                     if (mySerialPort != null)
                     {
-                        if (mySerialPort.Open(config.SerialPortName, config.BaudRate))
+                        SerialPortResource.Parameters param;
+
+                        param.PortName = config.SerialPortName;
+                        param.BaudRate = config.BaudRate;
+                        param.HandShake = System.IO.Ports.Handshake.None;
+                        param.DataBits = 8;
+                        param.Parity = System.IO.Ports.Parity.None;
+                        param.StopBits = System.IO.Ports.StopBits.One;
+
+                        if (mySerialPort.Open(param))
                             IsOpen = true;
 
                     }
@@ -69,7 +78,7 @@ namespace rmApplication
                 case CommunicationMode.LocalNet:
                     if (myTCPClient != null)
                     {
-                        if (await myTCPClient.AcceptListenerAsync(config.ClientAddress, config.ClientPort, ct))
+                        if (await myTCPClient.ConnectAsync(config.ClientAddress, config.ClientPort, ct))
                             IsOpen = true;
 
                     }
@@ -95,7 +104,7 @@ namespace rmApplication
 
                 case CommunicationMode.LocalNet:
                     if (myTCPClient != null)
-                        myTCPClient.Close();
+                        myTCPClient.Disconncet();
                     break;
 
             }
@@ -124,7 +133,7 @@ namespace rmApplication
 #endif
         }
 
-        public void Push(List<byte> bytes)
+        public async Task PushAsync(List<byte> bytes)
         {
             RecordMessage("Tx", bytes);
 
@@ -132,12 +141,12 @@ namespace rmApplication
             {
                 case CommunicationMode.Serial:
                     if (mySerialPort != null)
-                        mySerialPort.Push(myCommProtocol.Encode(bytes));
+                        mySerialPort.Write(myCommProtocol.Encode(bytes));
                     break;
 
                 case CommunicationMode.LocalNet:
                     if (myTCPClient != null)
-                        myTCPClient.Publish(myCommProtocol.Encode(bytes));
+                        await myTCPClient.WriteAsync(myCommProtocol.Encode(bytes));
                     break;
 
             }
@@ -159,7 +168,7 @@ namespace rmApplication
 
                 case CommunicationMode.LocalNet:
                     if (myTCPClient != null)
-                        bytes = myTCPClient.ReadBytesListener();
+                        bytes = myTCPClient.ReadBytes();
                     break;
 
             }
@@ -223,7 +232,7 @@ namespace rmApplication
 
                         case CommunicationMode.LocalNet:
                             if (myTCPClient != null)
-                                bytes = await myTCPClient.ReadBytesListenerAsync(ct);
+                                bytes = await myTCPClient.ReadBytesAsync(ct);
                             break;
 
                     }

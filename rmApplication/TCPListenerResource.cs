@@ -62,39 +62,37 @@ namespace rmApplication
             }
         }
 
+        public string Delimiter;
+
+        private StringBuilder receivedTextBuffer;
         private TcpListenerEx listener;
         private TcpClient client;
-        private bool crlfEnable;
 
-        public TCPListenerResource(bool isCRLF)
+        public TCPListenerResource()
         {
-            crlfEnable = isCRLF;
+            Delimiter = string.Empty;
         }
 
-        public bool Publish(string text)
+        public async Task<bool> WriteAsync(string text)
         {
             bool isSuccess = false;
 
             if (string.IsNullOrEmpty(text))
                 return isSuccess;
 
-            string terminator = string.Empty;
-            if (crlfEnable)
-                terminator = "\r\n";
+            var bytes = new List<Byte>(Encoding.UTF8.GetBytes(text + Delimiter));
 
-            var bytes = new List<Byte>(Encoding.UTF8.GetBytes(text + terminator));
-
-            isSuccess = Publish(bytes);
+            isSuccess = await WriteAsync(bytes);
 
             return isSuccess;
         }
 
-        public bool Publish(List<byte> bytes)
+        public async Task<bool> WriteAsync(List<byte> bytes)
         {
             bool isSuccess = false;
 
             if ((listener == null) ||
-                (client == null) )
+                (client == null))
                 return isSuccess;
 
             if (!client.Connected)
@@ -106,7 +104,7 @@ namespace rmApplication
 
                 var txBuff = bytes.ToArray();
 
-                stream.Write(txBuff, 0, txBuff.Length);
+                await stream.WriteAsync(txBuff, 0, txBuff.Length);
 
                 isSuccess = true;
 
@@ -128,6 +126,8 @@ namespace rmApplication
             {
                 try
                 {
+                    receivedTextBuffer = new StringBuilder();
+
                     client = new TcpClient();
                     client = await listener.AcceptTcpClientAsync();
                     isSuccess = true;
@@ -144,6 +144,9 @@ namespace rmApplication
 
         public void PurgeReceiveBuffer()
         {
+            if (receivedTextBuffer != null)
+                receivedTextBuffer.Clear();
+
             if (client == null)
                 return;
 
@@ -152,12 +155,20 @@ namespace rmApplication
 
             try
             {
-                NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[1024];
-
-                if (stream.DataAvailable)
+                while (true)
                 {
-                    var readBytes = stream.Read(buffer, 0, buffer.Length);
+                    NetworkStream stream = client.GetStream();
+                    byte[] buffer = new byte[1024];
+
+                    if (stream.DataAvailable)
+                    {
+                        var readBytes = stream.Read(buffer, 0, buffer.Length);
+                    }
+                    else
+                    {
+                        break;
+                    }
+
                 }
 
             }
@@ -168,27 +179,7 @@ namespace rmApplication
 
         }
 
-        public string ReadTextClient()
-        {
-            string text = string.Empty;
-
-            var bytes = ReadBytesClient();
-
-            string rawText = Encoding.UTF8.GetString(bytes.ToArray());
-
-            if (!crlfEnable)
-            {
-                text = rawText;
-            }
-            else if (rawText.Contains("\r\n"))
-            {
-                text = rawText.Substring(0, rawText.IndexOf("\r\n"));
-            }
-
-            return text;
-        }
-
-        public List<byte> ReadBytesClient()
+        public List<byte> ReadBytes()
         {
             List<byte> bytes = new List<byte>(); ;
 
@@ -229,44 +220,68 @@ namespace rmApplication
             return bytes;
         }
 
-        public async Task<string> ReadTextClientAsync(CancellationToken ct)
+        public async Task<string> ReadTextAsync(CancellationToken ct)
         {
-            string text = string.Empty;
-
-            while(true)
+            if (string.IsNullOrEmpty(Delimiter))
             {
-                var bytes = await ReadBytesClientAsync(ct);
+                var bytes = await ReadBytesAsync(ct);
+                return Encoding.UTF8.GetString(bytes.ToArray());
+            }
 
-                string rawText = Encoding.UTF8.GetString(bytes.ToArray());
+            string output = string.Empty;
+            string rawText = receivedTextBuffer.ToString();
 
-                if (!crlfEnable)
-                {
-                    text = rawText;
-                    break;
-                }
+            int firstOccurrence = rawText.IndexOf(Delimiter);
+
+            if (firstOccurrence != -1)
+            {
+                output = rawText.Substring(0, firstOccurrence);
+                receivedTextBuffer.Clear();
+
+                var startindex = firstOccurrence + Delimiter.Length;
+                var length = rawText.Length - startindex;
+
+                if (length > 0)
+                    receivedTextBuffer.Append(rawText.Substring(startindex, length));
+
+                return output;
+            }
+
+            while (true)
+            {
+                var bytes = await ReadBytesAsync(ct);
+
+                rawText = Encoding.UTF8.GetString(bytes.ToArray());
 
                 if (string.IsNullOrEmpty(rawText))
+                    break;
+
+                firstOccurrence = rawText.IndexOf(Delimiter);
+
+                if (firstOccurrence != -1)
                 {
-                    text = string.Empty;
+                    receivedTextBuffer.Append(rawText.Substring(0, firstOccurrence));
+                    output = receivedTextBuffer.ToString();
+                    receivedTextBuffer.Clear();
+
+                    var startindex = firstOccurrence + Delimiter.Length;
+                    var length = rawText.Length - startindex;
+
+                    if (length > 0)
+                        receivedTextBuffer.Append(rawText.Substring(startindex, length));
+
                     break;
                 }
 
-                if (rawText.Contains("\r\n"))
-                {
-                    text += rawText.Substring(0, rawText.IndexOf("\r\n"));
-                    break;
-                }
-                else
-                {
-                    text += rawText;
-                }
+                receivedTextBuffer.Append(rawText);
 
             }
 
-            return text;
+            return output;
         }
 
-        public async Task<List<byte>> ReadBytesClientAsync(CancellationToken ct)
+
+        public async Task<List<byte>> ReadBytesAsync(CancellationToken ct)
         {
             List<byte> bytes = new List<byte>();
 
@@ -279,7 +294,7 @@ namespace rmApplication
             try
             {
                 NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[256];
+                byte[] buffer = new byte[1024];
 
                 var readTask = stream.ReadAsync(buffer, 0, buffer.Length, ct);
                 await await Task.WhenAny(readTask, Task.Delay(-1, ct));
@@ -309,7 +324,7 @@ namespace rmApplication
             return bytes;
         }
 
-        public void CloseClient()
+        public void DisconnectClient()
         {
             if (client != null)
             {

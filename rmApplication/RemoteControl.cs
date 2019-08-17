@@ -69,7 +69,8 @@ namespace rmApplication
 
         public RemoteControl(BusinessLogic tmp)
         {
-            remote = new TCPListenerResource(true);
+            remote = new TCPListenerResource();
+            remote.Delimiter = "\r\n";
             logic = tmp;
 
             requestTask = BusinessLogic.CommunicationTasks.Nothing;
@@ -131,18 +132,18 @@ namespace rmApplication
                 {
                     if (remote.IsClientConnected)
                     {
-                        var text = await remote.ReadTextClientAsync(remoteCancellationTokenSource.Token);
+                        var text = await remote.ReadTextAsync(remoteCancellationTokenSource.Token);
 
                         if (remoteCancellationTokenSource.IsCancellationRequested)
                             break;
 
                         if (string.IsNullOrEmpty(text))
                         {
-                            remote.CloseClient();
+                            remote.DisconnectClient();
                         }
                         else
                         {
-                            remote.Publish(AnalyzeCommand(text));
+                            await remote.WriteAsync(AnalyzeCommand(text));
                         }
 
                     }

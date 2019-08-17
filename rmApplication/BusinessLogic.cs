@@ -335,7 +335,7 @@ namespace rmApplication
 
             txFrame = myCommInstructions.MakeTryConnectionRequest(passNumber);
 
-            myCommMainCtrl.Push(txFrame);
+            await myCommMainCtrl.PushAsync(txFrame);
 
             while(true)
             {
@@ -392,7 +392,7 @@ namespace rmApplication
 
             txFrame = myCommInstructions.MakeSetTimeStepRequest(timeStep);
 
-            myCommMainCtrl.Push(txFrame);
+            await myCommMainCtrl.PushAsync(txFrame);
 
             bool isSuccess = false;
             while(true)
@@ -465,7 +465,7 @@ namespace rmApplication
             bool isSuccess = true;
             while (myCommInstructions.IsAvailableLogDataRequest(out txFrame))
             {
-                myCommMainCtrl.Push(txFrame);
+                await myCommMainCtrl.PushAsync(txFrame);
 
                 int retryCnt = 0;
                 while(true)
@@ -498,7 +498,7 @@ namespace rmApplication
                         }
                         else
                         {
-                            myCommMainCtrl.Push(txFrame);
+                            await myCommMainCtrl.PushAsync(txFrame);
                         }
 
                     }
@@ -532,12 +532,12 @@ namespace rmApplication
             int retryCount = 0;
             while (true)
             {
-                if (isRequestAssert)
+                if(isRequestAssert)
                 {
                     if (!isRetry)
                         txFrame = myCommInstructions.MakeDumpDataRequest(address, size);
 
-                    myCommMainCtrl.Push(txFrame);
+                    await myCommMainCtrl.PushAsync(txFrame);
 
                 }
 
@@ -559,9 +559,7 @@ namespace rmApplication
                     dumpData.AddRange(rxFrame);
 
                     if(size <= (uint)rxFrame.Count)
-                    {
                         break;
-                    }
 
                     address += (uint)rxFrame.Count;
                     size -= (uint)rxFrame.Count;
@@ -573,7 +571,7 @@ namespace rmApplication
                     isRetry = true;
                 }
 
-                if (isRetry)
+                if(isRetry)
                 {
                     retryCount++;
                     if (retryCount > 10)
@@ -588,31 +586,7 @@ namespace rmApplication
 
         private async Task<LogActivityParameter> RunLoggingAsync(CancellationToken ct)
         {
-            LogActivityParameter activity;
-
             // Main task
-            activity = await Task.Run(() => RunLogging(ct), ct);
-
-            // Assert "StopLog" when logging task was finished
-            try
-            {
-                myCommMainCtrl.Push(myCommInstructions.MakeStopLogModeRequest());
-
-                CancellationTokenSource otherCT = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-
-                await myCommMainCtrl.PullAsync(otherCT.Token);
-
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
-            }
-
-            return activity;
-        }
-
-        private LogActivityParameter RunLogging(CancellationToken ct)
-        {
             LogActivityParameter activity = new LogActivityParameter();
             activity.IsSuccess = true;
             activity.IsTimeout = false;
@@ -638,7 +612,7 @@ namespace rmApplication
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    if(!WriteDataRequest.TryDequeue(out txFrame))
+                    if (!WriteDataRequest.TryDequeue(out txFrame))
                     {
                         var msec = txSW.ElapsedMilliseconds;
                         if (msec > 500)
@@ -649,11 +623,11 @@ namespace rmApplication
 
                     }
 
-                    if(txFrame != null)
+                    if (txFrame != null)
                     {
                         if (txFrame.Count != 0)
                         {
-                            myCommMainCtrl.Push(txFrame);
+                            await myCommMainCtrl.PushAsync(txFrame);
 
                         }
 
@@ -671,9 +645,9 @@ namespace rmApplication
                         tmp.RawData = new Queue<ulong>();
                         int lostCnt;
 
-                        if(myCommInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
+                        if (myCommInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
                         {
-                            if(rxTimeOffset == 0)
+                            if (rxTimeOffset == 0)
                             {
                                 rxTimeOffset = msec;
                             }
@@ -701,7 +675,7 @@ namespace rmApplication
 
                     }
 
-                    if(timeoutSW.ElapsedMilliseconds >= 5000)
+                    if (timeoutSW.ElapsedMilliseconds >= 5000)
                     {
                         activity.IsTimeout = true;
 
@@ -716,7 +690,7 @@ namespace rmApplication
                         break;
                     }
 
-                    Thread.Sleep(1);
+                    await Task.Delay(1);
 
                 }
 
@@ -733,6 +707,21 @@ namespace rmApplication
 
             //Clear log data
             mylogData = new ConcurrentQueue<LogData>();
+
+            // Assert "StopLog" when logging task was finished
+            try
+            {
+                await myCommMainCtrl.PushAsync(myCommInstructions.MakeStopLogModeRequest());
+
+                CancellationTokenSource otherCT = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+                await myCommMainCtrl.PullAsync(otherCT.Token);
+
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
 
             return activity;
         }
@@ -779,7 +768,7 @@ namespace rmApplication
                 {
                     txFrame = myCommInstructions.MakeBypassRequest(bytes);
 
-                    myCommMainCtrl.Push(txFrame);
+                    await myCommMainCtrl.PushAsync(txFrame);
 
                 }
 
