@@ -274,8 +274,6 @@ namespace rmApplication
             subViewCtrl.Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
             subViewCtrl.Logic.CancelCurrentTask();
 
-            subViewCtrl.RefreshLogData();
-
         }
 
 

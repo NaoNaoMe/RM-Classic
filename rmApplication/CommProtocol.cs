@@ -9,7 +9,7 @@ namespace rmApplication
     public class CommProtocol
     {
         #region CRC
-        private class Crc8
+        public class Crc8
         {
             //http://sanity-free.org/146/crc8_implementation_in_csharp.html
             static byte[] table = new byte[256];
@@ -139,20 +139,13 @@ namespace rmApplication
                     }
                     else
                     {
-                        byte crc = Crc8.Calculate(DecodingData);
-
+                        // Validation with CRC8 is depend on application
                         IsReceiving = false;
 
-                        if ((crc == 0x00) &&
-                            (DecodingData.Count >= 2))
+                        if (DecodingData.Count >= 2)
                         {
                             // End SLIP Frame
-
-                            // delete useless crc data size
-                            DecodingData.RemoveAt(DecodingData.Count - 1);
-
                             decodedData = new List<byte>(DecodingData);
-
                         }
 
                     }

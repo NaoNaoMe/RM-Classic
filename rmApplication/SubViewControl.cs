@@ -76,6 +76,7 @@ namespace rmApplication
         private AutoCompleteStringCollection autoCompleteSourceForSymbol;
 
         private DumpForm dumpFormInstance;
+        private TerminalForm terminalFormInstance;
 
         private char logTextDelimiter = '\t';
         private string logHeader;
@@ -90,6 +91,8 @@ namespace rmApplication
         private bool isFormClosing;
 
         private Area2DisplayMode displayMode;
+
+        private Queue<List<byte>> terminalData;
 
         public SubViewControl()
         {
@@ -108,6 +111,7 @@ namespace rmApplication
             Logic = new BusinessLogic();
             Logic.InitializeCompletedCallBack = InitializeCompleted;
             Logic.CollectDumpCompletedCallBack = DumpCollectionCompleted;
+            Logic.TextReceivedCallBack = TerminalTextReceived;
 
             myRemoteCtrl = new RemoteControl(Logic);
             myRemoteCtrl.RegisterLogConfigCallBack = LoadViewSettingFile;
@@ -131,6 +135,8 @@ namespace rmApplication
             isFormClosing = false;
 
             displayMode = Area2DisplayMode.Time;
+
+            terminalData = new Queue<List<byte>>();
         }
 
         private void InitializeCompleted(string version)
@@ -153,10 +159,24 @@ namespace rmApplication
 
             }
 
-            if (dumpFormInstance != null)
+            if (dumpFormInstance != null && !dumpFormInstance.IsDisposed)
                 dumpFormInstance.UploadHexbox(bytes);
 
             periodAveraging.Clear();
+
+        }
+
+        private void TerminalTextReceived(List<byte> bytes)
+        {
+            if (IsRemote)
+            {
+
+            }
+
+            if (terminalFormInstance != null && !terminalFormInstance.IsDisposed)
+                terminalFormInstance.UploadReceivedBytes(bytes);
+            else
+                terminalData.Enqueue(bytes);
 
         }
 
@@ -1222,12 +1242,28 @@ namespace rmApplication
 
         private void dumpToolStripButton_Click(object sender, EventArgs e)
         {
-            if (dumpFormInstance != null)
-                dumpFormInstance.Close();
+            if (dumpFormInstance == null || dumpFormInstance.IsDisposed)
+            {
+                dumpFormInstance = new DumpForm(this);
+                dumpFormInstance.Show();
+            }
 
-            dumpFormInstance = new DumpForm(this);
-            dumpFormInstance.Show();
+            dumpFormInstance.Activate();
+        }
 
+        private void terminalToolStripButton_Click(object sender, EventArgs e)
+        {
+            if (terminalFormInstance == null || terminalFormInstance.IsDisposed)
+            {
+                terminalFormInstance = new TerminalForm(this);
+                terminalFormInstance.Show();
+
+                while(terminalData.Count != 0)
+                    terminalFormInstance.UploadReceivedBytes(terminalData.Dequeue());
+
+            }
+
+            terminalFormInstance.Activate();
         }
 
         private async void commToolStripButton_Click(object sender, EventArgs e)

@@ -50,6 +50,7 @@
             this.toolStripLabel3 = new System.Windows.Forms.ToolStripLabel();
             this.logLengthToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
             this.copyLogToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.terminalToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.mainTimer = new System.Windows.Forms.Timer(this.components);
             this.rxPeriodToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.targetVersionViewControl = new rmApplication.NoticeViewControl();
@@ -91,7 +92,7 @@
             dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.mainDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.mainDataGridView.RowTemplate.Height = 21;
-            this.mainDataGridView.Size = new System.Drawing.Size(912, 297);
+            this.mainDataGridView.Size = new System.Drawing.Size(1100, 297);
             this.mainDataGridView.TabIndex = 0;
             this.mainDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellContentClick);
             this.mainDataGridView.CellValidated += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellValidated);
@@ -111,7 +112,7 @@
             this.activityToolStripProgressBar});
             this.mainStatusStrip.Location = new System.Drawing.Point(0, 360);
             this.mainStatusStrip.Name = "mainStatusStrip";
-            this.mainStatusStrip.Size = new System.Drawing.Size(912, 25);
+            this.mainStatusStrip.Size = new System.Drawing.Size(1100, 25);
             this.mainStatusStrip.TabIndex = 9;
             this.mainStatusStrip.Text = "mainStatusStrip";
             // 
@@ -124,14 +125,14 @@
             // area1ToolStripStatusLabel
             // 
             this.area1ToolStripStatusLabel.Name = "area1ToolStripStatusLabel";
-            this.area1ToolStripStatusLabel.Size = new System.Drawing.Size(302, 20);
+            this.area1ToolStripStatusLabel.Size = new System.Drawing.Size(411, 20);
             this.area1ToolStripStatusLabel.Spring = true;
             this.area1ToolStripStatusLabel.Text = "-";
             // 
             // area2ToolStripStatusLabel
             // 
             this.area2ToolStripStatusLabel.Name = "area2ToolStripStatusLabel";
-            this.area2ToolStripStatusLabel.Size = new System.Drawing.Size(302, 20);
+            this.area2ToolStripStatusLabel.Size = new System.Drawing.Size(411, 20);
             this.area2ToolStripStatusLabel.Spring = true;
             this.area2ToolStripStatusLabel.Text = "-";
             this.area2ToolStripStatusLabel.Click += new System.EventHandler(this.area2ToolStripStatusLabel_Click);
@@ -156,10 +157,11 @@
             this.dumpToolStripButton,
             this.toolStripLabel3,
             this.logLengthToolStripTextBox,
-            this.copyLogToolStripButton});
+            this.copyLogToolStripButton,
+            this.terminalToolStripButton});
             this.mainToolStrip.Location = new System.Drawing.Point(0, 0);
             this.mainToolStrip.Name = "mainToolStrip";
-            this.mainToolStrip.Size = new System.Drawing.Size(912, 27);
+            this.mainToolStrip.Size = new System.Drawing.Size(1100, 27);
             this.mainToolStrip.TabIndex = 10;
             this.mainToolStrip.Text = "toolStrip1";
             // 
@@ -244,6 +246,15 @@
             this.copyLogToolStripButton.Text = "Copy Log";
             this.copyLogToolStripButton.Click += new System.EventHandler(this.copyLogToolStripButton_Click);
             // 
+            // terminalToolStripButton
+            // 
+            this.terminalToolStripButton.Image = global::rmApplication.Properties.Resources.Monitor_Screen_16xLG;
+            this.terminalToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.terminalToolStripButton.Name = "terminalToolStripButton";
+            this.terminalToolStripButton.Size = new System.Drawing.Size(83, 24);
+            this.terminalToolStripButton.Text = "Terminal";
+            this.terminalToolStripButton.Click += new System.EventHandler(this.terminalToolStripButton_Click);
+            // 
             // mainTimer
             // 
             this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
@@ -260,9 +271,9 @@
             this.targetVersionViewControl.Dock = System.Windows.Forms.DockStyle.Top;
             this.targetVersionViewControl.Label = "Target Version";
             this.targetVersionViewControl.Location = new System.Drawing.Point(0, 45);
-            this.targetVersionViewControl.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.targetVersionViewControl.Margin = new System.Windows.Forms.Padding(2);
             this.targetVersionViewControl.Name = "targetVersionViewControl";
-            this.targetVersionViewControl.Size = new System.Drawing.Size(912, 18);
+            this.targetVersionViewControl.Size = new System.Drawing.Size(1100, 18);
             this.targetVersionViewControl.TabIndex = 12;
             this.targetVersionViewControl.TextBox = "";
             this.targetVersionViewControl.TextEnabled = false;
@@ -272,9 +283,9 @@
             this.receivedVersionViewControl.Dock = System.Windows.Forms.DockStyle.Top;
             this.receivedVersionViewControl.Label = "Received Version";
             this.receivedVersionViewControl.Location = new System.Drawing.Point(0, 27);
-            this.receivedVersionViewControl.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.receivedVersionViewControl.Margin = new System.Windows.Forms.Padding(2);
             this.receivedVersionViewControl.Name = "receivedVersionViewControl";
-            this.receivedVersionViewControl.Size = new System.Drawing.Size(912, 18);
+            this.receivedVersionViewControl.Size = new System.Drawing.Size(1100, 18);
             this.receivedVersionViewControl.TabIndex = 11;
             this.receivedVersionViewControl.TextBox = "";
             this.receivedVersionViewControl.TextEnabled = false;
@@ -289,7 +300,7 @@
             this.Controls.Add(this.mainStatusStrip);
             this.Controls.Add(this.mainToolStrip);
             this.Name = "SubViewControl";
-            this.Size = new System.Drawing.Size(912, 385);
+            this.Size = new System.Drawing.Size(1100, 385);
             ((System.ComponentModel.ISupportInitialize)(this.mainDataGridView)).EndInit();
             this.mainStatusStrip.ResumeLayout(false);
             this.mainStatusStrip.PerformLayout();
@@ -322,5 +333,6 @@
         private System.Windows.Forms.ToolStripLabel toolStripLabel3;
         private System.Windows.Forms.ToolStripTextBox logLengthToolStripTextBox;
         private System.Windows.Forms.ToolStripStatusLabel rxPeriodToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripButton terminalToolStripButton;
     }
 }

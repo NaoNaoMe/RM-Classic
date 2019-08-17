@@ -26,7 +26,8 @@ namespace rmApplication
             SetAddr = 5,
             ReadInfo = 6,
             ReadDump = 7,
-            Bypass = 8
+            Bypass = 8,
+            Text = 9
         };
 
         private RmAddr ByteRange;
@@ -55,10 +56,7 @@ namespace rmApplication
             MasCnt = MasCnt + 16;
 
             if (MasCnt > 255)
-            {
                 MasCnt = 16;
-
-            }
 
             int tmp = MasCnt + (int)instruction;
 
@@ -70,16 +68,13 @@ namespace rmApplication
         {
             if( (txFrame.Count == 0) ||
                 (rxFrame.Count == 0) )
-            {
                 return false;
 
-            }
-
-            if( (rxFrame[0] & 0xF0) != (txFrame[0] & 0xF0) )
-            {
+            if (CommProtocol.Crc8.Calculate(rxFrame) != 0x00)
                 return false;
 
-            }
+            if ( (rxFrame[0] & 0xF0) != (txFrame[0] & 0xF0) )
+                return false;
 
             return true;
         }
@@ -365,13 +360,21 @@ namespace rmApplication
             return true;
         }
 
-
         public bool CheckLogSequence(List<byte> decodedData, ref Queue<ulong> dataList, out int lostCnt)
         {
+            lostCnt = 0;
+
+            if (decodedData.Count <= 0)
+                return false;
+
+            if (CommProtocol.Crc8.Calculate(decodedData) != 0x00)
+                return false;
+
+            // delete useless crc data size
+            decodedData.RemoveAt(decodedData.Count - 1);
+
             bool isValid = true;
             int slvCnt = decodedData[0] & 0x0F;
-
-            lostCnt = 0;
 
             if( (NextSlvCnt != 0) &&
                 (slvCnt != NextSlvCnt) )
@@ -470,6 +473,37 @@ namespace rmApplication
 
         }
 
+        // Unmanaged data frame
+        public bool CheckUnmanagedStream(List<byte> decodedData, ref List<byte> bytes, out int code)
+        {
+            code = 0;
+
+            if (decodedData.Count <= 2)
+                return false;
+
+            if (decodedData[0] != 0)    // Unmanaged data frame
+                return false;
+
+            code = decodedData[1];      // Unmanaged data code
+
+            for (int i = 2; i < decodedData.Count; i++)
+                bytes.Add(decodedData[i]);
+
+            return true;
+        }
+
+        public List<byte> MakeSendTextRequest(List<byte> bytes)
+        {
+            List<byte> frame = new List<byte>();
+
+            frame.Add(0x00);    // Unmanaged data frame
+            frame.Add(0x01);    // Text data
+
+            frame.AddRange(bytes);
+
+            return frame;
+
+        }
 
     }
 }

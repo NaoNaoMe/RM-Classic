@@ -66,6 +66,9 @@ namespace rmApplication
         public delegate void CollectDumpCompletedFunction(List<byte> bytes);
         public CollectDumpCompletedFunction CollectDumpCompletedCallBack;
 
+        public delegate void TextReceivedFunction(List<byte> bytes);
+        public TextReceivedFunction TextReceivedCallBack;
+
         public uint LogTimeStep { private get; set; }
         public List<DataParameter> LogConfigParameter { private get; set; }
         public DataParameter DumpConfigParameter { private get; set; }
@@ -153,6 +156,12 @@ namespace rmApplication
         public void EditValue(DataParameter param)
         {
             WriteDataRequest.Enqueue(myCommInstructions.MakeWirteDataRequest(param.Address, param.Size, param.Value));
+        }
+
+        private ConcurrentQueue<List<byte>> SendTextRequest = new ConcurrentQueue<List<byte>>();
+        public void SendText(byte[] bytes)
+        {
+            SendTextRequest.Enqueue(myCommInstructions.MakeSendTextRequest(bytes.ToList()));
         }
 
         public async Task<string> RunAsync(bool isBreakable)
@@ -359,12 +368,13 @@ namespace rmApplication
                     }
                     else
                     {
-                        rxFrame.RemoveAt(0);    // remove unnecessary header data
+                        rxFrame.RemoveAt(0);                    // remove unnecessary header data
+                        rxFrame.RemoveAt(rxFrame.Count - 1);    // remove unnecessary crc data
 
                         var endIndex = rxFrame.Count() - 1;
                         if (rxFrame[endIndex] == 0x00)
                         {
-                            rxFrame.RemoveAt(endIndex);
+                            rxFrame.RemoveAt(endIndex);         // remove null data
                         }
 
                         response.IsSuccess = true;
@@ -555,7 +565,9 @@ namespace rmApplication
                     isRetry = false;
                     retryCount = 0;
 
-                    rxFrame.RemoveAt(0);    // remove unnecessary header data
+                    rxFrame.RemoveAt(0);                    // remove unnecessary header data
+                    rxFrame.RemoveAt(rxFrame.Count - 1);    // remove unnecessary crc data
+
                     dumpData.AddRange(rxFrame);
 
                     if(size <= (uint)rxFrame.Count)
@@ -612,7 +624,15 @@ namespace rmApplication
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    if (!WriteDataRequest.TryDequeue(out txFrame))
+                    if (SendTextRequest.TryDequeue(out txFrame))
+                    {
+
+                    }
+                    else if (WriteDataRequest.TryDequeue(out txFrame))
+                    {
+
+                    }
+                    else
                     {
                         var msec = txSW.ElapsedMilliseconds;
                         if (msec > 500)
@@ -620,7 +640,6 @@ namespace rmApplication
                             txFrame = myCommInstructions.MakeStartLogModeRequest();
                             txSW.Restart();
                         }
-
                     }
 
                     if (txFrame != null)
@@ -645,7 +664,16 @@ namespace rmApplication
                         tmp.RawData = new Queue<ulong>();
                         int lostCnt;
 
-                        if (myCommInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
+                        var bytes = new List<byte>();
+                        int code;
+
+                        if (myCommInstructions.CheckUnmanagedStream(rxFrame, ref bytes, out code))
+                        {
+                            if(code == 1)
+                                TextReceivedCallBack?.Invoke(bytes);
+
+                        }
+                        else if (myCommInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
                         {
                             if (rxTimeOffset == 0)
                             {
@@ -786,7 +814,8 @@ namespace rmApplication
                     isRetry = false;
                     retryCount = 0;
 
-                    rxFrame.RemoveAt(0);    // remove unnecessary header data
+                    rxFrame.RemoveAt(0);                    // remove unnecessary header data
+                    rxFrame.RemoveAt(rxFrame.Count - 1);    // remove unnecessary crc data
 
                     outputText = string.Empty;
                     foreach (var abyte in rxFrame)
