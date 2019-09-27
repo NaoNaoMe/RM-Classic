@@ -28,7 +28,7 @@ namespace rmApplication
 
             text = text.Replace(" ", "");
 
-            if (!Regex.IsMatch(text, @"^[0-9a-fA-F.]+$"))
+            if (!Regex.IsMatch(text, @"^[0-9a-fA-F.-]+$"))
                 return false;
 
             try
