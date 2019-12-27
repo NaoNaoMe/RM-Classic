@@ -43,6 +43,8 @@ namespace rmApplication
         private int hexboxAddress;
         private int hexboxOffsetAddress;
 
+        private List<DumpConfig> configList;
+
         public DumpForm(SubViewControl tmp)
         {
             subViewCtrl = tmp;
@@ -293,7 +295,7 @@ namespace rmApplication
             for (int index = dumpDataGridView.Columns.Count; index > 2; index--)
                 dumpDataGridView.Columns.RemoveAt((index - 1));
 
-            List<DumpConfig> configList = new List<DumpConfig>();
+            configList = new List<DumpConfig>();
 
             bool isFailed = false;
             int clusterSize = 0;
@@ -410,6 +412,9 @@ namespace rmApplication
                     }
                 }
 
+                if (maxDataColumnSize > 16)
+                    maxDataColumnSize = 16;
+
                 for (int index = 0; index < maxDataColumnSize; index++)
                 {
                     DataGridViewTextBoxColumn textColumn = new DataGridViewTextBoxColumn();
@@ -442,54 +447,28 @@ namespace rmApplication
             string delimiter = "\t";
             string seriesName = "Series";
 
+            if (configList == null)
+                return;
+
+            if (configList.Count <= 0)
+                return;
+
+            string[] text = new string[configList[0].Values.Count+1];
+
+            int column = 0;
+            foreach(var config in configList)
+            {
+                int index = 0;
+                text[index++] += seriesName + (column++).ToString() + delimiter;
+                foreach (var value in config.Values)
+                    text[index++] += value + delimiter;
+
+            }
+
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
-            string header = null;
-            for (int i = 0; i < (dumpDataGridView.RowCount - 1); i++)
-            {
-                if (string.IsNullOrEmpty(header) == true)
-                {
-                    header = seriesName + i.ToString();
-
-                }
-                else
-                {
-                    header = header + delimiter + seriesName + i.ToString();
-
-                }
-
-            }
-
-            sb.AppendLine(header);
-
-            string text = null;
-            for (int i = (int)FixedColumns.DataStart; i < dumpDataGridView.ColumnCount; i++)
-            {
-                foreach (DataGridViewRow item in dumpDataGridView.Rows)
-                {
-                    if (string.IsNullOrEmpty(item.Cells[i].Value as string) == true)
-                    {
-                        sb.AppendLine(text);
-                        text = null;
-                    }
-                    else
-                    {
-                        if (string.IsNullOrEmpty(text) == true)
-                        {
-                            text = item.Cells[i].Value.ToString();
-
-                        }
-                        else
-                        {
-                            text = text + delimiter + item.Cells[i].Value.ToString();
-
-                        }
-
-                    }
-
-                }
-
-            }
+            foreach(var item in text)
+                sb.AppendLine(item);
 
             Clipboard.SetText(sb.ToString());
 
