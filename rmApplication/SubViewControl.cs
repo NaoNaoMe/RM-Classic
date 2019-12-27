@@ -817,7 +817,7 @@ namespace rmApplication
                 address = (UInt64)UInt32.MaxValue;
 
             ulong data;
-            if (UserUlong.TryParse(type, size, writeText, out data))
+            if (!UserUlong.TryParse(type, size, writeText, out data))
                 return false;
 
 

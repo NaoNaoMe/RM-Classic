@@ -603,6 +603,12 @@ namespace rmApplication
             activity.IsSuccess = true;
             activity.IsTimeout = false;
 
+            if (!myCommMainCtrl.IsOpen)
+            {
+                activity.IsSuccess = false;
+                return activity;
+            }
+
             var txSW = new System.Diagnostics.Stopwatch();
             var rxSW = new System.Diagnostics.Stopwatch();
             var timeoutSW = new System.Diagnostics.Stopwatch();
@@ -739,11 +745,21 @@ namespace rmApplication
             // Assert "StopLog" when logging task was finished
             try
             {
-                await myCommMainCtrl.PushAsync(myCommInstructions.MakeStopLogModeRequest());
+                txFrame = myCommInstructions.MakeStopLogModeRequest();
+                await myCommMainCtrl.PushAsync(txFrame);
 
-                CancellationTokenSource otherCT = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+                while(true)
+                {
+                    CancellationTokenSource otherCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+                    rxFrame = await myCommMainCtrl.PullAsync(otherCts.Token);
 
-                await myCommMainCtrl.PullAsync(otherCT.Token);
+                    if (otherCts.IsCancellationRequested)
+                        break;
+
+                    if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
+                        break;
+
+                }
 
             }
             catch (Exception ex)

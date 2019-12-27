@@ -269,7 +269,7 @@ namespace rmApplication
                     else
                     {
                         int pageValue;
-                        if (int.TryParse(parameters, out pageValue))
+                        if (!int.TryParse(parameters, out pageValue))
                         {
                             answer = failedText;
                         }
