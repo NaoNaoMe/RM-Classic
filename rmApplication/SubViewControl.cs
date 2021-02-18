@@ -375,8 +375,6 @@ namespace rmApplication
             var task2 = Logic.RunAsync(false);
 
             RefreshLogData();
-            //RefreshDataGridView();
-            //UpdateInformation();
 
             area1ToolStripStatusLabel.Text = "Remote @ " + Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString();
 
@@ -612,17 +610,17 @@ namespace rmApplication
                             }
                             else
                             {
-                                if ((result.Size == "1") ||
-                                    (result.Size == "2") ||
-                                    (result.Size == "4") ||
-                                    (result.Size == "8"))
-                                {
-                                    setting.Size = result.Size;
-
-                                }
-
                                 setting.Address = result.Address;
-                                setting.Offset = result.Offset;
+
+                                if (ValidateSize(result.Size, out int size))
+                                {
+                                    if (size != 0)
+                                    {
+                                        // Appropriate value for watching variables
+                                        setting.Size = result.Size;
+                                        setting.Offset = result.Offset;
+                                    }
+                                }
 
                             }
 
@@ -1319,8 +1317,6 @@ namespace rmApplication
                 IsCommunicationActive = true;
 
                 RefreshLogData();
-                //RefreshDataGridView();
-                //UpdateInformation();
 
                 receivedVersionViewControl.TextBox = string.Empty;
 
@@ -1656,7 +1652,6 @@ namespace rmApplication
                 if(isUpdate)
                 {
                     RefreshLogData();
-                    //RefreshDataGridView();
                     UpdateInformation();
 
                     if (IsCommunicationActive)
@@ -1864,11 +1859,13 @@ namespace rmApplication
                         if (ValidateSize(result.Size, out size))
                         {
                             if (size != 0)
+                            {
                                 dgv[sizeColumnIndex, e.RowIndex].Value = size;
+                                dgv[offsetColumnIndex, e.RowIndex].Value = result.Offset;
+                            }
                         }
 
                         dgv[addressColumnIndex, e.RowIndex].Value = result.Address;
-                        dgv[offsetColumnIndex, e.RowIndex].Value = result.Offset;
 
                     }
                     else
@@ -2030,7 +2027,7 @@ namespace rmApplication
 
         private bool ValidateSize(string value, out int result)
         {
-            result = 1;
+            result = 0;
 
             if (string.IsNullOrEmpty(value))
                 return false;

@@ -40,8 +40,8 @@ namespace rmApplication
         private SubViewControl subViewCtrl;
         private AutoCompleteStringCollection autoCompleteSourceForSymbol;
 
-        private int hexboxAddress;
-        private int hexboxOffsetAddress;
+        private long hexboxAddress;
+        private long hexboxOffsetAddress;
 
         private List<DumpConfig> configList;
 
@@ -216,7 +216,7 @@ namespace rmApplication
             string addressText = addressTextBox.Text;
             string sizeText = sizeTextBox.Text;
 
-            int address = 0;
+            long address = 0;
             int size = 0;
 
             bool isSuccess = false;
@@ -237,7 +237,7 @@ namespace rmApplication
                     {
                         addressText = addressText.Remove(0, 2);
 
-                        if (int.TryParse(addressText, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out address))
+                        if (long.TryParse(addressText, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out address))
                         {
                             if (tms320c28xEndianRadioButton.Checked)
                                 address = address * 2;
@@ -289,7 +289,7 @@ namespace rmApplication
 
             var offsetSize = hexboxAddress - hexboxOffsetAddress;
             Queue<byte> image = new Queue<byte>();
-            for (int index = offsetSize; index < mainHexBox.ByteProvider.Length; index++)
+            for (var index = offsetSize; index < mainHexBox.ByteProvider.Length; index++)
                 image.Enqueue(mainHexBox.ByteProvider.ReadByte(index));
 
             for (int index = dumpDataGridView.Columns.Count; index > 2; index--)
@@ -481,7 +481,7 @@ namespace rmApplication
                 var remainder = hexboxAddress % 16;
                 hexboxOffsetAddress = hexboxAddress - remainder;
 
-                for (UInt32 i = 0; i < remainder; i++)
+                for (var i = 0; i < remainder; i++)
                     bytes.Insert(0x00, 0);
 
             }
