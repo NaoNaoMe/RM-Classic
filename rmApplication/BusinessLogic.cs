@@ -58,10 +58,11 @@ namespace rmApplication
         }
 
 
-        public delegate void InitializeCompletedFunction(string message);
-        public InitializeCompletedFunction InitializeCompletedCallBack;
+        public delegate void ConnectedFunction(string message);
+        public ConnectedFunction ConnectedCallBack;
 
-        public delegate void LogCommunicationTimeoutFunction();
+        public delegate void DisconnectedFunction();
+        public DisconnectedFunction DisconnectedCallBack;
 
         public delegate void CollectDumpCompletedFunction(List<byte> bytes);
         public CollectDumpCompletedFunction CollectDumpCompletedCallBack;
@@ -164,7 +165,7 @@ namespace rmApplication
             SendTextRequest.Enqueue(myCommInstructions.MakeSendTextRequest(bytes.ToList()));
         }
 
-        public async Task<string> RunAsync(bool isBreakable)
+        public async Task<string> RunAsync(bool isBreakable = false)
         {
             string msg = string.Empty;
             bool isSuccess;
@@ -205,6 +206,7 @@ namespace rmApplication
 
                             case CommunicationTasks.Close:
                                 myCommMainCtrl.Close();
+                                DisconnectedCallBack?.Invoke();
                                 break;
 
                             case CommunicationTasks.Initialize:
@@ -212,7 +214,7 @@ namespace rmApplication
 
                                 if(response.IsSuccess)
                                 {
-                                    InitializeCompletedCallBack?.Invoke(response.VersionName);
+                                    ConnectedCallBack?.Invoke(response.VersionName);
                                 }
                                 else 
                                 {
@@ -296,6 +298,7 @@ namespace rmApplication
 
                             case CommunicationTasks.Terminate:
                                 myCommMainCtrl.Close();
+                                DisconnectedCallBack?.Invoke();
                                 isBreak = true;
                                 break;
 

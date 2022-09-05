@@ -13,12 +13,10 @@ namespace rmApplication
     public partial class RemoteSettingForm : Form
     {
         private Configuration config;
-        private bool isRemoteState;
 
-        public RemoteSettingForm(Configuration tmp, bool isRemote)
+        public RemoteSettingForm(Configuration tmp)
         {
             config = tmp;
-            isRemoteState = isRemote;
             InitializeComponent();
 
             if (config.ServerAddress != null)
@@ -27,49 +25,32 @@ namespace rmApplication
                 serverPortTextBox.Text = config.ServerPort.ToString();
             }
 
-            if (isRemoteState)
-            {
-                serverAddressTextBox.Enabled = false;
-                serverPortTextBox.Enabled = false;
-                enableButton.Text = "LOCAL";
-            }
-            else
-            {
-                serverAddressTextBox.Enabled = true;
-                serverPortTextBox.Enabled = true;
-                enableButton.Text = "REMOTE";
-            }
-
         }
 
-        private void enableButton_Click(object sender, EventArgs e)
+        private void okButton_Click(object sender, EventArgs e)
         {
-            if(isRemoteState)
+            System.Net.IPAddress address;
+            int port;
+            if ((System.Net.IPAddress.TryParse(serverAddressTextBox.Text, out address)) &&
+                (int.TryParse(serverPortTextBox.Text, out port)))
             {
-                this.DialogResult = DialogResult.Abort;
+                config.ServerAddress = address;
+                config.ServerPort = port;
+
+                this.DialogResult = DialogResult.OK;
                 this.Close();
             }
             else
             {
-                System.Net.IPAddress address;
-                int port;
-                if ((System.Net.IPAddress.TryParse(serverAddressTextBox.Text, out address)) &&
-                    (int.TryParse(serverPortTextBox.Text, out port)))
-                {
-                    config.ServerAddress = address;
-                    config.ServerPort = port;
+                serverAddressTextBox.Text = config.ServerAddress.ToString();
+                serverPortTextBox.Text = config.ServerPort.ToString();
 
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                }
-                else
-                {
-                    serverAddressTextBox.Text = config.ServerAddress.ToString();
-                    serverPortTextBox.Text = config.ServerPort.ToString();
-                }
+                MessageBox.Show("Invalid parameters.",
+                    "Caution",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
 
             }
-
         }
 
         private void cancelButton_Click(object sender, EventArgs e)

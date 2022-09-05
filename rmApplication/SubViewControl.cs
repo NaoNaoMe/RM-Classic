@@ -94,6 +94,10 @@ namespace rmApplication
 
         private Queue<List<byte>> terminalData;
 
+        private readonly string COMM_OPEN_TEXT = "Comm Open ";
+        private readonly string COMM_CLOSE_TEXT = "Comm Close";
+
+
         public SubViewControl()
         {
             InitializeComponent();
@@ -109,7 +113,8 @@ namespace rmApplication
             Config = new Configuration();
 
             Logic = new BusinessLogic();
-            Logic.InitializeCompletedCallBack = InitializeCompleted;
+            Logic.ConnectedCallBack = Connected;
+            Logic.DisconnectedCallBack = Disconnected;
             Logic.CollectDumpCompletedCallBack = DumpCollectionCompleted;
             Logic.TextReceivedCallBack = TerminalTextReceived;
 
@@ -119,6 +124,7 @@ namespace rmApplication
             myRemoteCtrl.ChangeTimeStepCallBack = ChageTimeStep;
             myRemoteCtrl.ValidateWriteCallBack = ValidateWriteOrder;
             myRemoteCtrl.ValidateWriteValueCallBack = ValidateWriteValue;
+            myRemoteCtrl.FindaSymbolCallback = FindaSymbol;
 
             IsCommunicationActive = false;
             IsCustomizingMode = false;
@@ -139,12 +145,27 @@ namespace rmApplication
             terminalData = new Queue<List<byte>>();
         }
 
-        private void InitializeCompleted(string version)
+        private void Connected(string version)
         {
+            activityToolStripProgressBar.Style = ProgressBarStyle.Marquee;
+            activityToolStripProgressBar.MarqueeAnimationSpeed = 30;
+
+            commToolStripButton.Image = Properties.Resources.FlagThread_red;
+            commToolStripButton.Text = COMM_CLOSE_TEXT;
+
             receivedVersionViewControl.TextBox = version;
 
-            if (IsRemote)
-                myRemoteCtrl.DeviceVersion = version;
+            myRemoteCtrl.DeviceVersion = version;
+
+        }
+
+        private void Disconnected()
+        {
+            activityToolStripProgressBar.Style = ProgressBarStyle.Blocks;
+            activityToolStripProgressBar.MarqueeAnimationSpeed = 0;
+
+            commToolStripButton.Image = Properties.Resources.FlagThread_white;
+            commToolStripButton.Text = COMM_OPEN_TEXT;
 
         }
 
@@ -355,57 +376,38 @@ namespace rmApplication
 
         public async void RunRemoteServerAsync()
         {
-            if (IsRemote)
-                return;
-
-            if(IsCustomizingMode)
-                customizeToolStripButton.PerformClick();
-
-            receivedVersionViewControl.TextBox = string.Empty;
-
-            activityToolStripProgressBar.Style = ProgressBarStyle.Marquee;
-            activityToolStripProgressBar.MarqueeAnimationSpeed = 30;
-
             IsRemote = true;
-
-            var task1 = myRemoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
-            Logic.ClearWaitingTasks();
-            Logic.LogTimeStep = (uint)timeStep;
-            Logic.UpdateResource(Config);
-            var task2 = Logic.RunAsync(false);
-
-            RefreshLogData();
+            remoteToolStripButton.Text = "LOCAL";
 
             area1ToolStripStatusLabel.Text = "Remote @ " + Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString();
 
-            this.Enabled = false;
-
-            await Task.WhenAll(task1, task2);
+            await myRemoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
 
             if (isFormClosing)
                 return;
 
-            this.Enabled = true;
-
             area1ToolStripStatusLabel.Text = "-";
 
+            remoteToolStripButton.Text = "REMOTE";
             IsRemote = false;
 
-            activityToolStripProgressBar.Style = ProgressBarStyle.Blocks;
-            activityToolStripProgressBar.MarqueeAnimationSpeed = 0;
 
         }
 
-        public void CancelRemoteServer()
+        public async void RunMainLogicAsync()
         {
-            if (!IsRemote)
-                return;
+            IsCommunicationActive = true;
+
+            receivedVersionViewControl.TextBox = string.Empty;
 
             Logic.ClearWaitingTasks();
-            Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Terminate);
-            Logic.CancelCurrentTask();
 
-            myRemoteCtrl.Cancel();
+            await Logic.RunAsync(true);
+
+            if (isFormClosing)
+                return;
+
+            IsCommunicationActive = false;
 
         }
 
@@ -737,7 +739,10 @@ namespace rmApplication
 
                 var parameters = new List<BusinessLogic.DataParameter>();
                 if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out parameters))
+                {
+                    Logic.LogConfigParameter = parameters;
                     isSuccess = true;
+                }
 
             }
 
@@ -748,6 +753,73 @@ namespace rmApplication
         {
             timeStepToolStripTextBox.Text = value.ToString();
 
+        }
+
+        private bool FindaSymbol(string symbol, out BusinessLogic.DataParameter result)
+        {
+            result = new BusinessLogic.DataParameter();
+
+            if ((MapList == null) ||
+                (MapList.Count <= 0))
+            {
+                return false;
+            }
+
+            bool isSuccess = false;
+
+            SymbolFactor found = MapList.Find(key => key.Symbol == symbol);
+
+            if (found != null)
+            {
+                var sizeText = found.Size;
+                if (string.IsNullOrEmpty(sizeText))
+                    return false;
+
+                int size;
+                if (!int.TryParse(sizeText, out size))
+                    return false;
+
+                var addressText = found.Address;
+                if (string.IsNullOrEmpty(addressText))
+                    return false;
+
+                if (!IsHexString(addressText))
+                    return false;
+
+                UInt64 address = Convert.ToUInt64(addressText, 16);
+
+                var offsetText = found.Offset;
+                if (string.IsNullOrEmpty(offsetText))
+                    return false;
+
+                bool isValid = false;
+                UInt32 offset;
+                if (UInt32.TryParse(offsetText, out offset))
+                {
+                    isValid = true;
+                }
+                else if (IsHexString(offsetText))
+                {
+                    isValid = true;
+                    offset = Convert.ToUInt32(offsetText, 16);
+                }
+
+                if (!isValid)
+                    return false;
+
+                address += offset;
+
+                if (address >= (UInt64)UInt32.MaxValue)
+                    address = (UInt64)UInt32.MaxValue;
+
+                result.Address = (uint)address;
+                result.Size = (uint)size;
+                result.Value = 0;
+                isSuccess = true;
+
+            }
+
+            return isSuccess;
         }
 
         private bool ValidateWriteOrder(string writeOrder, out BusinessLogic.DataParameter result)
@@ -778,21 +850,34 @@ namespace rmApplication
             if (index < 0 || index >= ViewSettingList[currentPageIndex].Settings.Count())
                 return false;
 
+            var sizeText = ViewSettingList[currentPageIndex].Settings[index].Size;
+            if (string.IsNullOrEmpty(sizeText))
+                return false;
+
             int size;
-            if (!int.TryParse(ViewSettingList[currentPageIndex].Settings[index].Size.ToString(), out size))
+            if (!int.TryParse(sizeText, out size))
+                return false;
+
+            var typeText = ViewSettingList[currentPageIndex].Settings[index].Type;
+            if (string.IsNullOrEmpty(typeText))
                 return false;
 
             UserType type;
-            if (!Enum.TryParse<UserType>(ViewSettingList[currentPageIndex].Settings[index].Type.ToString(), out type))
+            if (!Enum.TryParse<UserType>(typeText, out type))
                 return false;
 
-            var addressText = ViewSettingList[currentPageIndex].Settings[index].Address.ToString();
+            var addressText = ViewSettingList[currentPageIndex].Settings[index].Address;
+            if (string.IsNullOrEmpty(addressText))
+                return false;
+
             if (!IsHexString(addressText))
                 return false;
 
             UInt64 address = Convert.ToUInt64(addressText, 16);
 
-            var offsetText = ViewSettingList[currentPageIndex].Settings[index].Offset.ToString();
+            var offsetText = ViewSettingList[currentPageIndex].Settings[index].Offset;
+            if (string.IsNullOrEmpty(offsetText))
+                return false;
 
             bool isValid = false;
             UInt32 offset;
@@ -1264,15 +1349,31 @@ namespace rmApplication
 
             terminalFormInstance.Activate();
         }
+        
+        private void remoteToolStripButton_Click(object sender, EventArgs e)
+        {
+            if (IsRemote)
+            {
+                myRemoteCtrl.Cancel();
+
+                mainDataGridView.Enabled = true;
+
+            }
+            else
+            {
+                if (IsCustomizingMode)
+                    customizeToolStripButton.PerformClick();
+
+                RunRemoteServerAsync();
+
+                mainDataGridView.Enabled = false;
+
+            }
+
+        }
 
         private async void commToolStripButton_Click(object sender, EventArgs e)
         {
-            const string COMM_OPEN_TEXT = "Comm Open ";
-            const string COMM_CLOSE_TEXT = "Comm Close";
-
-            if (IsRemote)
-                return;
-
             if (IsCustomizingMode)
             {
                 MessageBox.Show("Quit custmizing mode.",
@@ -1320,9 +1421,6 @@ namespace rmApplication
 
                 receivedVersionViewControl.TextBox = string.Empty;
 
-                activityToolStripProgressBar.Style = ProgressBarStyle.Marquee;
-                activityToolStripProgressBar.MarqueeAnimationSpeed = 30;
-
                 commToolStripButton.Image = Properties.Resources.FlagThread_red;
                 commToolStripButton.Text = COMM_CLOSE_TEXT;
 
@@ -1359,9 +1457,6 @@ namespace rmApplication
 
                 commToolStripButton.Image = Properties.Resources.FlagThread_white;
                 commToolStripButton.Text = COMM_OPEN_TEXT;
-
-                activityToolStripProgressBar.Style = ProgressBarStyle.Blocks;
-                activityToolStripProgressBar.MarqueeAnimationSpeed = 0;
 
                 IsCommunicationActive = false;
 
@@ -2000,8 +2095,15 @@ namespace rmApplication
                         }
                         else
                         {
-                            result = ulong.Parse(dgv[writerawColumnIndex, e.RowIndex].Value.ToString());
-                            UserString.TryParse(type, size, result, out inputText);
+                            if (dgv[writerawColumnIndex, e.RowIndex].Value == null)
+                            {
+                                inputText = string.Empty;
+                            }
+                            else
+                            {
+                                result = ulong.Parse(dgv[writerawColumnIndex, e.RowIndex].Value.ToString());
+                                UserString.TryParse(type, size, result, out inputText);
+                            }
                         }
 
                     }
@@ -2263,5 +2365,6 @@ namespace rmApplication
             UpdateInformation(displayMode);
 
         }
+
     }
 }

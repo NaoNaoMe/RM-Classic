@@ -28,6 +28,9 @@ namespace rmApplication
         public delegate bool ValidateWriteFunction(string orderText, out BusinessLogic.DataParameter param);
         public ValidateWriteFunction ValidateWriteCallBack;
 
+        public delegate bool FindaSymbolFunction(string symbol, out BusinessLogic.DataParameter param);
+        public FindaSymbolFunction FindaSymbolCallback;
+
         private const string CommandResource = "resource";
 
         private const string CommandOpen = "open";
@@ -47,6 +50,7 @@ namespace rmApplication
         private const string CommandLogGet = "logget";
         private const string CommandLogWrite = "logwrite";
         private const string CommandLogSize = "logsize";
+        private const string CommandLogRead = "logread";
 
         private const string CommandDumpSet = "dumpset";
         private const string CommandDumpGet = "dumpget";
@@ -290,6 +294,7 @@ namespace rmApplication
                         }
                     }
                     break;
+                    
                 case CommandTimeStep:
                     int timeStep;
                     if (int.TryParse(parameters, out timeStep))
@@ -372,6 +377,15 @@ namespace rmApplication
                     }
 
                     break;
+
+                case CommandLogRead:
+                    if (logTextDataBuff.Count > 0)
+                    {
+                        answer = okText + " " + logTextDataBuff.Last();
+                    }
+
+                    break;
+
                 case CommandDumpSet:
                     if (requestTask == BusinessLogic.CommunicationTasks.Dump)
                     {
@@ -528,6 +542,10 @@ namespace rmApplication
         {
             param = new BusinessLogic.DataParameter();
             var factors = text.Split(',');
+
+            if (factors.Count() == 1 && FindaSymbolCallback != null)
+                return FindaSymbolCallback(factors[0], out param);
+
 
             if (factors.Count() != 2)
                 return false;

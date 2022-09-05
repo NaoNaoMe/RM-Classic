@@ -33,7 +33,7 @@
             this.serverPortTextBox = new System.Windows.Forms.TextBox();
             this.serverAddressTextBox = new System.Windows.Forms.TextBox();
             this.cancelButton = new System.Windows.Forms.Button();
-            this.enableButton = new System.Windows.Forms.Button();
+            this.okButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // label4
@@ -79,16 +79,16 @@
             this.cancelButton.UseVisualStyleBackColor = true;
             this.cancelButton.Click += new System.EventHandler(this.cancelButton_Click);
             // 
-            // enableButton
+            // okButton
             // 
-            this.enableButton.Location = new System.Drawing.Point(115, 63);
-            this.enableButton.Margin = new System.Windows.Forms.Padding(4);
-            this.enableButton.Name = "enableButton";
-            this.enableButton.Size = new System.Drawing.Size(92, 36);
-            this.enableButton.TabIndex = 31;
-            this.enableButton.Text = "-";
-            this.enableButton.UseVisualStyleBackColor = true;
-            this.enableButton.Click += new System.EventHandler(this.enableButton_Click);
+            this.okButton.Location = new System.Drawing.Point(115, 63);
+            this.okButton.Margin = new System.Windows.Forms.Padding(4);
+            this.okButton.Name = "okButton";
+            this.okButton.Size = new System.Drawing.Size(92, 36);
+            this.okButton.TabIndex = 31;
+            this.okButton.Text = "OK";
+            this.okButton.UseVisualStyleBackColor = true;
+            this.okButton.Click += new System.EventHandler(this.okButton_Click);
             // 
             // RemoteSettingForm
             // 
@@ -100,7 +100,7 @@
             this.Controls.Add(this.serverPortTextBox);
             this.Controls.Add(this.serverAddressTextBox);
             this.Controls.Add(this.cancelButton);
-            this.Controls.Add(this.enableButton);
+            this.Controls.Add(this.okButton);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Name = "RemoteSettingForm";
             this.Text = "Remote Server";
@@ -116,6 +116,6 @@
         private System.Windows.Forms.TextBox serverPortTextBox;
         private System.Windows.Forms.TextBox serverAddressTextBox;
         private System.Windows.Forms.Button cancelButton;
-        private System.Windows.Forms.Button enableButton;
+        private System.Windows.Forms.Button okButton;
     }
 }

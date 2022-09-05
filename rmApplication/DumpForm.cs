@@ -44,7 +44,6 @@ namespace rmApplication
         private long hexboxOffsetAddress;
 
         private List<DumpConfig> configList;
-
         public DumpForm(SubViewControl tmp)
         {
             subViewCtrl = tmp;
@@ -325,118 +324,120 @@ namespace rmApplication
                 return;
 
             var quotient = image.Count / clusterSize;
-            var remainder = image.Count - (clusterSize * quotient);
 
-            if ((quotient == 0) ||
-                (remainder != 0))
+            if (quotient == 0)
             {
                 return;
             }
-            else
+
+            bool done = false;
+            var maxDataColumnSize = quotient;
+
+            while (image.Count != 0 || !done)
             {
-                var maxDataColumnSize = quotient;
-
-                while(image.Count != 0)
+                foreach (var config in configList)
                 {
-                    foreach (var config in configList)
+                    List<byte> byteList = new List<byte>();
+
+                    if (image.Count < config.Size)
                     {
-                        List<byte> byteList = new List<byte>();
-
-                        for (int i = 0; i < config.Size; i++)
-                            byteList.Add(image.Dequeue());
-
-                        if(tms320c28xEndianRadioButton.Checked)
-                        {
-                            byte tmp;
-                            switch (config.Size)
-                            {
-                                case 1:
-                                    break;
-                                case 2:
-                                    tmp = byteList[0];
-                                    byteList[0] = byteList[1];
-                                    byteList[1] = tmp;
-
-                                    break;
-                                case 4:
-                                    tmp = byteList[0];
-                                    byteList[0] = byteList[1];
-                                    byteList[1] = tmp;
-
-                                    tmp = byteList[2];
-                                    byteList[2] = byteList[3];
-                                    byteList[3] = tmp;
-
-                                    break;
-                                case 8:
-                                    tmp = byteList[0];
-                                    byteList[0] = byteList[1];
-                                    byteList[1] = tmp;
-
-                                    tmp = byteList[2];
-                                    byteList[2] = byteList[3];
-                                    byteList[3] = tmp;
-
-                                    tmp = byteList[4];
-                                    byteList[4] = byteList[5];
-                                    byteList[5] = tmp;
-
-                                    tmp = byteList[6];
-                                    byteList[6] = byteList[7];
-                                    byteList[7] = tmp;
-
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        else
-                        {
-                            if (bigEndianRadioButton.Checked)
-                                byteList.Reverse();
-
-                        }
-
-                        ulong rowData = 0;
-                        int digit = 0;
-                        foreach(var tmp in byteList)
-                        {
-                            rowData += (ulong)(tmp * Math.Pow(2, (digit * 8)));
-                            digit++;
-                        }
-
-                        string value;
-                        UserString.TryParse(config.Type, config.Size, rowData, out value);
-                        config.Values.Add(value);
-
-                    }
-                }
-
-                if (maxDataColumnSize > 16)
-                    maxDataColumnSize = 16;
-
-                for (int index = 0; index < maxDataColumnSize; index++)
-                {
-                    DataGridViewTextBoxColumn textColumn = new DataGridViewTextBoxColumn();
-                    textColumn.HeaderText = "data" + index.ToString();
-                    dumpDataGridView.Columns.Add(textColumn);
-
-                }
-
-                int rowIndex = 0;
-                foreach (DataGridViewRow item in dumpDataGridView.Rows)
-                {
-                    if (rowIndex >= configList.Count)
+                        done = true;
                         break;
-
-                    for (int columnIndex = 0; columnIndex < maxDataColumnSize; columnIndex++)
-                    {
-                        item.Cells[columnIndex + (int)FixedColumns.DataStart].Value = configList[rowIndex].Values[columnIndex];
                     }
 
-                    rowIndex++;
+                    for (int i = 0; i < config.Size; i++)
+                        byteList.Add(image.Dequeue());
+
+                    if (tms320c28xEndianRadioButton.Checked)
+                    {
+                        byte tmp;
+                        switch (config.Size)
+                        {
+                            case 1:
+                                break;
+                            case 2:
+                                tmp = byteList[0];
+                                byteList[0] = byteList[1];
+                                byteList[1] = tmp;
+
+                                break;
+                            case 4:
+                                tmp = byteList[0];
+                                byteList[0] = byteList[1];
+                                byteList[1] = tmp;
+
+                                tmp = byteList[2];
+                                byteList[2] = byteList[3];
+                                byteList[3] = tmp;
+
+                                break;
+                            case 8:
+                                tmp = byteList[0];
+                                byteList[0] = byteList[1];
+                                byteList[1] = tmp;
+
+                                tmp = byteList[2];
+                                byteList[2] = byteList[3];
+                                byteList[3] = tmp;
+
+                                tmp = byteList[4];
+                                byteList[4] = byteList[5];
+                                byteList[5] = tmp;
+
+                                tmp = byteList[6];
+                                byteList[6] = byteList[7];
+                                byteList[7] = tmp;
+
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        if (bigEndianRadioButton.Checked)
+                            byteList.Reverse();
+
+                    }
+
+                    ulong rowData = 0;
+                    int digit = 0;
+                    foreach (var tmp in byteList)
+                    {
+                        rowData += (ulong)(tmp * Math.Pow(2, (digit * 8)));
+                        digit++;
+                    }
+
+                    string value;
+                    UserString.TryParse(config.Type, config.Size, rowData, out value);
+                    config.Values.Add(value);
 
                 }
+            }
+
+            if (maxDataColumnSize > 16)
+                maxDataColumnSize = 16;
+
+            for (int index = 0; index < maxDataColumnSize; index++)
+            {
+                DataGridViewTextBoxColumn textColumn = new DataGridViewTextBoxColumn();
+                textColumn.HeaderText = "data" + index.ToString();
+                dumpDataGridView.Columns.Add(textColumn);
+
+            }
+
+            int rowIndex = 0;
+            foreach (DataGridViewRow item in dumpDataGridView.Rows)
+            {
+                if (rowIndex >= configList.Count)
+                    break;
+
+                for (int columnIndex = 0; columnIndex < maxDataColumnSize; columnIndex++)
+                {
+                    item.Cells[columnIndex + (int)FixedColumns.DataStart].Value = configList[rowIndex].Values[columnIndex];
+                }
+
+                rowIndex++;
 
             }
 

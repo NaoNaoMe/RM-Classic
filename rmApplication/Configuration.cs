@@ -31,8 +31,8 @@ namespace rmApplication
 
             SerialPortName = string.Empty;
 
-            ClientAddress = System.Net.IPAddress.Parse("0.0.0.0");
-            ClientPort = 0;
+            ClientAddress = System.Net.IPAddress.Parse("192.168.10.0");
+            ClientPort = 4000;
 
             ServerAddress = System.Net.IPAddress.Parse("127.0.0.2");
             ServerPort = 4001;

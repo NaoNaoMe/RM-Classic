@@ -38,6 +38,7 @@
             this.userToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.area1ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.area2ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.rxPeriodToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.activityToolStripProgressBar = new System.Windows.Forms.ToolStripProgressBar();
             this.mainToolStrip = new System.Windows.Forms.ToolStrip();
             this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
@@ -51,8 +52,8 @@
             this.logLengthToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
             this.copyLogToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.terminalToolStripButton = new System.Windows.Forms.ToolStripButton();
+            this.remoteToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.mainTimer = new System.Windows.Forms.Timer(this.components);
-            this.rxPeriodToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.targetVersionViewControl = new rmApplication.NoticeViewControl();
             this.receivedVersionViewControl = new rmApplication.NoticeViewControl();
             ((System.ComponentModel.ISupportInitialize)(this.mainDataGridView)).BeginInit();
@@ -137,6 +138,13 @@
             this.area2ToolStripStatusLabel.Text = "-";
             this.area2ToolStripStatusLabel.Click += new System.EventHandler(this.area2ToolStripStatusLabel_Click);
             // 
+            // rxPeriodToolStripStatusLabel
+            // 
+            this.rxPeriodToolStripStatusLabel.AutoSize = false;
+            this.rxPeriodToolStripStatusLabel.Name = "rxPeriodToolStripStatusLabel";
+            this.rxPeriodToolStripStatusLabel.Size = new System.Drawing.Size(120, 20);
+            this.rxPeriodToolStripStatusLabel.Text = "-";
+            // 
             // activityToolStripProgressBar
             // 
             this.activityToolStripProgressBar.AutoSize = false;
@@ -158,7 +166,8 @@
             this.toolStripLabel3,
             this.logLengthToolStripTextBox,
             this.copyLogToolStripButton,
-            this.terminalToolStripButton});
+            this.terminalToolStripButton,
+            this.remoteToolStripButton});
             this.mainToolStrip.Location = new System.Drawing.Point(0, 0);
             this.mainToolStrip.Name = "mainToolStrip";
             this.mainToolStrip.Size = new System.Drawing.Size(1100, 27);
@@ -168,7 +177,7 @@
             // toolStripLabel1
             // 
             this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(41, 24);
+            this.toolStripLabel1.Size = new System.Drawing.Size(36, 24);
             this.toolStripLabel1.Text = "Page:";
             // 
             // viewPageComboBox
@@ -198,6 +207,7 @@
             // timeStepToolStripTextBox
             // 
             this.timeStepToolStripTextBox.AutoSize = false;
+            this.timeStepToolStripTextBox.Font = new System.Drawing.Font("Yu Gothic UI", 9F);
             this.timeStepToolStripTextBox.Name = "timeStepToolStripTextBox";
             this.timeStepToolStripTextBox.Size = new System.Drawing.Size(50, 27);
             this.timeStepToolStripTextBox.Leave += new System.EventHandler(this.timeStepToolStripTextBox_Leave);
@@ -227,11 +237,12 @@
             // toolStripLabel3
             // 
             this.toolStripLabel3.Name = "toolStripLabel3";
-            this.toolStripLabel3.Size = new System.Drawing.Size(78, 24);
+            this.toolStripLabel3.Size = new System.Drawing.Size(70, 24);
             this.toolStripLabel3.Text = "Log Length:";
             // 
             // logLengthToolStripTextBox
             // 
+            this.logLengthToolStripTextBox.Font = new System.Drawing.Font("Yu Gothic UI", 9F);
             this.logLengthToolStripTextBox.Name = "logLengthToolStripTextBox";
             this.logLengthToolStripTextBox.Size = new System.Drawing.Size(50, 27);
             this.logLengthToolStripTextBox.Leave += new System.EventHandler(this.logLengthToolStripTextBox_Leave);
@@ -242,7 +253,7 @@
             this.copyLogToolStripButton.Image = ((System.Drawing.Image)(resources.GetObject("copyLogToolStripButton.Image")));
             this.copyLogToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.copyLogToolStripButton.Name = "copyLogToolStripButton";
-            this.copyLogToolStripButton.Size = new System.Drawing.Size(86, 24);
+            this.copyLogToolStripButton.Size = new System.Drawing.Size(81, 24);
             this.copyLogToolStripButton.Text = "Copy Log";
             this.copyLogToolStripButton.Click += new System.EventHandler(this.copyLogToolStripButton_Click);
             // 
@@ -251,20 +262,23 @@
             this.terminalToolStripButton.Image = global::rmApplication.Properties.Resources.Monitor_Screen_16xLG;
             this.terminalToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.terminalToolStripButton.Name = "terminalToolStripButton";
-            this.terminalToolStripButton.Size = new System.Drawing.Size(83, 24);
+            this.terminalToolStripButton.Size = new System.Drawing.Size(75, 24);
             this.terminalToolStripButton.Text = "Terminal";
             this.terminalToolStripButton.Click += new System.EventHandler(this.terminalToolStripButton_Click);
+            // 
+            // remoteToolStripButton
+            // 
+            this.remoteToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.remoteToolStripButton.Image = global::rmApplication.Properties.Resources.Remote;
+            this.remoteToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.remoteToolStripButton.Name = "remoteToolStripButton";
+            this.remoteToolStripButton.Size = new System.Drawing.Size(76, 24);
+            this.remoteToolStripButton.Text = "REMOTE";
+            this.remoteToolStripButton.Click += new System.EventHandler(this.remoteToolStripButton_Click);
             // 
             // mainTimer
             // 
             this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
-            // 
-            // rxPeriodToolStripStatusLabel
-            // 
-            this.rxPeriodToolStripStatusLabel.AutoSize = false;
-            this.rxPeriodToolStripStatusLabel.Name = "rxPeriodToolStripStatusLabel";
-            this.rxPeriodToolStripStatusLabel.Size = new System.Drawing.Size(120, 20);
-            this.rxPeriodToolStripStatusLabel.Text = "-";
             // 
             // targetVersionViewControl
             // 
@@ -334,5 +348,6 @@
         private System.Windows.Forms.ToolStripTextBox logLengthToolStripTextBox;
         private System.Windows.Forms.ToolStripStatusLabel rxPeriodToolStripStatusLabel;
         private System.Windows.Forms.ToolStripButton terminalToolStripButton;
+        private System.Windows.Forms.ToolStripButton remoteToolStripButton;
     }
 }

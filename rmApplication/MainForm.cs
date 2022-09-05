@@ -57,9 +57,9 @@ namespace rmApplication
 
             if (IsValidRequestCommandLine(args))
             {
-                subViewCtrl.SetTargetVersionName(string.Empty);
-                subViewCtrl.LoadViewSettingFile(new ViewSetting());
                 subViewCtrl.RunRemoteServerAsync();
+                subViewCtrl.RunMainLogicAsync();
+                subViewCtrl.Enabled = false;
             }
             else
             {
@@ -71,24 +71,38 @@ namespace rmApplication
                 if (Enum.TryParse<CommInstructions.RmAddr>(Properties.Settings.Default.RmRange, out range))
                     subViewCtrl.Config.RmRange = range;
 
-                subViewCtrl.Config.BaudRate = Properties.Settings.Default.BaudRate;
-
                 subViewCtrl.Config.SerialPortName = Properties.Settings.Default.SerialPortName;
 
-                System.Net.IPAddress clientAddress;
-                if (System.Net.IPAddress.TryParse(Properties.Settings.Default.ClientAddress, out clientAddress))
-                    subViewCtrl.Config.ClientAddress = clientAddress;
+                string ipAddressText;
+                System.Net.IPAddress ipAddress;
+                int port;
 
-                subViewCtrl.Config.ClientPort = Properties.Settings.Default.ClientPort;
+                ipAddressText = Properties.Settings.Default.ClientAddress;
+                port = Properties.Settings.Default.ClientPort;
+                if(port != 0 && System.Net.IPAddress.TryParse(ipAddressText, out ipAddress))
+                {
+                    subViewCtrl.Config.ClientAddress = ipAddress;
+                    subViewCtrl.Config.ClientPort = port;
+                }
 
-                System.Net.IPAddress serverAddress;
-                if (System.Net.IPAddress.TryParse(Properties.Settings.Default.ServerAddress, out serverAddress))
-                    subViewCtrl.Config.ServerAddress = serverAddress;
 
-                subViewCtrl.Config.ServerPort = Properties.Settings.Default.ServerPort;
+                ipAddressText = Properties.Settings.Default.ServerAddress;
+                port = Properties.Settings.Default.ServerPort;
+                if (port != 0 && System.Net.IPAddress.TryParse(ipAddressText, out ipAddress))
+                {
+                    subViewCtrl.Config.ServerAddress = ipAddress;
+                    subViewCtrl.Config.ServerPort = port;
+                }
 
-                if(Properties.Settings.Default.PassNumber <= UInt32.MaxValue)
-                    subViewCtrl.Config.PassNumber = Properties.Settings.Default.PassNumber;
+                var baudRate = Properties.Settings.Default.BaudRate;
+                if (baudRate != 0)
+                {
+                    subViewCtrl.Config.BaudRate = baudRate;
+
+                    if (Properties.Settings.Default.PassNumber <= UInt32.MaxValue)
+                        subViewCtrl.Config.PassNumber = Properties.Settings.Default.PassNumber;
+
+                }
 
                 if (!loadViewFile(Properties.Settings.Default.PathViewFileName))
                 {
@@ -488,6 +502,17 @@ namespace rmApplication
 
         private void remoteCtrlToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (subViewCtrl.IsRemote)
+            {
+                MessageBox.Show("Stop remote server.",
+                                    "Caution",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
+
+                return;
+
+            }
+
             if (subViewCtrl.IsCommunicationActive)
             {
                 MessageBox.Show("Stop communication.",
@@ -498,35 +523,10 @@ namespace rmApplication
                 return;
             }
 
-            var form = new RemoteSettingForm(subViewCtrl.Config, subViewCtrl.IsRemote);
+            var form = new RemoteSettingForm(subViewCtrl.Config);
             form.StartPosition = FormStartPosition.CenterParent;
-            var result = form.ShowDialog();
-
-            if (result == DialogResult.OK)
-            {
-                if ((subViewCtrl.ViewSettingList != null) &&
-                    (subViewCtrl.ViewSettingList.Count > 0))
-                {
-                    DialogResult msgresult = MessageBox.Show("The DataGridView is already loaded.\nDo you want to clear in the DataGridView?",
-                                                            "Question",
-                                                            MessageBoxButtons.YesNo,
-                                                            MessageBoxIcon.Exclamation,
-                                                            MessageBoxDefaultButton.Button2);
-
-                    if (msgresult == DialogResult.Yes)
-                    {
-                        subViewCtrl.SetTargetVersionName(string.Empty);
-                        subViewCtrl.LoadViewSettingFile(new ViewSetting());
-                    }
-                }
-
-                subViewCtrl.RunRemoteServerAsync();
-            }
-            else if (result == DialogResult.Abort)
-            {
-                subViewCtrl.CancelRemoteServer();
-            }
-
+            form.ShowDialog();
+            
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
