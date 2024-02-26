@@ -25,12 +25,40 @@ namespace rmApplication
 
         }   /* class LineEndingItem */
 
-        private SubViewControl subViewCtrl;
-
-        public TerminalForm(SubViewControl tmp)
+        private class LocalEchoItem : object
         {
-            subViewCtrl = tmp;
+            public string Name { set; get; } = "";
 
+            public bool echo { set; get; } = false;
+
+            public override string ToString()
+            {
+                return Name;
+            }
+
+        }   /* class LocalEchoItem */
+
+        private class VerboseItem : object
+        {
+            public string Name { set; get; } = "";
+
+            public bool verbose { set; get; } = false;
+
+            public override string ToString()
+            {
+                return Name;
+            }
+
+        }   /* class VerboseItem */
+
+        private bool echo;
+        private bool verbose;
+
+        public delegate void SendDataFunction(byte[] data);
+        public SendDataFunction SendDataFunctionCallback;
+
+        public TerminalForm()
+        {
             InitializeComponent();
 
             lineEndingComboBox.Items.Clear();
@@ -59,14 +87,51 @@ namespace rmApplication
 
             lineEndingComboBox.SelectedIndex = 1;
 
+            localEchoToolStripComboBox.Items.Clear();
+
+            LocalEchoItem localEchoItem;
+
+            localEchoItem = new LocalEchoItem();
+            localEchoItem.Name = "echo off";
+            localEchoItem.echo = false;
+            localEchoToolStripComboBox.Items.Add(localEchoItem);
+
+            localEchoItem = new LocalEchoItem();
+            localEchoItem.Name = "echo on";
+            localEchoItem.echo = true;
+            localEchoToolStripComboBox.Items.Add(localEchoItem);
+
+            localEchoToolStripComboBox.SelectedIndex = 0;
+            echo = false;
+
+            VerboseItem verboseItem;
+
+            verboseItem = new VerboseItem();
+            verboseItem.Name = "Verbose off";
+            verboseItem.verbose = false;
+            verboseToolStripComboBox.Items.Add(verboseItem);
+
+            verboseItem = new VerboseItem();
+            verboseItem.Name = "Verbose on";
+            verboseItem.verbose = true;
+            verboseToolStripComboBox.Items.Add(verboseItem);
+
+            verboseToolStripComboBox.SelectedIndex = 0;
+            verbose = false;
         }
 
-        private void sendButton_Click(object sender, EventArgs e)
+        string ConvertLineEndings(string data)
         {
-            if (subViewCtrl.IsCommunicationActive == false)
+            string tempData = data.Replace("\r\n", "\n");
+            tempData = tempData.Replace("\r", "\n");
+            return tempData.Replace("\n", "\r\n");
+        }
+
+        private void SendText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
                 return;
 
-            var text = sendTextBox.Text;
             string delimiter = "";
 
             if (lineEndingComboBox.SelectedItem != null)
@@ -75,9 +140,35 @@ namespace rmApplication
                 delimiter = item.Delimter;
             }
 
-            var result = System.Text.Encoding.ASCII.GetBytes(text + delimiter);
+            text += delimiter;
 
-            subViewCtrl.Logic.SendText(result);
+            var result = System.Text.Encoding.ASCII.GetBytes(text);
+
+            SendDataFunctionCallback?.Invoke(result);
+
+            if(echo)
+                UpdateLogtextBox("Tx >>", text);
+        }
+
+        private void UpdateLogtextBox(string subText, string text)
+        {
+            text = ConvertLineEndings(text);
+            if (verbose)
+            {
+                text = text.Replace("\r\n", "");
+                string time = DateTime.Now.ToString("HH:mm:ss.fff");
+                text = time + " " + subText + " " + text;
+                logTextBox.AppendText(text + Environment.NewLine);
+            }
+            else
+            {
+                logTextBox.AppendText(text);
+            }
+        }
+
+        private void sendButton_Click(object sender, EventArgs e)
+        {
+            SendText(sendTextBox.Text);
         }
 
         private void clearToolStripButton_Click(object sender, EventArgs e)
@@ -85,35 +176,36 @@ namespace rmApplication
             logTextBox.Clear();
         }
 
-        public void UploadReceivedBytes(List<byte> bytes)
+        public void UploadReceivedBytes(byte[] bytes)
         {
-            var result = System.Text.Encoding.ASCII.GetString(bytes.ToArray());
+            var result = System.Text.Encoding.ASCII.GetString(bytes);
 
-            logTextBox.AppendText(result);
-
+            UpdateLogtextBox("Rx >>", result);
         }
 
         private void sendTextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (e.KeyChar == (char)Keys.Enter)
             {
-                if (subViewCtrl.IsCommunicationActive == false)
-                    return;
-
-                var text = sendTextBox.Text;
-                string delimiter = "";
-
-                if (lineEndingComboBox.SelectedItem != null)
-                {
-                    LineEndingItem item = (LineEndingItem)lineEndingComboBox.SelectedItem;
-                    delimiter = item.Delimter;
-                }
-
-                var result = System.Text.Encoding.ASCII.GetBytes(text + delimiter);
-
-                subViewCtrl.Logic.SendText(result);
-
+                SendText(sendTextBox.Text);
             }
+        }
+
+        private void localEchoToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (localEchoToolStripComboBox.SelectedIndex == 0)
+                echo = false;
+            else
+                echo = true;
+
+        }
+
+        private void verboseToolStripComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (verboseToolStripComboBox.SelectedIndex == 0)
+                verbose = false;
+            else
+                verbose = true;
         }
     }
 }

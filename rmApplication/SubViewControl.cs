@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Drawing;
 using System.Data;
@@ -13,14 +14,10 @@ namespace rmApplication
 {
     public partial class SubViewControl : UserControl
     {
-        public BusinessLogic Logic { get; set; }
         public Configuration Config { get; set; }
-
-        public bool IsCommunicationActive {  get; private set; }
-        public bool IsCustomizingMode {  get; private set; }
-        public bool IsRemote {  get; private set; }
-        public string ValidMapPath { get; private set; }
-        public DateTime ValidMapLastWrittenDate { get; private set; }
+        public bool IsCommunicationActive { get; private set; }
+        public bool IsCustomizingMode { get; private set; }
+        public bool IsRemote { get; private set; }
         public List<SymbolFactor> MapList { get; private set; }
         public List<ViewSetting> ViewSettingList { get; private set; }
 
@@ -64,6 +61,9 @@ namespace rmApplication
             Counts
         }
 
+        private string ValidMapPath;
+        private DateTime ValidMapLastWrittenDate;
+
         private int timeStep;
 
         private int logLength;
@@ -80,9 +80,9 @@ namespace rmApplication
 
         private char logTextDelimiter = '\t';
         private string logHeader;
-        private List<string> currentLogList;
 
-        private RemoteControl myRemoteCtrl;
+        private ConcurrentQueue<string> currentLog;
+        private ConcurrentQueue<string> currentLogForRemote;
 
         private ContextMenuStrip contextMenuStrip;
 
@@ -92,11 +92,11 @@ namespace rmApplication
 
         private Area2DisplayMode displayMode;
 
-        private Queue<List<byte>> terminalData;
-
         private readonly string COMM_OPEN_TEXT = "Comm Open ";
         private readonly string COMM_CLOSE_TEXT = "Comm Close";
 
+        private BusinessLogic logic;
+        private RemoteControl remoteCtrl;
 
         public SubViewControl()
         {
@@ -112,19 +112,12 @@ namespace rmApplication
 
             Config = new Configuration();
 
-            Logic = new BusinessLogic();
-            Logic.ConnectedCallBack = Connected;
-            Logic.DisconnectedCallBack = Disconnected;
-            Logic.CollectDumpCompletedCallBack = DumpCollectionCompleted;
-            Logic.TextReceivedCallBack = TerminalTextReceived;
+            logic = new BusinessLogic();
+            logic.TaskCompletaionFunctionCallback = TaskCompletaionFunction;
+            logic.SerialCommunicationEmulationReceivedCallBack = TerminalReceived;
 
-            myRemoteCtrl = new RemoteControl(Logic);
-            myRemoteCtrl.RegisterLogConfigCallBack = LoadViewSettingFile;
-            myRemoteCtrl.ChangePageCallBack = ChangeViewPage;
-            myRemoteCtrl.ChangeTimeStepCallBack = ChageTimeStep;
-            myRemoteCtrl.ValidateWriteCallBack = ValidateWriteOrder;
-            myRemoteCtrl.ValidateWriteValueCallBack = ValidateWriteValue;
-            myRemoteCtrl.FindaSymbolCallback = FindaSymbol;
+            remoteCtrl = new RemoteControl();
+            remoteCtrl.TaskRequestFunctionCallback = TaskRequestFunction;
 
             IsCommunicationActive = false;
             IsCustomizingMode = false;
@@ -142,62 +135,511 @@ namespace rmApplication
 
             displayMode = Area2DisplayMode.Time;
 
-            terminalData = new Queue<List<byte>>();
+            currentLog = new ConcurrentQueue<string>();
+            currentLogForRemote = new ConcurrentQueue<string>();
         }
 
-        private void Connected(string version)
+        private bool ValidateDumpConfigrations(string text, out BusinessLogic.DataParameter param)
         {
-            activityToolStripProgressBar.Style = ProgressBarStyle.Marquee;
-            activityToolStripProgressBar.MarqueeAnimationSpeed = 30;
+            param = new BusinessLogic.DataParameter();
 
-            commToolStripButton.Image = Properties.Resources.FlagThread_red;
-            commToolStripButton.Text = COMM_CLOSE_TEXT;
+            string addressText;
+            string sizeText;
 
-            receivedVersionViewControl.TextBox = version;
+            var factors = text.Split(',');
 
-            myRemoteCtrl.DeviceVersion = version;
-
-        }
-
-        private void Disconnected()
-        {
-            activityToolStripProgressBar.Style = ProgressBarStyle.Blocks;
-            activityToolStripProgressBar.MarqueeAnimationSpeed = 0;
-
-            commToolStripButton.Image = Properties.Resources.FlagThread_white;
-            commToolStripButton.Text = COMM_OPEN_TEXT;
-
-        }
-
-        private void DumpCollectionCompleted(List<byte> bytes)
-        {
-            if(IsRemote)
+            if (factors.Count() == 1)
             {
-                myRemoteCtrl.ClearDumpDataBuff();
+                if (!FindSymbolInfo(factors[0], out var info))
+                    return false;
 
-                foreach (var abyte in bytes)
-                    myRemoteCtrl.EnqueueDumpDataBuff(abyte);
-
+                addressText = info.Address;
+                sizeText = info.Size;
+            }
+            else if (factors.Count() == 2)
+            {
+                addressText = factors[0];
+                sizeText = factors[1];
+            }
+            else
+            {
+                return false;
             }
 
-            if (dumpFormInstance != null && !dumpFormInstance.IsDisposed)
-                dumpFormInstance.UploadHexbox(bytes);
+            if (string.IsNullOrEmpty(addressText))
+                return false;
 
-            periodAveraging.Clear();
+            if (!IsHexString(addressText))
+                return false;
+
+            UInt64 address = Convert.ToUInt64(addressText, 16);
+
+            if (string.IsNullOrEmpty(sizeText))
+                return false;
+
+            if (!int.TryParse(sizeText, out var size))
+                return false;
+
+            param.Address = (uint)address;
+            param.Size = (uint)size;
+
+            return true;
 
         }
 
-        private void TerminalTextReceived(List<byte> bytes)
+        private void TaskRequestFunction(RemoteControl.RequestTasks task, string message)
         {
-            if (IsRemote)
+            if (!IsCommunicationActive)
             {
-
+                remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                return;
             }
 
+            if (task == RemoteControl.RequestTasks.Setting)
+            {
+                if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
+                {
+                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                }
+                else if (!LoadViewFile(message))
+                {
+                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                }
+                else
+                {
+                    var fileName = System.IO.Path.GetFileNameWithoutExtension(message);
+                    if (ViewFileName.GetName(fileName, out var tmp))
+                        SetTargetVersionName(tmp.SoftwareVersion);
+
+                    remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                }
+
+                return;
+            }
+
+            if (task == RemoteControl.RequestTasks.Page)
+            {
+                if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
+                {
+                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                }
+                else if (!ChangeViewPage(message))
+                {
+                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                }
+                else
+                {
+                    remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                }
+
+                return;
+            }
+
+            if (task == RemoteControl.RequestTasks.SymbolInfo)
+            {
+                if (!FindSymbolInfo(message, out var info))
+                {
+                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                }
+                else
+                {
+                    var text = info.Address + "," + info.Offset + "," + info.Size;
+                    remoteCtrl.UpadateRequestedTaskResponse(task, true, text);
+                }
+
+                return;
+            }
+
+            switch (task)
+            {
+                case RemoteControl.RequestTasks.Open:
+                    if (string.IsNullOrEmpty(message))
+                    {
+                        // Inherit the current settings
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
+                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
+                    }
+                    else if (!Config.ValidateCommunicationResource(message, out var tmpConfig))
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    }
+                    else if (!logic.UpdateResource(tmpConfig))
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    }
+                    else
+                    {
+                        Config = tmpConfig;
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
+                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
+                    }
+                    break;
+
+                case RemoteControl.RequestTasks.Close:
+                    logic.ClearWaitingTasks();
+                    logic.CancelCurrentTask();
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.Close);
+                    break;
+
+                case RemoteControl.RequestTasks.Initialize:
+                    logic.ClearWaitingTasks();
+                    logic.CancelCurrentTask();
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.Initialize);
+                    break;
+
+                case RemoteControl.RequestTasks.Config:
+                    if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
+                    {
+                        logic.LogConfigParameter = parameters;
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
+                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
+                    }
+                    else
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                    }
+                    break;
+
+                case RemoteControl.RequestTasks.TimeStep:
+                    if (ChangeTimeStep(message))
+                    {
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
+                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
+                    }
+                    else
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                    }
+                    break;
+
+                case RemoteControl.RequestTasks.LogStart:
+                    RefreshLogData();
+                    UpdateInformation();
+
+                    logic.ClearWaitingTasks();
+                    logic.CancelCurrentTask();
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
+                    break;
+
+                case RemoteControl.RequestTasks.LogStop:
+                    logic.ClearWaitingTasks();
+                    logic.CancelCurrentTask();
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.StopLog);
+                    break;
+
+                case RemoteControl.RequestTasks.LogRead:
+                    if (currentLogForRemote.TryDequeue(out var text))
+                        remoteCtrl.UpadateRequestedTaskResponse(task, true, text);
+                    else
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    break;
+
+                case RemoteControl.RequestTasks.LogWrite:
+                    if (logic.TaskState != BusinessLogic.CommunicationTasks.Logging)
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    }
+                    else if (!ValidateWriteInformation(message, out var wrParam))
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    }
+                    else
+                    {
+                        logic.EditValue(wrParam);
+                        remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                    }
+                    break;
+
+                case RemoteControl.RequestTasks.Dump:
+                    if (!ValidateDumpConfigrations(message, out var param))
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    }
+                    else
+                    {
+                        logic.DumpConfigParameter = param;
+
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
+                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.Dump);
+
+                    }
+                    break;
+
+                default:
+                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    break;
+            }
+
+        }
+
+        private void TaskCompletaionFunction(BusinessLogic.CommunicationTasks task, BusinessLogic.TaskCompletionInformation info)
+        {
+            if (isFormClosing)
+                return;
+
+            switch (task)
+            {
+                case BusinessLogic.CommunicationTasks.Open:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Open, true, null);
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Open, false, null);
+                    }
+
+                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Failed to open a communication resource.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.Close:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Close, true);
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Close, false);
+                    }
+
+                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Failed to close a communication resource.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.Initialize:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                        {
+                            var text = System.Text.Encoding.ASCII.GetString(info.Data);
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, true, text.TrimEnd());
+                        }
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, false);
+                    }
+
+                    if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        receivedVersionViewControl.TextBox = System.Text.Encoding.ASCII.GetString(info.Data);
+
+                    }
+                    else
+                    {
+                        if (!IsRemote)
+                        {
+                            if(info.EchoDetected)
+                            {
+                                string message = "The request was echoed back." + Environment.NewLine + "The Tx and Rx lines might be shorted together.";
+                                string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                                MessageBox.Show(message + Environment.NewLine + dateTime,
+                                                "Caution",
+                                                MessageBoxButtons.OK,
+                                                MessageBoxIcon.Warning);
+                            }
+                            else
+                            {
+                                string message = "Failed to initialize.";
+                                string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                                MessageBox.Show(message + Environment.NewLine + dateTime,
+                                                "Caution",
+                                                MessageBoxButtons.OK,
+                                                MessageBoxIcon.Warning);
+                            }
+
+                        }
+
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.Config:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Config, true);
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Config, false);
+                    }
+
+                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Failed to config.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.TimeStep:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.TimeStep, true);
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.TimeStep, false);
+                    }
+
+                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Failed to change timestep.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.StartLog:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStart, true);
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStart, false);
+                    }
+
+                    if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        activityToolStripProgressBar.Style = ProgressBarStyle.Marquee;
+                        activityToolStripProgressBar.MarqueeAnimationSpeed = 30;
+                    }
+                    else
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Failed to start logging.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    periodAveraging.Clear();
+                    break;
+
+                case BusinessLogic.CommunicationTasks.Logging:
+
+                    activityToolStripProgressBar.Style = ProgressBarStyle.Blocks;
+                    activityToolStripProgressBar.MarqueeAnimationSpeed = 0;
+
+                    if (info.Status == BusinessLogic.TaskCompletionStatus.Timeout)
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Communication timeout.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.StopLog:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStop, true);
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStop, false);
+                    }
+
+                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
+                    {
+                        if (!IsRemote)
+                        {
+                            string message = "Failed to stop logging.";
+                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+                            MessageBox.Show(message + Environment.NewLine + dateTime,
+                                            "Caution",
+                                            MessageBoxButtons.OK,
+                                            MessageBoxIcon.Warning);
+
+                        }
+                    }
+
+                    break;
+
+                case BusinessLogic.CommunicationTasks.Dump:
+                    if (IsRemote)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                        {
+                            string hex = BitConverter.ToString(info.Data).Replace("-", string.Empty);
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, true, hex);
+                        }
+                        else
+                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, false);
+                    }
+
+                    if (dumpFormInstance != null && !dumpFormInstance.IsDisposed)
+                    {
+                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
+                            dumpFormInstance.UploadHexbox(info.Data.ToList());
+                        else
+                        {
+                            var tmp = new byte[] { 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64 };    // Failed
+                            dumpFormInstance.UploadHexbox(tmp.ToList());
+                        }
+
+                    }
+
+                    break;
+            }
+
+        }
+
+        private void TerminalReceived(byte[] bytes)
+        {
             if (terminalFormInstance != null && !terminalFormInstance.IsDisposed)
                 terminalFormInstance.UploadReceivedBytes(bytes);
-            else
-                terminalData.Enqueue(bytes);
 
         }
 
@@ -374,55 +816,25 @@ namespace rmApplication
             contextMenuStrip.Items.Add("Duplicate this page", null, OnDuplicatePageButtonPressed);
         }
 
-        public async void RunRemoteServerAsync()
+        public void RunRemoteMode()
         {
-            IsRemote = true;
-            remoteToolStripButton.Text = "LOCAL";
-
-            area1ToolStripStatusLabel.Text = "Remote @ " + Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString();
-
-            await myRemoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
-
-            if (isFormClosing)
-                return;
-
-            area1ToolStripStatusLabel.Text = "-";
-
-            remoteToolStripButton.Text = "REMOTE";
-            IsRemote = false;
-
-
-        }
-
-        public async void RunMainLogicAsync()
-        {
-            IsCommunicationActive = true;
-
-            receivedVersionViewControl.TextBox = string.Empty;
-
-            Logic.ClearWaitingTasks();
-
-            await Logic.RunAsync(true);
-
-            if (isFormClosing)
-                return;
-
-            IsCommunicationActive = false;
-
+            remoteToolStripButton.PerformClick();
+            commToolStripButton.PerformClick();
         }
 
 
         public void ClosingRoutine()
         {
-            Logic.ClearWaitingTasks();
-            Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Terminate);
-            Logic.CancelCurrentTask();
+            isFormClosing = true;
 
-            myRemoteCtrl.Cancel();
+            logic.ClearWaitingTasks();
+            logic.CancelCurrentTask();
+            logic.EnqueueTask(BusinessLogic.CommunicationTasks.Close);
+
+            logic.Terminate();
+            remoteCtrl.Terminate();
 
             mainTimer.Enabled = false;
-
-            isFormClosing = true;
 
         }
 
@@ -441,17 +853,6 @@ namespace rmApplication
         public void LoadViewSettingFile(ViewSetting tmp)
         {
             ViewSettingList = new List<ViewSetting>();
-
-            foreach (var setting in tmp.Settings)
-            {
-                // element "Variable" is obsolute
-                if (!string.IsNullOrEmpty(setting.Variable))
-                {
-                    setting.Symbol = setting.Variable;
-                    setting.Variable = null;
-                }
-            }
-
             var view = new ViewSetting();
             var pageList = new List<string>();
 
@@ -498,7 +899,7 @@ namespace rmApplication
             if (isFailed)
                 return;
 
-            if(view.Settings.Count > 0)
+            if (view.Settings.Count > 0)
                 ViewSettingList.Add(view);
 
             viewPageComboBox.SelectedIndexChanged -= new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
@@ -525,23 +926,62 @@ namespace rmApplication
 
             viewPageComboBox.SelectedIndexChanged += new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
 
+            MapList = new List<SymbolFactor>();
+            ValidMapPath = string.Empty;
+            ValidMapLastWrittenDate = DateTime.MinValue;
+            autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
 
-            if ((MapList != null) &&
-                (MapList.Count > 0))
+            var uniqueSettings = tmp.Settings
+                .GroupBy(item => item.Symbol)
+                .Select(group => group.First())
+                .ToList();
+
+            foreach (var setting in uniqueSettings)
             {
-                if (!IsRemote)
-                    MessageBox.Show("The address map file information is erased.",
-                                        "Caution",
-                                        MessageBoxButtons.OK,
-                                        MessageBoxIcon.Warning);
+                if (string.IsNullOrEmpty(setting.Symbol))
+                    continue;
 
-                MapList = new List<SymbolFactor>();
-                ValidMapPath = null;
-                ValidMapLastWrittenDate = DateTime.MinValue;
-                autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
+                var data = new SymbolFactor();
+
+                data.Symbol = setting.Symbol;
+                data.Address = setting.Address;
+                data.Offset = setting.Offset;
+                data.Size = setting.Size;
+
+                MapList.Add(data);
+
+                autoCompleteSourceForSymbol.Add(setting.Symbol);
+            }
+
+        }
+
+        public bool LoadViewFile(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return false;
+
+            bool isSuccess = false;
+
+            try
+            {
+                using (System.IO.StreamReader reader = new System.IO.StreamReader(path, Encoding.GetEncoding("utf-8")))
+                {
+                    var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ViewSetting));
+                    var deserializedData = (ViewSetting)serializer.Deserialize(reader);
+
+                    LoadViewSettingFile(deserializedData);
+
+                    isSuccess = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                if(!IsRemote)
+                    MessageBox.Show(ex.Message);
 
             }
 
+            return isSuccess;
         }
 
         public bool LoadMapFile(string path)
@@ -561,7 +1001,8 @@ namespace rmApplication
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                if (!IsRemote)
+                    MessageBox.Show(ex.Message);
 
                 return false;
 
@@ -601,27 +1042,19 @@ namespace rmApplication
                             if (string.IsNullOrEmpty(setting.Symbol))
                                 continue;
 
-                            string tmpSymbol = setting.Symbol.ToString();
-                            SymbolFactor result = MapList.Find(key => key.Symbol == tmpSymbol);
-
-                            if (result == null)
+                            if (!FindSymbolInfo(setting.Symbol.ToString(), out var result))
                             {
                                 setting.Check = false;
                                 setting.Address = null;
-
                             }
                             else
                             {
                                 setting.Address = result.Address;
 
-                                if (ValidateSize(result.Size, out int size))
+                                if (int.TryParse(result.Size, out var size))
                                 {
-                                    if (size != 0)
-                                    {
-                                        // Appropriate value for watching variables
-                                        setting.Size = result.Size;
-                                        setting.Offset = result.Offset;
-                                    }
+                                    setting.Size = result.Size;
+                                    setting.Offset = result.Offset;
                                 }
 
                             }
@@ -668,7 +1101,7 @@ namespace rmApplication
                 int totalSize = 0;
                 foreach (var setting in ViewSettingList[currentPageIndex].Settings)
                 {
-                    if (setting.Check == true)
+                    if (setting.Check && !string.IsNullOrEmpty(setting.Size))
                     {
                         totalChecked++;
                         totalSize += int.Parse(setting.Size);
@@ -678,7 +1111,7 @@ namespace rmApplication
 
                 if (totalSize > 0)
                 {
-                    if(mode == Area2DisplayMode.Counts)
+                    if (mode == Area2DisplayMode.Counts)
                     {
                         communicationInfo = "Checked cells = " + totalChecked.ToString() + " / TotalSize(byte) = " + totalSize.ToString();
                     }
@@ -720,44 +1153,82 @@ namespace rmApplication
 
         }
 
-        private bool ChangeViewPage(int index)
+        private bool ChangeViewPage(string itemName)
         {
+            if (string.IsNullOrEmpty(itemName))
+                return false;
+
             if (viewPageComboBox.Items.Count == 0)
                 return false;
 
-            bool isSuccess = false;
-            if (index >= 0 && index < viewPageComboBox.Items.Count)
+            int index = viewPageComboBox.FindStringExact(itemName);
+
+            if (index < 0)
+                return false;
+
+            viewPageComboBox.SelectedIndex = index;
+
+            return true;
+        }
+
+        private bool ChangeTimeStep(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            if (!int.TryParse(text, out var value))
             {
-                viewPageComboBox.SelectedIndexChanged -= new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
-                viewPageComboBox.SelectedIndex = index;
-                currentPageIndex = viewPageComboBox.SelectedIndex;
-                viewPageComboBox.SelectedIndexChanged += new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
+                timeStepToolStripTextBox.Text = timeStep.ToString();
+                return false;
+            }
 
-                RefreshLogData();
-                RefreshDataGridView();
-                UpdateInformation();
+            if (value < BusinessLogic.TimeStepMin)
+                value = BusinessLogic.TimeStepMin;
+            else if (value > BusinessLogic.TimeStepMax)
+                value = BusinessLogic.TimeStepMax;
 
-                var parameters = new List<BusinessLogic.DataParameter>();
-                if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out parameters))
-                {
-                    Logic.LogConfigParameter = parameters;
-                    isSuccess = true;
-                }
+            logic.LogTimeStep = (uint)value;
 
+            timeStep = value;
+            timeStepToolStripTextBox.Text = value.ToString();
+            this.ActiveControl = mainDataGridView;
+
+            return true;
+        }
+
+        private bool ValidateWriteInformation(string text, out BusinessLogic.DataParameter result)
+        {
+            result = new BusinessLogic.DataParameter();
+
+            var elements = text.Split(',');
+
+            bool isSuccess = false;
+            if (elements.Count() == 1)
+            {
+                // text = "TriggerON";
+                var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Name == text);
+
+                if (found != null)
+                    isSuccess = ValidateWriteParameters(found.Address, found.Offset, found.Size, found.Type, found.Write, out result);
+
+            }
+            else if (elements.Count() == 3)
+            {
+                // text = "debugData.trigger,Hex,1";
+                isSuccess = ValidateWriteParametersFromMap(elements[0], elements[1], elements[2], out result);
+            }
+            else if (elements.Count() == 4)
+            {
+                // text = "0x0000C8F2,2,Hex,1";
+                isSuccess = ValidateWriteParameters(elements[0], elements[1], elements[2], elements[3], out result);
             }
 
             return isSuccess;
         }
 
-        private void ChageTimeStep(int value)
+        private bool FindSymbolInfo(string name, out SymbolFactor info)
         {
-            timeStepToolStripTextBox.Text = value.ToString();
-
-        }
-
-        private bool FindaSymbol(string symbol, out BusinessLogic.DataParameter result)
-        {
-            result = new BusinessLogic.DataParameter();
+            info = new SymbolFactor();
 
             if ((MapList == null) ||
                 (MapList.Count <= 0))
@@ -765,109 +1236,75 @@ namespace rmApplication
                 return false;
             }
 
-            bool isSuccess = false;
+            if(string.IsNullOrEmpty(name))
+                return false;
 
-            SymbolFactor found = MapList.Find(key => key.Symbol == symbol);
+            SymbolFactor found = MapList.Find(key => key.Symbol == name);
+            if (found == null)
+                return false;
 
-            if (found != null)
-            {
-                var sizeText = found.Size;
-                if (string.IsNullOrEmpty(sizeText))
-                    return false;
-
-                int size;
-                if (!int.TryParse(sizeText, out size))
-                    return false;
-
-                var addressText = found.Address;
-                if (string.IsNullOrEmpty(addressText))
-                    return false;
-
-                if (!IsHexString(addressText))
-                    return false;
-
-                UInt64 address = Convert.ToUInt64(addressText, 16);
-
-                var offsetText = found.Offset;
-                if (string.IsNullOrEmpty(offsetText))
-                    return false;
-
-                bool isValid = false;
-                UInt32 offset;
-                if (UInt32.TryParse(offsetText, out offset))
-                {
-                    isValid = true;
-                }
-                else if (IsHexString(offsetText))
-                {
-                    isValid = true;
-                    offset = Convert.ToUInt32(offsetText, 16);
-                }
-
-                if (!isValid)
-                    return false;
-
-                address += offset;
-
-                if (address >= (UInt64)UInt32.MaxValue)
-                    address = (UInt64)UInt32.MaxValue;
-
-                result.Address = (uint)address;
-                result.Size = (uint)size;
-                result.Value = 0;
-                isSuccess = true;
-
-            }
-
-            return isSuccess;
+            info = found;
+            return true;
         }
 
-        private bool ValidateWriteOrder(string writeOrder, out BusinessLogic.DataParameter result)
+        private bool ValidateWriteParametersFromMap(string symbol, string typeText, string writeText, out BusinessLogic.DataParameter result)
         {
             result = new BusinessLogic.DataParameter();
 
-            int index = 0;
-            string writeText = string.Empty;
-            bool isSuccess = false;
-            foreach (var setting in ViewSettingList[currentPageIndex].Settings)
-            {
-                if(writeOrder == setting.Name)
-                {
-                    writeText = setting.Write;
-                    isSuccess = ValidateWriteValue(index, writeText, out result);
-                    break;
-                }
-                index++;
-            }
+            if(!FindSymbolInfo(symbol, out var info))
+                return false;
 
-            return isSuccess;
+            return ValidateWriteParameters(info.Address, info.Offset, info.Size, typeText, writeText, out result);
         }
 
-        private bool ValidateWriteValue(int index, string writeText, out BusinessLogic.DataParameter result)
+        private bool ValidateWriteParameters(string addressText, string offsetText, string sizeText, string typeText, string writeText, out BusinessLogic.DataParameter result)
         {
             result = new BusinessLogic.DataParameter();
 
-            if (index < 0 || index >= ViewSettingList[currentPageIndex].Settings.Count())
-                return false;
-
-            var sizeText = ViewSettingList[currentPageIndex].Settings[index].Size;
-            if (string.IsNullOrEmpty(sizeText))
-                return false;
-
-            int size;
-            if (!int.TryParse(sizeText, out size))
-                return false;
-
-            var typeText = ViewSettingList[currentPageIndex].Settings[index].Type;
-            if (string.IsNullOrEmpty(typeText))
-                return false;
-
-            UserType type;
-            if (!Enum.TryParse<UserType>(typeText, out type))
-                return false;
-
-            var addressText = ViewSettingList[currentPageIndex].Settings[index].Address;
             if (string.IsNullOrEmpty(addressText))
+                return false;
+
+            UInt64 address = Convert.ToUInt64(addressText, 16);
+
+            bool isOffsetValid = false;
+            UInt32 offset;
+            if (UInt32.TryParse(offsetText, out offset))
+            {
+                isOffsetValid = true;
+            }
+            else if (IsHexString(offsetText))
+            {
+                isOffsetValid = true;
+                offset = Convert.ToUInt32(offsetText, 16);
+            }
+
+            if (!isOffsetValid)
+                return false;
+
+            address += offset;
+
+            if (address >= (UInt64)UInt32.MaxValue)
+                return false;
+
+            addressText = "0x" + address.ToString("X");
+            return ValidateWriteParameters(addressText, sizeText, typeText, writeText, out result);
+        }
+
+        private bool ValidateWriteParameters(string addressText, string sizeText, string typeText, string writeText, out BusinessLogic.DataParameter result)
+        {
+            result = new BusinessLogic.DataParameter();
+
+            int size = 1;
+            if (!ValidateSize(sizeText, ref size))
+                return false;
+
+            if (!Enum.TryParse<UserType>(typeText, out var type))
+                return false;
+
+            if(type == UserType.FLT && size != 4)
+                return false;
+
+            if (type == UserType.DBL && size != 8)
                 return false;
 
             if (!IsHexString(addressText))
@@ -875,36 +1312,7 @@ namespace rmApplication
 
             UInt64 address = Convert.ToUInt64(addressText, 16);
 
-            var offsetText = ViewSettingList[currentPageIndex].Settings[index].Offset;
-            if (string.IsNullOrEmpty(offsetText))
-                return false;
-
-            bool isValid = false;
-            UInt32 offset;
-            if (UInt32.TryParse(offsetText, out offset))
-            {
-                isValid = true;
-            }
-            else if (IsHexString(offsetText))
-            {
-                isValid = true;
-                offset = Convert.ToUInt32(offsetText, 16);
-            }
-
-            if (!isValid)
-                return false;
-
-            address += offset;
-
-            if (address >= (UInt64)UInt32.MaxValue)
-                address = (UInt64)UInt32.MaxValue;
-
-            ulong data;
-            if (!UserUlong.TryParse(type, size, writeText, out data))
-                return false;
-
-
-            if (!ulong.TryParse(writeText, out data))
+            if (!UserUlong.TryParse(type, size, writeText, out var data))
                 return false;
 
             result.Address = (uint)address;
@@ -918,9 +1326,47 @@ namespace rmApplication
         {
             periodAveraging.Clear();
 
-            logHeader = InitializeLogHeader();
+            while (currentLog.Count != 0)
+                currentLog.TryDequeue(out var tmp);
 
-            currentLogList = new List<string>();
+            while (currentLogForRemote.Count != 0)
+                currentLogForRemote.TryDequeue(out var tmp);
+
+            var text = new StringBuilder();
+
+            if ((ViewSettingList == null) ||
+                (ViewSettingList.Count <= 0))
+            {
+                return;
+            }
+
+            string note = "Start Logging time: " + DateTime.Now.ToString();
+
+            text.AppendLine(note);
+
+            string header = "1.Status" + logTextDelimiter + "2.OS Time" + logTextDelimiter + "3.Slave Time";
+
+            foreach (var setting in ViewSettingList[currentPageIndex].Settings)
+            {
+                if (setting.Check == true &&
+                    !string.IsNullOrEmpty(setting.Address))
+                {
+                    header += logTextDelimiter;
+                    if (string.IsNullOrEmpty(setting.Name))
+                    {
+                        header += setting.Symbol;
+                    }
+                    else
+                    {
+                        header += setting.Name;
+                    }
+
+                }
+            }
+
+            text.Append(header);
+
+            logHeader = text.ToString();
         }
 
         private void RefreshDataGridView()
@@ -947,7 +1393,7 @@ namespace rmApplication
                     }
                     else
                     {
-                        if (!ValidateSize(setting.Size, out size))
+                        if (!ValidateSize(setting.Size, ref size))
                             setting.Check = false;
 
                     }
@@ -973,8 +1419,7 @@ namespace rmApplication
                     }
                     else
                     {
-                        UInt32 tmp;
-                        if (!UInt32.TryParse(setting.Offset, out tmp) &&
+                        if (!UInt32.TryParse(setting.Offset, out var tmp) &&
                             !IsHexString(setting.Offset))
                         {
                             setting.Check = false;
@@ -1052,15 +1497,14 @@ namespace rmApplication
 
             if (IsCommunicationActive)
             {
-                Logic.ClearWaitingTasks();
-                Logic.CancelCurrentTask();
+                logic.ClearWaitingTasks();
+                logic.CancelCurrentTask();
 
-                var parameters = new List<BusinessLogic.DataParameter>();
-                if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out parameters))
+                if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
                 {
-                    Logic.LogConfigParameter = parameters;
-                    Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
-                    Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
+                    logic.LogConfigParameter = parameters;
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
                 }
 
             }
@@ -1114,6 +1558,9 @@ namespace rmApplication
 
             }
 
+            if(parameters.Count <= 0)
+                isSuccess = false;
+
             return isSuccess;
         }
 
@@ -1148,11 +1595,11 @@ namespace rmApplication
 
                 if (!string.IsNullOrEmpty(receivedVer))
                 {
-                    if(string.IsNullOrEmpty(targetVer))
+                    if (string.IsNullOrEmpty(targetVer))
                         targetVersionViewControl.TextBox = receivedVer;
                     else
                     {
-                        if(targetVer != receivedVer)
+                        if (targetVer != receivedVer)
                         {
                             DialogResult result = MessageBox.Show("The target version name is unmatch the received version name.\n" +
                                                                   "Do you want to use the received name as the target name?",
@@ -1239,30 +1686,16 @@ namespace rmApplication
             if (e.KeyChar != (char)Keys.Enter)
                 return;
 
-            int value;
-            if (int.TryParse(timeStepToolStripTextBox.Text, out value))
+            ChangeTimeStep(timeStepToolStripTextBox.Text);
+
+            if (IsCommunicationActive)
             {
-                if (value < BusinessLogic.TimeStepMin)
-                    value = BusinessLogic.TimeStepMin;
-                else if (value > BusinessLogic.TimeStepMax)
-                    value = BusinessLogic.TimeStepMax;
+                RefreshLogData();
 
-                timeStep = value;
-                timeStepToolStripTextBox.Text = value.ToString();
-                this.ActiveControl = mainDataGridView;
-
-                if (IsCommunicationActive)
-                {
-                    RefreshLogData();
-
-                    Logic.ClearWaitingTasks();
-                    Logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
-                    Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
-                    Logic.CancelCurrentTask();
-
-                    Logic.LogTimeStep = (uint)timeStep;
-
-                }
+                logic.ClearWaitingTasks();
+                logic.CancelCurrentTask();
+                logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
+                logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
 
             }
 
@@ -1281,8 +1714,7 @@ namespace rmApplication
             if (e.KeyChar != (char)Keys.Enter)
                 return;
 
-            int length;
-            if (int.TryParse(logLengthToolStripTextBox.Text, out length))
+            if (int.TryParse(logLengthToolStripTextBox.Text, out var length))
             {
                 if (length < logLengthMin)
                     length = logLengthMin;
@@ -1305,17 +1737,17 @@ namespace rmApplication
         private void copyLogToolStripButton_Click(object sender, EventArgs e)
         {
             if ((logHeader == null) &&
-                (currentLogList == null))
+                (currentLog == null))
                 return;
 
-            if (currentLogList.Count() == 0)
+            if (currentLog.Count() == 0)
                 return;
 
             StringBuilder text = new StringBuilder();
 
             text.AppendLine(logHeader);
 
-            foreach (var item in currentLogList)
+            foreach (var item in currentLog)
             {
                 text.AppendLine(item);
             }
@@ -1328,35 +1760,45 @@ namespace rmApplication
         {
             if (dumpFormInstance == null || dumpFormInstance.IsDisposed)
             {
-                dumpFormInstance = new DumpForm(this);
+                dumpFormInstance = new DumpForm(MapList);
+                dumpFormInstance.RequestFunctionCallback = RequestFunction;
                 dumpFormInstance.Show();
             }
 
             dumpFormInstance.Activate();
         }
 
+        public void RequestFunction(BusinessLogic.DataParameter param)
+        {
+            logic.DumpConfigParameter = param;
+            logic.ClearWaitingTasks();
+            logic.CancelCurrentTask();
+            logic.EnqueueTask(BusinessLogic.CommunicationTasks.Dump);
+            logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
+        }
+
         private void terminalToolStripButton_Click(object sender, EventArgs e)
         {
             if (terminalFormInstance == null || terminalFormInstance.IsDisposed)
             {
-                terminalFormInstance = new TerminalForm(this);
+                terminalFormInstance = new TerminalForm();
+                terminalFormInstance.SendDataFunctionCallback = SendDataFunction;
                 terminalFormInstance.Show();
-
-                while(terminalData.Count != 0)
-                    terminalFormInstance.UploadReceivedBytes(terminalData.Dequeue());
-
             }
 
             terminalFormInstance.Activate();
         }
-        
-        private void remoteToolStripButton_Click(object sender, EventArgs e)
+
+        public void SendDataFunction(byte[] data)
+        {
+            logic.SendDataUsingSerialCommunicationEmulation(data);
+        }
+
+        private async void remoteToolStripButton_Click(object sender, EventArgs e)
         {
             if (IsRemote)
             {
-                myRemoteCtrl.Cancel();
-
-                mainDataGridView.Enabled = true;
+                remoteCtrl.Terminate();
 
             }
             else
@@ -1364,9 +1806,20 @@ namespace rmApplication
                 if (IsCustomizingMode)
                     customizeToolStripButton.PerformClick();
 
-                RunRemoteServerAsync();
+                IsRemote = true;
+                remoteToolStripButton.Text = "LOCAL";
 
-                mainDataGridView.Enabled = false;
+                area1ToolStripStatusLabel.Text = "Remote @ " + Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString();
+
+                await remoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
+
+                if (isFormClosing)
+                    return;
+
+                area1ToolStripStatusLabel.Text = "-";
+
+                remoteToolStripButton.Text = "REMOTE";
+                IsRemote = false;
 
             }
 
@@ -1384,7 +1837,16 @@ namespace rmApplication
                 return;
             }
 
-            if (!IsCommunicationActive)
+            if (IsCommunicationActive)
+            {
+                logic.ClearWaitingTasks();
+                logic.CancelCurrentTask();
+                logic.EnqueueTask(BusinessLogic.CommunicationTasks.StopLog);
+                logic.EnqueueTask(BusinessLogic.CommunicationTasks.Close);
+
+                logic.Terminate();
+            }
+            else
             {
                 if (System.IO.File.Exists(ValidMapPath) == true)
                 {
@@ -1424,32 +1886,25 @@ namespace rmApplication
                 commToolStripButton.Image = Properties.Resources.FlagThread_red;
                 commToolStripButton.Text = COMM_CLOSE_TEXT;
 
-                Logic.ClearWaitingTasks();
-                Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
-                Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Initialize);
-                Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
-                Logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
-                Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
-
-                Logic.LogTimeStep = (uint)timeStep;
-                Logic.UpdateResource(Config);
-
-                var parameters = new List<BusinessLogic.DataParameter>();
-                if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out parameters))
+                logic.ClearWaitingTasks();
+                if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
                 {
-                    Logic.LogConfigParameter = parameters;
-                    var msg = await Logic.RunAsync(true);
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.Initialize);
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
 
-                    if(!string.IsNullOrEmpty(msg))
-                    {
-                        string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                        MessageBox.Show(msg + Environment.NewLine + dateTime,
-                                        "Caution",
-                                        MessageBoxButtons.OK,
-                                        MessageBoxIcon.Warning);
+                    logic.LogTimeStep = (uint)timeStep;
+                    logic.UpdateResource(Config);
 
-                    }
+                    logic.LogConfigParameter = parameters;
+                    await logic.RunAsync();
 
+                }
+                else
+                {
+                    await logic.RunAsync();
                 }
 
                 if (isFormClosing)
@@ -1459,14 +1914,6 @@ namespace rmApplication
                 commToolStripButton.Text = COMM_OPEN_TEXT;
 
                 IsCommunicationActive = false;
-
-
-            }
-            else
-            {
-                Logic.ClearWaitingTasks();
-                Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Terminate);
-                Logic.CancelCurrentTask();
 
             }
 
@@ -1479,9 +1926,8 @@ namespace rmApplication
             long osTime = 0;
             long slvTime = 0;
             Queue<ulong> rawData = new Queue<ulong>();
-            BusinessLogic.LogData logData = new BusinessLogic.LogData();
 
-            while (Logic.GetLogData(out logData))
+            while (logic.GetLogData(out var logData))
             {
                 string lineText = string.Empty;
                 status = logData.Status;
@@ -1512,8 +1958,7 @@ namespace rmApplication
 
                             setting.ReadRaw = value.ToString();
 
-                            string textValue;
-                            if (UserString.TryParse(setting.Type, setting.Size, value, out textValue))
+                            if (UserString.TryParse(setting.Type, setting.Size, value, out var textValue))
                                 mainDataGridView[DgvRowName.Read.ToString(), index].Value = textValue;
                             else
                                 mainDataGridView[DgvRowName.Read.ToString(), index].Value = null;
@@ -1529,67 +1974,37 @@ namespace rmApplication
 
                 }
 
-                currentLogList.Add(lineText);
-
-                while (currentLogList.Count() > logLength)
-                {
-                    currentLogList.RemoveAt(0);
-                }
+                currentLog.Enqueue(lineText);
+                while (currentLog.Count() > logLength)
+                    currentLog.TryDequeue(out var dummy);
 
                 if (IsRemote)
-                    myRemoteCtrl.EnqueueLogTextDataBuff(lineText, logTextDelimiter);
-
-            }
-
-            if(osTimeBuffer.Count > 0)
-            {
-                double avg = 0;
-                while (osTimeBuffer.Count != 0)
-                    avg = periodAveraging.Calculate(osTimeBuffer.Dequeue());
-
-                rxPeriodToolStripStatusLabel.Text = "Avg: " + avg.ToString("0.0") + "ms";
-
-            }
-
-        }
-
-        private string InitializeLogHeader()
-        {
-            StringBuilder text = new StringBuilder();
-
-            if ((ViewSettingList == null) ||
-                (ViewSettingList.Count <= 0))
-            {
-                return text.ToString();
-            }
-
-            string note = "Start Logging time: " + DateTime.Now.ToString();
-
-            text.AppendLine(note);
-
-            string header = "1.Status" + logTextDelimiter + "2.OS Time" + logTextDelimiter + "3.Slave Time";
-
-            foreach (var setting in ViewSettingList[currentPageIndex].Settings)
-            {
-                if (setting.Check == true &&
-                    !string.IsNullOrEmpty(setting.Address))
                 {
-                    header += logTextDelimiter;
-                    if (string.IsNullOrEmpty(setting.Name))
-                    {
-                        header += setting.Symbol;
-                    }
-                    else
-                    {
-                        header += setting.Name;
-                    }
+                    currentLogForRemote.Enqueue(lineText);
+                    while (currentLogForRemote.Count() > logLength)
+                        currentLogForRemote.TryDequeue(out var dummy);
+                }
+
+            }
+
+            if(logic.TaskState != BusinessLogic.CommunicationTasks.Logging)
+            {
+                periodAveraging.Clear();
+            }
+            else
+            {
+                if (osTimeBuffer.Count > 0)
+                {
+                    double avg = 0;
+                    while (osTimeBuffer.Count != 0)
+                        avg = periodAveraging.Calculate(osTimeBuffer.Dequeue());
+
+                    rxPeriodToolStripStatusLabel.Text = "Avg: " + avg.ToString("0.0") + "ms";
 
                 }
+
             }
 
-            text.Append(header);
-
-            return text.ToString();
 
         }
 
@@ -1672,7 +2087,8 @@ namespace rmApplication
             int addressColumnIndex = dgv.Columns[DgvRowName.Address.ToString()].Index;
             int offsetColumnIndex = dgv.Columns[DgvRowName.Offset.ToString()].Index;
             int sizeColumnIndex = dgv.Columns[DgvRowName.Size.ToString()].Index;
-            int writerawColumnIndex = dgv.Columns[DgvRowName.WriteRaw.ToString()].Index;
+            int typeColumnIndex = dgv.Columns[DgvRowName.Type.ToString()].Index;
+            int writeColumnIndex = dgv.Columns[DgvRowName.Write.ToString()].Index;
             int wrColumnIndex = dgv.Columns[DgvRowName.WR.ToString()].Index;
 
             if ((e.ColumnIndex < 0) ||
@@ -1683,6 +2099,9 @@ namespace rmApplication
 
             if (e.ColumnIndex == ckColumnIndex)
             {
+                if (IsRemote)
+                    return;
+
                 bool isUpdate = false;
                 if (Convert.ToBoolean(dgv[ckColumnIndex, e.RowIndex].Value) == true)
                 {
@@ -1696,22 +2115,27 @@ namespace rmApplication
                         (string.IsNullOrEmpty(dgv[offsetColumnIndex, e.RowIndex].Value as string)) ||
                         (string.IsNullOrEmpty(dgv[sizeColumnIndex, e.RowIndex].Value as string)))
                     {
-                        //PutWarningMessage("Size, Address or offset data might be empty.");
+                        
                     }
                     else
                     {
                         int totalChecked = 0;
                         int totalSize = 0;
-                        int size;
+                        int size = 1;
                         foreach(DataGridViewRow item in dgv.Rows)
                         {
                             // Correct current configuration
                             if (Convert.ToBoolean(item.Cells[ckColumnIndex].Value))
                             {
                                 totalChecked++;
-                                if (int.TryParse(item.Cells[sizeColumnIndex].Value.ToString(), out size))
+                                if (ValidateSize(item.Cells[sizeColumnIndex].Value.ToString(), ref size))
                                 {
                                     totalSize += size;
+                                }
+                                else
+                                {
+                                    isUpdate = true;
+                                    item.Cells[ckColumnIndex].Value = false;
                                 }
 
                             }
@@ -1721,8 +2145,9 @@ namespace rmApplication
                         bool isSizeOK = false;
                         if (!string.IsNullOrEmpty(dgv[sizeColumnIndex, e.RowIndex].Value as string))
                         {
+                            size = 1;
                             var sizeObj = dgv[sizeColumnIndex, e.RowIndex].Value;
-                            if (int.TryParse(sizeObj.ToString(), out size))
+                            if (ValidateSize(sizeObj.ToString(), ref size))
                             {
                                 isSizeOK = true;
                                 totalChecked++;
@@ -1751,15 +2176,15 @@ namespace rmApplication
 
                     if (IsCommunicationActive)
                     {
-                        Logic.ClearWaitingTasks();
-                        Logic.CancelCurrentTask();
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
 
-                        var parameters = new List<BusinessLogic.DataParameter>();
-                        if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out parameters))
+                        if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
                         {
-                            Logic.LogConfigParameter = parameters;
-                            Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
-                            Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
+                            logic.LogConfigParameter = parameters;
+                            logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
+                            logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
+                            logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
                         }
 
                     }
@@ -1772,58 +2197,20 @@ namespace rmApplication
                 if ((string.IsNullOrEmpty(dgv[addressColumnIndex, e.RowIndex].Value as string)) ||
                     (string.IsNullOrEmpty(dgv[offsetColumnIndex, e.RowIndex].Value as string)) ||
                     (string.IsNullOrEmpty(dgv[sizeColumnIndex, e.RowIndex].Value as string)) ||
-                    (string.IsNullOrEmpty(dgv[writerawColumnIndex, e.RowIndex].Value as string)))
+                    (string.IsNullOrEmpty(dgv[typeColumnIndex, e.RowIndex].Value as string)) ||
+                    (string.IsNullOrEmpty(dgv[writeColumnIndex, e.RowIndex].Value as string)))
                 {
                     return;
                 }
 
-                var sizeObj = dgv[sizeColumnIndex, e.RowIndex].Value;
                 var addressObj = dgv[addressColumnIndex, e.RowIndex].Value;
                 var offsetObj = dgv[offsetColumnIndex, e.RowIndex].Value;
-                var writerawObj = dgv[writerawColumnIndex, e.RowIndex].Value;
+                var sizeObj = dgv[sizeColumnIndex, e.RowIndex].Value;
+                var typeObj = dgv[typeColumnIndex, e.RowIndex].Value;
+                var writeObj = dgv[writeColumnIndex, e.RowIndex].Value;
 
-                UInt32 size;
-                if (!UInt32.TryParse(sizeObj.ToString(), out size))
-                    return;
-
-                var addressText = addressObj.ToString();
-                if (!IsHexString(addressText))
-                    return;
-
-                UInt64 address = Convert.ToUInt64(addressText, 16);
-
-                var text = offsetObj.ToString();
-
-                bool isValid = false;
-                UInt32 offset;
-                if (UInt32.TryParse(text, out offset))
-                {
-                    isValid = true;
-                }
-                else if (IsHexString(text))
-                {
-                    isValid = true;
-                    offset = Convert.ToUInt32(text, 16);
-                }
-
-                if (!isValid)
-                    return;
-
-                address += offset;
-
-                if(address >= (UInt64)UInt32.MaxValue)
-                    address = (UInt64)UInt32.MaxValue;
-
-                ulong data;
-                if (!ulong.TryParse(writerawObj.ToString(), out data))
-                    return;
-
-                var param = new BusinessLogic.DataParameter();
-                param.Address = (uint)address;
-                param.Size = size;
-                param.Value = data;
-
-                Logic.EditValue(param);
+                if(ValidateWriteParameters(addressObj.ToString(), offsetObj.ToString(), sizeObj.ToString(), typeObj.ToString(), writeObj.ToString(), out var param))
+                    logic.EditValue(param);
 
             }
 
@@ -1853,10 +2240,15 @@ namespace rmApplication
             if (IsCustomizingMode)
             {
                 cellValueBuffer = e.FormattedValue.ToString();
-
+                return;
             }
-            else if ((e.ColumnIndex == typeColumnIndex) ||
-                     (e.ColumnIndex == writeColumnIndex) ||
+
+            if (e.ColumnIndex == typeColumnIndex)
+            {
+                if (!IsRemote)
+                    cellValueBuffer = e.FormattedValue.ToString();
+            }
+            else if ((e.ColumnIndex == writeColumnIndex) ||
                      (e.ColumnIndex == descriptionColumnIndex))
             {
                 cellValueBuffer = e.FormattedValue.ToString();
@@ -1869,7 +2261,7 @@ namespace rmApplication
 
         }
 
-        private void mainDataGridView_CellValidated(object sender, DataGridViewCellEventArgs e)
+        private void mainDataGridView_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             DataGridView dgv = (DataGridView)sender;
             int groupColumnIndex = dgv.Columns[DgvRowName.Group.ToString()].Index;
@@ -1924,8 +2316,7 @@ namespace rmApplication
                 dgv[writerawColumnIndex, e.RowIndex].Value = null;
                 dgv[writeColumnIndex, e.RowIndex].Value = null;
 
-                int size;
-                if (ValidateSize(inputText, out size))
+                if (int.TryParse(inputText, out var size))
                 {
                     dgv[e.ColumnIndex, e.RowIndex].Value = size;
                 }
@@ -1939,35 +2330,19 @@ namespace rmApplication
             {
                 dgv[e.ColumnIndex, e.RowIndex].Value = inputText;
 
-                if ((MapList == null) ||
-                    (MapList.Count <= 0))
+                if (FindSymbolInfo(inputText, out var result))
                 {
+                    if (int.TryParse(result.Size, out var size))
+                    {
+                        dgv[sizeColumnIndex, e.RowIndex].Value = size;
+                        dgv[offsetColumnIndex, e.RowIndex].Value = result.Offset;
+                    }
 
+                    dgv[addressColumnIndex, e.RowIndex].Value = result.Address;
                 }
                 else
                 {
-                    SymbolFactor result = MapList.Find(key => key.Symbol == inputText);
-
-                    if (result != null)
-                    {
-                        int size;
-                        if (ValidateSize(result.Size, out size))
-                        {
-                            if (size != 0)
-                            {
-                                dgv[sizeColumnIndex, e.RowIndex].Value = size;
-                                dgv[offsetColumnIndex, e.RowIndex].Value = result.Offset;
-                            }
-                        }
-
-                        dgv[addressColumnIndex, e.RowIndex].Value = result.Address;
-
-                    }
-                    else
-                    {
-                        dgv[addressColumnIndex, e.RowIndex].Value = null;
-
-                    }
+                    dgv[addressColumnIndex, e.RowIndex].Value = null;
                 }
             }
             else if (e.ColumnIndex == addressColumnIndex)
@@ -1984,8 +2359,7 @@ namespace rmApplication
             }
             else if (e.ColumnIndex == offsetColumnIndex)
             {
-                UInt32 tmp;
-                if (UInt32.TryParse(inputText, out tmp))
+                if (UInt32.TryParse(inputText, out var tmp))
                 {
                     dgv[e.ColumnIndex, e.RowIndex].Value = tmp;
                 }
@@ -2018,58 +2392,57 @@ namespace rmApplication
 
                 inputText = type.ToString();
 
-                int size;
-                if (!ValidateSize(dgv[sizeColumnIndex, e.RowIndex].Value.ToString(), out size))
-                {
-                    //ignore
-                }
-                else if (size != 4 && type == UserType.FLT)
-                {
-                    //ignore
-                }
-                else if (size != 8 && type == UserType.DBL)
-                {
-                    //ignore
-                }
-                else
-                {
-                    dgv[e.ColumnIndex, e.RowIndex].Value = inputText;
-
-                    string raw;
-
-                    if (dgv[readrawColumnIndex, e.RowIndex].Value != null)
+                if (!string.IsNullOrEmpty(dgv[sizeColumnIndex, e.RowIndex].Value as string)){
+                    int size = 1;
+                    if (!ValidateSize(dgv[sizeColumnIndex, e.RowIndex].Value.ToString(), ref size))
                     {
-                        raw = dgv[readrawColumnIndex, e.RowIndex].Value.ToString();
-                        ulong result;
-                        if (ulong.TryParse(raw, out result))
+                        //ignore
+                    }
+                    else if (size != 4 && type == UserType.FLT)
+                    {
+                        //ignore
+                    }
+                    else if (size != 8 && type == UserType.DBL)
+                    {
+                        //ignore
+                    }
+                    else
+                    {
+                        dgv[e.ColumnIndex, e.RowIndex].Value = inputText;
+
+                        string raw;
+
+                        if (dgv[readrawColumnIndex, e.RowIndex].Value != null)
                         {
-                            string value;
-                            if (UserString.TryParse(type, size, result, out value))
-                                dgv[readColumnIndex, e.RowIndex].Value = value;
-                            else
-                                dgv[readColumnIndex, e.RowIndex].Value = null;
+                            raw = dgv[readrawColumnIndex, e.RowIndex].Value.ToString();
+                            if (ulong.TryParse(raw, out var result))
+                            {
+                                if (UserString.TryParse(type, size, result, out var value))
+                                    dgv[readColumnIndex, e.RowIndex].Value = value;
+                                else
+                                    dgv[readColumnIndex, e.RowIndex].Value = null;
+
+                            }
+
+                        }
+
+                        if (dgv[writerawColumnIndex, e.RowIndex].Value != null)
+                        {
+                            raw = dgv[writerawColumnIndex, e.RowIndex].Value.ToString();
+                            if (ulong.TryParse(raw, out var result))
+                            {
+                                if (UserString.TryParse(type, size, result, out var value))
+                                    dgv[writeColumnIndex, e.RowIndex].Value = value;
+                                else
+                                    dgv[writeColumnIndex, e.RowIndex].Value = null;
+
+                            }
 
                         }
 
                     }
-
-                    if (dgv[writerawColumnIndex, e.RowIndex].Value != null)
-                    {
-                        raw = dgv[writerawColumnIndex, e.RowIndex].Value.ToString();
-                        ulong result;
-                        if (ulong.TryParse(raw, out result))
-                        {
-                            string value;
-                            if (UserString.TryParse(type, size, result, out value))
-                                dgv[writeColumnIndex, e.RowIndex].Value = value;
-                            else
-                                dgv[writeColumnIndex, e.RowIndex].Value = null;
-
-                        }
-
-                    }
-
                 }
+
             }
             else if (e.ColumnIndex == readrawColumnIndex)
             {
@@ -2123,19 +2496,15 @@ namespace rmApplication
 
             }
 
-            cellValueBuffer = null;
-
         }
 
-        private bool ValidateSize(string value, out int result)
+        private bool ValidateSize(string value, ref int result)
         {
-            result = 0;
-
             if (string.IsNullOrEmpty(value))
                 return false;
 
-            uint tmp;
-            if (uint.TryParse(value, out tmp) == true)
+            bool isValid = false;
+            if (uint.TryParse(value, out var tmp) == true)
             {
                 if ((tmp == 1) ||
                     (tmp == 2) ||
@@ -2143,16 +2512,12 @@ namespace rmApplication
                     (tmp == 8))
                 {
                     result = (int)tmp;
+                    isValid = true;
                 }
 
-                return true;
-            }
-            else
-            {
-                return false;
-
             }
 
+            return isValid;
         }
 
         private bool IsHexString(string text)

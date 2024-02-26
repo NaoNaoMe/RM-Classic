@@ -160,7 +160,7 @@ namespace rmApplication
             if (foundFlg == true)
                 cmbBaudRate.SelectedIndex = foundIndex;
             else
-                cmbBaudRate.SelectedIndex = 1;
+                cmbBaudRate.SelectedIndex = 5;
 
             localIPTextBox.Text = config.ClientAddress.ToString();
             portTextBox.Text = config.ClientPort.ToString();

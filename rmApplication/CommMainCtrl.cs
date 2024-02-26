@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using SerialTerminal;
+using TcpClientTerminal;
 
 namespace rmApplication
 {
@@ -15,18 +17,36 @@ namespace rmApplication
             LocalNet
         };
 
-        public bool IsOpen { get; private set; }
+        public CommunicationMode Mode
+        {
+            get
+            {
+                return config.CommMode;
+            }
+        }
+
+        public bool IsOpen
+        {
+            get
+            {
+                if (serialPort != null)
+                    return serialPort.IsOpen;
+
+                if (tcpClient != null)
+                    return tcpClient.IsConnected;
+
+                return false;
+            }
+        }
 
         private CommProtocol myCommProtocol;
 
-        private SerialPortResource mySerialPort;
-        private TCPClientResource myTCPClient;
+        private SerialPortResource serialPort;
+        private TCPClientResource tcpClient;
 
         private Queue<byte> rxFIFO;
 
         private Configuration config;
-
-        private Queue<string> debugMessageLog;
 
         public CommMainCtrl(Configuration tmp)
         {
@@ -37,28 +57,26 @@ namespace rmApplication
             switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
-                    mySerialPort = new SerialPortResource();
+                    serialPort = new SerialPortResource();
                     break;
 
                 case CommunicationMode.LocalNet:
-                    myTCPClient = new TCPClientResource();
+                    tcpClient = new TCPClientResource();
                     break;
 
             }
 
-            debugMessageLog = new Queue<string>();
-
-            IsOpen = false;
         }
 
         public async Task<bool> OpenAsync(CancellationToken ct)
         {
-            IsOpen = false;
+            if (IsOpen)
+                return false;
 
             switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
-                    if (mySerialPort != null)
+                    if (serialPort != null)
                     {
                         SerialPortResource.Parameters param;
 
@@ -69,18 +87,14 @@ namespace rmApplication
                         param.Parity = System.IO.Ports.Parity.None;
                         param.StopBits = System.IO.Ports.StopBits.One;
 
-                        if (mySerialPort.Open(param))
-                            IsOpen = true;
-
+                        serialPort.Open(param);
                     }
                     break;
 
                 case CommunicationMode.LocalNet:
-                    if (myTCPClient != null)
+                    if (tcpClient != null)
                     {
-                        if (await myTCPClient.ConnectAsync(config.ClientAddress, config.ClientPort, ct))
-                            IsOpen = true;
-
+                        await tcpClient.ConnectAsync(config.ClientAddress, config.ClientPort, ct);
                     }
                     break;
 
@@ -91,20 +105,18 @@ namespace rmApplication
 
         public void Close()
         {
-            IsOpen = false;
-
             rxFIFO.Clear();
 
             switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
-                    if (mySerialPort != null)
-                        mySerialPort.Close();
+                    if (serialPort != null)
+                        serialPort.Close();
                     break;
 
                 case CommunicationMode.LocalNet:
-                    if (myTCPClient != null)
-                        myTCPClient.Disconncet();
+                    if (tcpClient != null)
+                        tcpClient.Disconncet();
                     break;
 
             }
@@ -113,62 +125,59 @@ namespace rmApplication
 
         public void PurgeReceiveBuffer()
         {
-#if false
-            switch (mySettings.CommMode)
+            switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
-                    if (mySerialPort != null)
-                        mySerialPort.PurgeReceiveBuffer();
+                    if (serialPort != null)
+                        serialPort.PurgeReceiveBuffer();
                     break;
 
                 case CommunicationMode.LocalNet:
-                    if (myTCPClient != null)
-                        myTCPClient.PurgeReceiveBuffer();
+                    if (tcpClient != null)
+                        tcpClient.PurgeReceiveBuffer();
                     break;
 
             }
 
             rxFIFO.Clear();
-
-#endif
         }
 
-        public async Task PushAsync(List<byte> bytes)
+        public async Task PushAsync(byte[] bytes)
         {
-            RecordMessage("Tx", bytes);
+            OutputDebugMessage("Tx", bytes);
 
             switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
-                    if (mySerialPort != null)
-                        mySerialPort.Write(myCommProtocol.Encode(bytes));
+                    if (serialPort != null)
+                        serialPort.Write(myCommProtocol.Encode(bytes));
                     break;
 
                 case CommunicationMode.LocalNet:
-                    if (myTCPClient != null)
-                        await myTCPClient.WriteAsync(myCommProtocol.Encode(bytes));
+                    if (tcpClient != null)
+                        await tcpClient.WriteAsync(myCommProtocol.Encode(bytes));
                     break;
 
             }
 
         }
 
-        public List<byte> Pull()
+        public byte[] Pull()
         {
-            List<byte> frame = new List<byte>();
+            var frame = new byte[0];
 
-            List<byte> bytes = new List<byte>();
+            byte[] bytes = new byte[] { };
 
             switch (config.CommMode)
             {
                 case CommunicationMode.Serial:
-                    if (mySerialPort != null)
-                        bytes = mySerialPort.ReadBytes();
+                    if (serialPort != null)
+                        bytes = serialPort.ReadBytes();
                     break;
 
                 case CommunicationMode.LocalNet:
-                    if (myTCPClient != null)
-                        bytes = myTCPClient.ReadBytes();
+                    if (tcpClient != null)
+                        bytes = tcpClient.ReadBytes();
                     break;
 
             }
@@ -183,9 +192,9 @@ namespace rmApplication
             {
                 frame = myCommProtocol.Decode(rxFIFO.Dequeue());
 
-                if (frame.Count != 0)
+                if (frame.Length != 0)
                 {
-                    RecordMessage("Rx", frame);
+                    OutputDebugMessage("Rx", frame);
                     break;
                 }
 
@@ -194,9 +203,9 @@ namespace rmApplication
             return frame;
         }
 
-        public async Task<List<byte>> PullAsync(CancellationToken ct)
+        public async Task<byte[]> PullAsync(CancellationToken ct)
         {
-            List<byte> frame = new List<byte>();
+            var frame = new byte[0];
 
             bool isBreak = false;
 
@@ -208,10 +217,10 @@ namespace rmApplication
                     {
                         frame = myCommProtocol.Decode(rxFIFO.Dequeue());
 
-                        if (frame.Count != 0)
+                        if (frame.Length != 0)
                         {
                             isBreak = true;
-                            RecordMessage("Rx", frame);
+                            OutputDebugMessage("Rx", frame);
                             break;
                         }
 
@@ -220,24 +229,24 @@ namespace rmApplication
                     if (isBreak)
                         break;
 
-                    List<byte> bytes = new List<byte>();
+                    byte[] bytes = new byte[] { };
 
                     switch (config.CommMode)
                     {
                         case CommunicationMode.Serial:
-                            if (mySerialPort != null)
-                                bytes = await mySerialPort.ReadBytesAsync(ct);
+                            if (serialPort != null)
+                                bytes = await serialPort.ReadBytesAsync(ct);
 
                             break;
 
                         case CommunicationMode.LocalNet:
-                            if (myTCPClient != null)
-                                bytes = await myTCPClient.ReadBytesAsync(ct);
+                            if (tcpClient != null)
+                                bytes = await tcpClient.ReadBytesAsync(ct);
                             break;
 
                     }
 
-                    if(bytes.Count == 0)
+                    if(bytes.Length == 0)
                         break;
 
                     foreach (var item in bytes)
@@ -257,18 +266,15 @@ namespace rmApplication
             return frame;
         }
 
-        private void RecordMessage(string dir, List<byte> bytes)
+        private void OutputDebugMessage(string dir, byte[] bytes)
         {
-            string newText = BitConverter.ToString(bytes.ToArray());
+            string newText = BitConverter.ToString(bytes);
 
             string time = DateTime.Now.ToString("HH:mm:ss.fff");
 
             string logText = time + " " + dir + " " + newText;
 
-            debugMessageLog.Enqueue(logText);
-
-            while (debugMessageLog.Count > 1000)
-                debugMessageLog.Dequeue();
+            System.Diagnostics.Debug.WriteLine(logText);
 
         }
     }

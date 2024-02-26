@@ -55,21 +55,35 @@ namespace rmApplication
             mainPanel.Controls.Add(subViewCtrl);
             subViewCtrl.Dock = DockStyle.Fill;
 
-            if (IsValidRequestCommandLine(args))
+            if (args.Length > 0)
             {
-                subViewCtrl.RunRemoteServerAsync();
-                subViewCtrl.RunMainLogicAsync();
-                subViewCtrl.Enabled = false;
+                var config = new Configuration();
+                if (IsValidRequestCommandLine(args, out config))
+                {
+                    subViewCtrl.Config.ServerAddress = config.ServerAddress;
+                    subViewCtrl.Config.ServerPort = config.ServerPort;
+                    DefaultViewSettings();
+                    subViewCtrl.RunRemoteMode();
+                }
+                else
+                {
+                    Console.Write("Invalid parameter");
+                    DefaultViewSettings();
+                }
             }
             else
             {
                 CommMainCtrl.CommunicationMode mode;
                 if (Enum.TryParse<CommMainCtrl.CommunicationMode>(Properties.Settings.Default.CommMode, out mode))
                     subViewCtrl.Config.CommMode = mode;
+                else
+                    subViewCtrl.Config.CommMode = CommMainCtrl.CommunicationMode.Serial;
 
                 CommInstructions.RmAddr range;
                 if (Enum.TryParse<CommInstructions.RmAddr>(Properties.Settings.Default.RmRange, out range))
                     subViewCtrl.Config.RmRange = range;
+                else
+                    subViewCtrl.Config.RmRange = CommInstructions.RmAddr.Byte4;
 
                 subViewCtrl.Config.SerialPortName = Properties.Settings.Default.SerialPortName;
 
@@ -123,9 +137,11 @@ namespace rmApplication
         }
 
 
-        private bool IsValidRequestCommandLine(string[] args)
+        private bool IsValidRequestCommandLine(string[] args, out Configuration config)
         {
             bool isValid = false;
+
+            config = new Configuration();
 
             int index = Array.IndexOf(args, "--remote");
 
@@ -139,13 +155,9 @@ namespace rmApplication
                 if ((System.Net.IPAddress.TryParse(args[index + 1], out address)) &&
                     (int.TryParse(args[index + 2], out port)))
                 {
-                    subViewCtrl.Config.ServerAddress = address;
-                    subViewCtrl.Config.ServerPort = port;
+                    config.ServerAddress = address;
+                    config.ServerPort = port;
                     isValid = true;
-                }
-                else
-                {
-                    Console.Write("Invalid parameter");
                 }
             }
 
@@ -166,7 +178,6 @@ namespace rmApplication
             subViewCtrl.LoadViewSettingFile(tmpSetting);
 
             var tmp = new ViewFileName();
-
             this.Text = makeWindowTitle(tmp);
 
         }
@@ -224,7 +235,7 @@ namespace rmApplication
             if ((subViewCtrl.ViewSettingList != null) &&
                 (subViewCtrl.ViewSettingList.Count > 0))
             {
-                DialogResult result = MessageBox.Show("The DataGridView is already loaded.\nDo you want to initialize in the DataGridView?",
+                DialogResult result = MessageBox.Show("Would you like to reset and initialize the screen settings by discarding the current configuration?",
                                                         "Question",
                                                         MessageBoxButtons.YesNo,
                                                         MessageBoxIcon.Exclamation,
@@ -266,9 +277,9 @@ namespace rmApplication
             OpenFileDialog ofd = new OpenFileDialog();
 
             ofd.Filter =
-                "xml File(*.xml)|*.xml|All Files(*.*)|*.*";
+                "RM Configuration File(*.rmxml)|*.rmxml|All Files(*.*)|*.*";
             ofd.FilterIndex = 1;
-            ofd.Title = "Open View File";
+            ofd.Title = "Open Configuration File";
             ofd.RestoreDirectory = true;
 
             if (ofd.ShowDialog() == DialogResult.OK)
@@ -343,35 +354,28 @@ namespace rmApplication
             SaveFileDialog sfd = new SaveFileDialog();
 
             string defaultFileName = string.Empty;
-            if (!string.IsNullOrEmpty(pathViewFileName))
+            if (string.IsNullOrEmpty(pathViewFileName))
+            {
+                var tmp = new ViewFileName(subViewCtrl.GetTargetVersionName());
+                defaultFileName = ViewFileName.MakeFileName(tmp);
+            }
+            else
             {
                 string fileName = System.IO.Path.GetFileNameWithoutExtension(pathViewFileName);
 
                 ViewFileName tmp = new ViewFileName();
-                if (!ViewFileName.GetNameFromOldFormat(fileName, out tmp))
-                    ViewFileName.GetName(fileName, out tmp);
+                ViewFileName.GetName(fileName, out tmp);
 
                 tmp.SoftwareVersion = subViewCtrl.GetTargetVersionName();
 
                 defaultFileName = ViewFileName.MakeFileName(tmp);
-
-            }
-            else
-            {
-                var tmp = new ViewFileName();
-
-                tmp.SettingName = "TestSetting001";
-                tmp.SoftwareVersion = subViewCtrl.GetTargetVersionName();
-
-                defaultFileName = ViewFileName.MakeFileName(tmp);
-
             }
 
-            sfd.Title = "Save View File";
+            sfd.Title = "Save Configuration File";
             //sfd.InitialDirectory = @"D:\";
             sfd.FileName = defaultFileName;
             sfd.Filter =
-                "xml File(*.xml)|*.xml|All Files(*.*)|*.*";
+                "RM Configuration File(*.rmxml)|*.rmxml";
             sfd.FilterIndex = 1;
             if(!string.IsNullOrEmpty(pathViewFileName))
                 sfd.InitialDirectory = System.IO.Path.GetDirectoryName(pathViewFileName);
@@ -404,6 +408,7 @@ namespace rmApplication
                     ViewFileName tmp = new ViewFileName();
                     ViewFileName.GetName(fileName, out tmp);
 
+                    subViewCtrl.SetTargetVersionName(tmp.SoftwareVersion);
                     this.Text = makeWindowTitle(tmp);
 
                     pathViewFileName = sfd.FileName;
@@ -540,48 +545,39 @@ namespace rmApplication
             if (string.IsNullOrEmpty(path))
                 return false;
 
-            bool isSuccess = false;
-            ViewSetting deserializedData = new ViewSetting();
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
 
-            try
+            ViewFileName tmp = new ViewFileName();
+            if (!ViewFileName.GetName(fileName, out tmp))
             {
-                using (System.IO.StreamReader reader = new System.IO.StreamReader(path, Encoding.GetEncoding("utf-8")))
-                {
-                    XmlSerializer serializer = new XmlSerializer(typeof(ViewSetting));
-                    deserializedData = (ViewSetting)serializer.Deserialize(reader);
-
-                }
-            }
-            catch (Exception)
-            {
-                deserializedData = null;
-            }
-
-            if (deserializedData != null)
-            {
-                subViewCtrl.LoadViewSettingFile(deserializedData);
-
-                string fileName = System.IO.Path.GetFileNameWithoutExtension(path);
-
-                ViewFileName tmp = new ViewFileName();
-                if (!ViewFileName.GetNameFromOldFormat(fileName, out tmp))
-                    ViewFileName.GetName(fileName, out tmp);
-
-                this.Text = makeWindowTitle(tmp);
-
-                isSuccess = true;
+                MessageBox.Show("Invalid file name format.\n" +
+                    "The file name should be in the format 'ConfigurationName--VersionName'",
+                                    "Caution",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
 
             }
 
-            return isSuccess;
+            subViewCtrl.SetTargetVersionName(tmp.SoftwareVersion);
+            this.Text = makeWindowTitle(tmp);
+
+            return subViewCtrl.LoadViewFile(path);
         }
 
         private string makeWindowTitle(ViewFileName tmp)
         {
-            subViewCtrl.SetTargetVersionName(tmp.SoftwareVersion);
-            string viewName = tmp.SettingName;
+            var text = tmp.SettingName;
 
-            return viewName + " - " + AssemblyProduct + " " + AssemblyVersion;
+            if (string.IsNullOrEmpty(text))
+            {
+                text = AssemblyProduct + " " + AssemblyVersion;
+            }
+            else
+            {
+                text = text + " - " + AssemblyProduct + " " + AssemblyVersion;
+            }
+
+            return text;
         }
 
     }

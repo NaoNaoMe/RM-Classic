@@ -18,12 +18,14 @@ namespace rmApplication
             public int Size;
             public UserType Type;
             public List<string> Values;
+            public string Name;
 
             public DumpConfig()
             {
                 Size = 1;
                 Type = UserType.Hex;
                 Values = new List<string>();
+                Name = string.Empty;
             }
         }
 
@@ -31,30 +33,44 @@ namespace rmApplication
         {
             Size = 0,
             Type,
+            Name,
+            Copy,
             DataStart
         }
 
         private System.Windows.Forms.DataGridViewTextBoxColumn sizeColumn;
         private System.Windows.Forms.DataGridViewComboBoxColumn typeColumn;
+        private System.Windows.Forms.DataGridViewTextBoxColumn nameColumn;
+        private System.Windows.Forms.DataGridViewButtonColumn copyButtonColumn;
 
-        private SubViewControl subViewCtrl;
+        private List<SymbolFactor> mapList;
         private AutoCompleteStringCollection autoCompleteSourceForSymbol;
 
         private long hexboxAddress;
         private long hexboxOffsetAddress;
 
         private List<DumpConfig> configList;
-        public DumpForm(SubViewControl tmp)
+
+        private double incrementalValue;
+
+        public delegate void RequestFunction(BusinessLogic.DataParameter param);
+        public RequestFunction RequestFunctionCallback;
+
+        public DumpForm(List<SymbolFactor> maplist)
         {
-            subViewCtrl = tmp;
+            mapList = maplist;
             InitializeComponent();
 
             this.sizeColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.typeColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
+            this.copyButtonColumn = new System.Windows.Forms.DataGridViewButtonColumn();
+            this.nameColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
 
             this.dumpDataGridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.sizeColumn,
-            this.typeColumn});
+            this.typeColumn,
+            this.nameColumn,
+            this.copyButtonColumn});
 
             // 
             // sizeColumn
@@ -70,9 +86,23 @@ namespace rmApplication
             this.typeColumn.DisplayStyle = System.Windows.Forms.DataGridViewComboBoxDisplayStyle.ComboBox;
             this.typeColumn.HeaderText = "Type";
             this.typeColumn.Name = FixedColumns.Type.ToString();
-            this.typeColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.typeColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
             this.typeColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
             this.typeColumn.Width = 48;
+            // 
+            // nameColumn
+            // 
+            this.nameColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Name.ToString();
+            this.nameColumn.HeaderText = "Name";
+            this.nameColumn.Name = FixedColumns.Name.ToString();
+            // 
+            // copyButtonColumn
+            // 
+            this.copyButtonColumn.HeaderText = "Copy";
+            this.copyButtonColumn.Name = FixedColumns.Copy.ToString();
+            this.copyButtonColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.copyButtonColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+            this.copyButtonColumn.Width = 42;
 
             dumpDataGridView.Rows.Add();
 
@@ -104,14 +134,14 @@ namespace rmApplication
             mainHexBox.ByteProvider = new DynamicByteProvider(test);
             mainHexBox.LineInfoOffset = hexboxOffsetAddress;
 
-            if ((subViewCtrl.MapList != null) &&
-                (subViewCtrl.MapList.Count > 0))
+            if ((mapList != null) &&
+                (mapList.Count > 0))
             {
                 symbolTextBox.AutoCompleteMode = AutoCompleteMode.Suggest;
                 symbolTextBox.AutoCompleteSource = AutoCompleteSource.CustomSource;
                 autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
 
-                foreach (var factor in subViewCtrl.MapList)
+                foreach (var factor in mapList)
                 {
                     autoCompleteSourceForSymbol.Add(factor.Symbol);
 
@@ -120,6 +150,8 @@ namespace rmApplication
                 symbolTextBox.AutoCompleteCustomSource = autoCompleteSourceForSymbol;
             }
 
+            incrementalValue = 1;
+            incrementalValueTextBox.Text = incrementalValue.ToString();
         }
 
         private void dumpDataGridView_CellEndEdit(object sender, DataGridViewCellEventArgs e)
@@ -191,11 +223,11 @@ namespace rmApplication
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (subViewCtrl.MapList != null)
+                if (mapList != null)
                 {
                     string tmpSymbol = symbolTextBox.Text;
 
-                    var result = subViewCtrl.MapList.Find(item => item.Symbol == tmpSymbol);
+                    var result = mapList.Find(item => item.Symbol == tmpSymbol);
 
                     if (result != null)
                     {
@@ -219,9 +251,6 @@ namespace rmApplication
             int size = 0;
 
             bool isSuccess = false;
-
-            if (subViewCtrl.IsCommunicationActive == false)
-                return;
 
             var empty = new List<byte>();
             mainHexBox.ByteProvider = new DynamicByteProvider(empty);
@@ -268,13 +297,8 @@ namespace rmApplication
             var param = new BusinessLogic.DataParameter();
             param.Address = (uint)address;
             param.Size = (uint)size;
-            subViewCtrl.Logic.DumpConfigParameter = param;
 
-            subViewCtrl.Logic.ClearWaitingTasks();
-            subViewCtrl.Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Dump);
-            subViewCtrl.Logic.EnqueueTask(BusinessLogic.CommunicationTasks.Logging);
-            subViewCtrl.Logic.CancelCurrentTask();
-
+            RequestFunctionCallback?.Invoke(param);
         }
 
 
@@ -291,7 +315,7 @@ namespace rmApplication
             for (var index = offsetSize; index < mainHexBox.ByteProvider.Length; index++)
                 image.Enqueue(mainHexBox.ByteProvider.ReadByte(index));
 
-            for (int index = dumpDataGridView.Columns.Count; index > 2; index--)
+            for (int index = dumpDataGridView.Columns.Count; index > (int)FixedColumns.DataStart; index--)
                 dumpDataGridView.Columns.RemoveAt((index - 1));
 
             configList = new List<DumpConfig>();
@@ -308,6 +332,9 @@ namespace rmApplication
 
                     if (!Enum.TryParse<UserType>(item.Cells[(int)FixedColumns.Type].Value.ToString(), out config.Type))
                         isFailed = true;
+
+                    if(!String.IsNullOrEmpty(item.Cells[(int)FixedColumns.Name].Value as string))
+                        config.Name = item.Cells[(int)FixedColumns.Name].Value.ToString();
 
                     clusterSize += config.Size;
 
@@ -348,57 +375,8 @@ namespace rmApplication
                     for (int i = 0; i < config.Size; i++)
                         byteList.Add(image.Dequeue());
 
-                    if (tms320c28xEndianRadioButton.Checked)
-                    {
-                        byte tmp;
-                        switch (config.Size)
-                        {
-                            case 1:
-                                break;
-                            case 2:
-                                tmp = byteList[0];
-                                byteList[0] = byteList[1];
-                                byteList[1] = tmp;
-
-                                break;
-                            case 4:
-                                tmp = byteList[0];
-                                byteList[0] = byteList[1];
-                                byteList[1] = tmp;
-
-                                tmp = byteList[2];
-                                byteList[2] = byteList[3];
-                                byteList[3] = tmp;
-
-                                break;
-                            case 8:
-                                tmp = byteList[0];
-                                byteList[0] = byteList[1];
-                                byteList[1] = tmp;
-
-                                tmp = byteList[2];
-                                byteList[2] = byteList[3];
-                                byteList[3] = tmp;
-
-                                tmp = byteList[4];
-                                byteList[4] = byteList[5];
-                                byteList[5] = tmp;
-
-                                tmp = byteList[6];
-                                byteList[6] = byteList[7];
-                                byteList[7] = tmp;
-
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        if (bigEndianRadioButton.Checked)
-                            byteList.Reverse();
-
-                    }
+                    if (bigEndianRadioButton.Checked)
+                        byteList.Reverse();
 
                     ulong rowData = 0;
                     int digit = 0;
@@ -421,7 +399,7 @@ namespace rmApplication
             for (int index = 0; index < maxDataColumnSize; index++)
             {
                 DataGridViewTextBoxColumn textColumn = new DataGridViewTextBoxColumn();
-                textColumn.HeaderText = "data" + index.ToString();
+                textColumn.HeaderText = "Preview" + index.ToString();
                 dumpDataGridView.Columns.Add(textColumn);
 
             }
@@ -446,7 +424,6 @@ namespace rmApplication
         private void copyToClipBoardButton_Click(object sender, EventArgs e)
         {
             string delimiter = "\t";
-            string seriesName = "Series";
 
             if (configList == null)
                 return;
@@ -454,13 +431,26 @@ namespace rmApplication
             if (configList.Count <= 0)
                 return;
 
-            string[] text = new string[configList[0].Values.Count+1];
+            string[] text = new string[configList[0].Values.Count + 1];
+
+            int index = 0;
+            double indexValue = 0;
+            text[index++] = delimiter;
+            for (int i = 0; i < (text.Length - 1);  i++)
+            {
+                text[index++] += indexValue + delimiter;
+                indexValue += incrementalValue;
+            }
 
             int column = 0;
-            foreach(var config in configList)
+            foreach (var config in configList)
             {
-                int index = 0;
-                text[index++] += seriesName + (column++).ToString() + delimiter;
+                index = 0;
+                string seriesName = "Series" + column++.ToString();
+                if (!String.IsNullOrEmpty(config.Name))
+                    seriesName = config.Name;
+
+                text[index++] += seriesName + delimiter;
                 foreach (var value in config.Values)
                     text[index++] += value + delimiter;
 
@@ -468,7 +458,7 @@ namespace rmApplication
 
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
-            foreach(var item in text)
+            foreach (var item in text)
                 sb.AppendLine(item);
 
             Clipboard.SetText(sb.ToString());
@@ -477,7 +467,7 @@ namespace rmApplication
 
         public void UploadHexbox(List<byte> bytes)
         {
-            if(enableOffsetCheckBox.Checked)
+            if (enableOffsetCheckBox.Checked)
             {
                 var remainder = hexboxAddress % 16;
                 hexboxOffsetAddress = hexboxAddress - remainder;
@@ -498,6 +488,65 @@ namespace rmApplication
 
         }
 
+        private void incrementalValueTextBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && (e.KeyChar != '.'))
+                e.Handled = true;
+
+            if (e.KeyChar != (char)Keys.Enter)
+                return;
+
+            double value;
+            if (!double.TryParse(incrementalValueTextBox.Text, out value))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if(value == 0)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            incrementalValue = value;
+
+        }
+
+        private void incrementalValueTextBox_Leave(object sender, EventArgs e)
+        {
+            incrementalValueTextBox.Text = incrementalValue.ToString();
+        }
+
+        private void dumpDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            DataGridView dgv = (DataGridView)sender;
+            int copyColumnIndex = dgv.Columns[(int)FixedColumns.Copy].Index;
+
+            if ((e.ColumnIndex < 0) ||
+                (e.RowIndex < 0))
+            {
+                return;
+            }
+
+            if (e.RowIndex >= configList.Count)
+            {
+                return;
+            }
+
+            var index = e.RowIndex;
+
+            if (e.ColumnIndex == copyColumnIndex)
+            {
+                var sb = new StringBuilder();
+
+                foreach (var item in configList[index].Values)
+                    sb.AppendLine(item);
+
+                Clipboard.SetText(sb.ToString());
+
+            }
+        }
     }
 
 }

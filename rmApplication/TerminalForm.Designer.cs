@@ -31,6 +31,8 @@
             this.mainToolStrip = new System.Windows.Forms.ToolStrip();
             this.clearToolStripButton = new System.Windows.Forms.ToolStripButton();
             this.lineEndingComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.localEchoToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
+            this.verboseToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             this.sendTextBox = new System.Windows.Forms.TextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.sendButton = new System.Windows.Forms.Button();
@@ -52,10 +54,12 @@
             this.mainToolStrip.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.mainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.clearToolStripButton,
-            this.lineEndingComboBox});
-            this.mainToolStrip.Location = new System.Drawing.Point(0, 424);
+            this.lineEndingComboBox,
+            this.localEchoToolStripComboBox,
+            this.verboseToolStripComboBox});
+            this.mainToolStrip.Location = new System.Drawing.Point(0, 425);
             this.mainToolStrip.Name = "mainToolStrip";
-            this.mainToolStrip.Size = new System.Drawing.Size(800, 26);
+            this.mainToolStrip.Size = new System.Drawing.Size(800, 25);
             this.mainToolStrip.TabIndex = 1;
             this.mainToolStrip.Text = "toolStrip2";
             // 
@@ -65,20 +69,37 @@
             this.clearToolStripButton.Image = global::rmApplication.Properties.Resources.Clearwindowcontent_6304;
             this.clearToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.clearToolStripButton.Name = "clearToolStripButton";
-            this.clearToolStripButton.Size = new System.Drawing.Size(58, 23);
+            this.clearToolStripButton.Size = new System.Drawing.Size(53, 22);
             this.clearToolStripButton.Text = "Clear";
             this.clearToolStripButton.Click += new System.EventHandler(this.clearToolStripButton_Click);
             // 
             // lineEndingComboBox
             // 
             this.lineEndingComboBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.lineEndingComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.lineEndingComboBox.Name = "lineEndingComboBox";
-            this.lineEndingComboBox.Size = new System.Drawing.Size(121, 26);
+            this.lineEndingComboBox.Size = new System.Drawing.Size(121, 25);
+            // 
+            // localEchoToolStripComboBox
+            // 
+            this.localEchoToolStripComboBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.localEchoToolStripComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.localEchoToolStripComboBox.Name = "localEchoToolStripComboBox";
+            this.localEchoToolStripComboBox.Size = new System.Drawing.Size(121, 25);
+            this.localEchoToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.localEchoToolStripComboBox_SelectedIndexChanged);
+            // 
+            // verboseToolStripComboBox
+            // 
+            this.verboseToolStripComboBox.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.verboseToolStripComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.verboseToolStripComboBox.Name = "verboseToolStripComboBox";
+            this.verboseToolStripComboBox.Size = new System.Drawing.Size(121, 25);
+            this.verboseToolStripComboBox.SelectedIndexChanged += new System.EventHandler(this.verboseToolStripComboBox_SelectedIndexChanged);
             // 
             // sendTextBox
             // 
             this.sendTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.sendTextBox.Font = new System.Drawing.Font("MS UI Gothic", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.sendTextBox.Font = new System.Drawing.Font("MS Gothic", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
             this.sendTextBox.Location = new System.Drawing.Point(0, 0);
             this.sendTextBox.Name = "sendTextBox";
             this.sendTextBox.Size = new System.Drawing.Size(682, 23);
@@ -127,19 +148,19 @@
             // splitContainer2.Panel2
             // 
             this.splitContainer2.Panel2.Controls.Add(this.logTextBox);
-            this.splitContainer2.Size = new System.Drawing.Size(800, 424);
+            this.splitContainer2.Size = new System.Drawing.Size(800, 425);
             this.splitContainer2.SplitterDistance = 27;
             this.splitContainer2.TabIndex = 4;
             // 
             // logTextBox
             // 
             this.logTextBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.logTextBox.Font = new System.Drawing.Font("MS UI Gothic", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            this.logTextBox.Font = new System.Drawing.Font("MS Gothic", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
             this.logTextBox.Location = new System.Drawing.Point(0, 0);
             this.logTextBox.Multiline = true;
             this.logTextBox.Name = "logTextBox";
             this.logTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Both;
-            this.logTextBox.Size = new System.Drawing.Size(800, 393);
+            this.logTextBox.Size = new System.Drawing.Size(800, 394);
             this.logTextBox.TabIndex = 0;
             // 
             // TerminalForm
@@ -177,5 +198,7 @@
         private System.Windows.Forms.Button sendButton;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.TextBox logTextBox;
+        private System.Windows.Forms.ToolStripComboBox localEchoToolStripComboBox;
+        private System.Windows.Forms.ToolStripComboBox verboseToolStripComboBox;
     }
 }

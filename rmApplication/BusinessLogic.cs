@@ -39,36 +39,30 @@ namespace rmApplication
             TimeStep,
             Config,
             Dump,
+            StartLog,
             Logging,
-            Bypass,
-            Terminate
+            StopLog
         }
 
-        private struct LogActivityParameter
+        public enum TaskCompletionStatus
         {
-            public bool IsTimeout;
-            public bool IsSuccess;
+            Success,
+            Failure,
+            Timeout
         }
 
-        private struct InitializeResponse
+        public struct TaskCompletionInformation
         {
-            public bool IsSuccess;
-            public bool IsEchoed;
-            public string VersionName;
+            public TaskCompletionStatus Status;
+            public bool EchoDetected;
+            public byte[] Data;
         }
 
+        public delegate void TaskCompletaionFunction(CommunicationTasks task, TaskCompletionInformation info);
+        public TaskCompletaionFunction TaskCompletaionFunctionCallback;
 
-        public delegate void ConnectedFunction(string message);
-        public ConnectedFunction ConnectedCallBack;
-
-        public delegate void DisconnectedFunction();
-        public DisconnectedFunction DisconnectedCallBack;
-
-        public delegate void CollectDumpCompletedFunction(List<byte> bytes);
-        public CollectDumpCompletedFunction CollectDumpCompletedCallBack;
-
-        public delegate void TextReceivedFunction(List<byte> bytes);
-        public TextReceivedFunction TextReceivedCallBack;
+        public delegate void DerivedFrameReceivedFunction(byte[] bytes);
+        public DerivedFrameReceivedFunction SerialCommunicationEmulationReceivedCallBack;
 
         public uint LogTimeStep { private get; set; }
         public List<DataParameter> LogConfigParameter { private get; set; }
@@ -76,374 +70,291 @@ namespace rmApplication
 
         public CommunicationTasks TaskState { get; private set; }
 
-        public bool IsCommAvailable
-        {
-            get
-            {
-                return myCommMainCtrl.IsOpen;
-            }
-        }
+        private ConcurrentQueue<CommunicationTasks> taskQueue;
 
-        public ConcurrentQueue<string> BypassRequest { get; set; }
-        public ConcurrentQueue<string> BypassResponse { get; private set; }
+        private uint passNumber;
 
-        private ConcurrentQueue<CommunicationTasks> myTaskQueue;
+        private CommMainCtrl commMainCtrl;
+        private CommInstructions commInstructions;
 
-        private uint myPassNumber;
+        private int currentMillisStep;
 
-        private CommMainCtrl myCommMainCtrl;
-        private CommInstructions myCommInstructions;
+        private CancellationTokenSource logicCancellationTokenSource;
+        private CancellationTokenSource taskCancellationTokenSource;
 
-        private int currentTimeStep;
-
-        private CancellationTokenSource myCancellationTokenSource;
-
-        private ConcurrentQueue<LogData> mylogData;
+        private ConcurrentQueue<LogData> logDataQueue;
 
         public BusinessLogic()
         {
             var config = new Configuration();
-            myPassNumber = config.PassNumber;
-            myCommInstructions = new CommInstructions(config.RmRange);
-            myCommMainCtrl = new CommMainCtrl(config);
+            passNumber = config.PassNumber;
+            commInstructions = new CommInstructions(config.RmRange);
+            commMainCtrl = new CommMainCtrl(config);
 
-            myTaskQueue = new ConcurrentQueue<CommunicationTasks>();
+            taskQueue = new ConcurrentQueue<CommunicationTasks>();
 
             LogConfigParameter = new List<DataParameter>();
             DumpConfigParameter = new DataParameter();
 
-            mylogData = new ConcurrentQueue<LogData>();
+            logDataQueue = new ConcurrentQueue<LogData>();
 
             TaskState = CommunicationTasks.Nothing;
 
-            BypassRequest = new ConcurrentQueue<string>();
-            BypassResponse = new ConcurrentQueue<string>();
         }
 
         public bool UpdateResource(Configuration config)
         {
-            if (myCommMainCtrl.IsOpen)
+            if (commMainCtrl.IsOpen)
                 return false;
 
-            myPassNumber = config.PassNumber;
-            myCommInstructions = new CommInstructions(config.RmRange);
-            myCommMainCtrl = new CommMainCtrl(config);
+            passNumber = config.PassNumber;
+            commInstructions = new CommInstructions(config.RmRange);
+            commMainCtrl = new CommMainCtrl(config);
 
             return true;
         }
 
         public void ClearWaitingTasks()
         {
-            while (myTaskQueue.Count != 0)
-            {
-                CommunicationTasks tmp;
-                myTaskQueue.TryDequeue(out tmp);
-            }
+            while (taskQueue.Count != 0)
+                taskQueue.TryDequeue(out var tmp);
         }
 
         public void EnqueueTask(CommunicationTasks task)
         {
-            myTaskQueue.Enqueue(task);
+            taskQueue.Enqueue(task);
+        }
+
+        public void Terminate()
+        {
+            CancelCurrentTask();
+
+            if (logicCancellationTokenSource != null && !logicCancellationTokenSource.IsCancellationRequested)
+                logicCancellationTokenSource.Cancel();
+
         }
 
         public void CancelCurrentTask()
         {
-            if (myCancellationTokenSource != null)
-                myCancellationTokenSource.Cancel();
+            if (taskCancellationTokenSource != null && !taskCancellationTokenSource.IsCancellationRequested)
+                taskCancellationTokenSource.Cancel();
 
         }
 
-        private ConcurrentQueue<List<byte>> WriteDataRequest = new ConcurrentQueue<List<byte>>();
+        private ConcurrentQueue<byte[]> DataRequest = new ConcurrentQueue<byte[]>();
         public void EditValue(DataParameter param)
         {
-            WriteDataRequest.Enqueue(myCommInstructions.MakeWirteDataRequest(param.Address, param.Size, param.Value));
+            DataRequest.Enqueue(commInstructions.MakeWirteDataRequest(param.Address, param.Size, param.Value));
         }
 
-        private ConcurrentQueue<List<byte>> SendTextRequest = new ConcurrentQueue<List<byte>>();
-        public void SendText(byte[] bytes)
+        public void SendDataUsingSerialCommunicationEmulation(byte[] bytes)
         {
-            SendTextRequest.Enqueue(myCommInstructions.MakeSendTextRequest(bytes.ToList()));
+            DataRequest.Enqueue(commInstructions.MakeDerivedFrame(bytes.ToList(),CommInstructions.RmDerivedMode.SerialCommunicationEmulation));
         }
 
-        public async Task<string> RunAsync(bool isBreakable = false)
+        public async Task RunAsync()
         {
-            string msg = string.Empty;
-            bool isSuccess;
-            myCancellationTokenSource = new CancellationTokenSource();
+            logicCancellationTokenSource = new CancellationTokenSource();
 
-            while (true)
+            try
             {
-                try
+                while (true)
                 {
-                    bool isBreak = false;
                     CommunicationTasks request;
-                    if (!myTaskQueue.TryDequeue(out request))
+                    TaskState = CommunicationTasks.Nothing;
+
+                    while (true)
                     {
-                        TaskState = CommunicationTasks.Nothing;
+                        if (taskQueue.TryDequeue(out request))
+                            break;
+
+                        logicCancellationTokenSource.Token.ThrowIfCancellationRequested();
+
                         await Task.Delay(10);
                     }
-                    else
+
+                    taskCancellationTokenSource = new CancellationTokenSource();
+
+                    TaskState = request;
+                    var info = new TaskCompletionInformation();
+                    info.Status = TaskCompletionStatus.Failure;
+
+                    switch (request)
                     {
-                        TaskState = request;
+                        case CommunicationTasks.Open:
+                            System.Diagnostics.Debug.WriteLine("--Open--");
+                            bool isSuccess = await commMainCtrl.OpenAsync(taskCancellationTokenSource.Token);
+                            if (isSuccess)
+                                info.Status = TaskCompletionStatus.Success;
+                            break;
 
-                        switch (request)
-                        {
-                            case CommunicationTasks.Open:
-                                if(!myCommMainCtrl.IsOpen)
-                                {
-                                    var isOpen = await myCommMainCtrl.OpenAsync(myCancellationTokenSource.Token);
+                        case CommunicationTasks.Close:
+                            System.Diagnostics.Debug.WriteLine("--Close--");
+                            commMainCtrl.Close();
+                            info.Status = TaskCompletionStatus.Success;
+                            break;
 
-                                    if (isBreakable && !isOpen)
-                                    {
-                                        msg = "Failed to open a communication resource.";
-                                        ClearWaitingTasks();
-                                        EnqueueTask(CommunicationTasks.Terminate);
-                                    }
+                        case CommunicationTasks.Initialize:
+                            System.Diagnostics.Debug.WriteLine("--Initialize--");
+                            info = await InitializeAsync(passNumber, taskCancellationTokenSource.Token);
 
-                                }
+                            if(info.EchoDetected)
+                                info.Status = TaskCompletionStatus.Failure;
 
-                                break;
+                            break;
 
-                            case CommunicationTasks.Close:
-                                myCommMainCtrl.Close();
-                                DisconnectedCallBack?.Invoke();
-                                break;
+                        case CommunicationTasks.TimeStep:
+                            System.Diagnostics.Debug.WriteLine("--TimeStep--");
+                            info = await SetTimeStepAsync(LogTimeStep, taskCancellationTokenSource.Token);
+                            break;
 
-                            case CommunicationTasks.Initialize:
-                                var response = await InitializeAsync(myPassNumber ,myCancellationTokenSource.Token);
+                        case CommunicationTasks.Config:
+                            System.Diagnostics.Debug.WriteLine("--Config--");
+                            info = await ConfigLogDataAsync(LogConfigParameter, taskCancellationTokenSource.Token);
+                            break;
 
-                                if(response.IsSuccess)
-                                {
-                                    ConnectedCallBack?.Invoke(response.VersionName);
-                                }
-                                else 
-                                {
-                                    if (isBreakable)
-                                    {
-                                        if (response.IsEchoed)
-                                            msg = "The request was echoed back." + Environment.NewLine + "The Tx and Rx lines might be shorted together.";
-                                        else
-                                            msg = "Failed to initialize.";
+                        case CommunicationTasks.StartLog:
+                            System.Diagnostics.Debug.WriteLine("--StartLog--");
+                            info = await StartLogAsync(taskCancellationTokenSource.Token);
+                            if (info.Status == TaskCompletionStatus.Success)
+                                EnqueueTask(CommunicationTasks.Logging);
+                            break;
 
-                                        ClearWaitingTasks();
-                                        EnqueueTask(CommunicationTasks.Terminate);
-                                    }
+                        case CommunicationTasks.Logging:
+                            System.Diagnostics.Debug.WriteLine("--Logging--");
+                            info = await LoggingAsync(taskCancellationTokenSource.Token);
+                            break;
 
-                                }
+                        case CommunicationTasks.StopLog:
+                            System.Diagnostics.Debug.WriteLine("--StopLog--");
+                            info = await StopLogAsync(taskCancellationTokenSource.Token);
+                            break;
 
-                                break;
-
-                            case CommunicationTasks.TimeStep:
-                                isSuccess = await SetTimeStepAsync(LogTimeStep, myCancellationTokenSource.Token);
-
-                                if (isBreakable && !isSuccess)
-                                {
-                                    msg = "Failed to change time-step.";
-                                    ClearWaitingTasks();
-                                    EnqueueTask(CommunicationTasks.Terminate);
-                                }
-
-                                break;
-
-                            case CommunicationTasks.Config:
-                                isSuccess = await ConfigLogDataAsync(LogConfigParameter, myCancellationTokenSource.Token);
-
-                                if (isBreakable && !isSuccess)
-                                {
-                                    msg = "Failed to configure current settings.";
-                                    ClearWaitingTasks();
-                                    EnqueueTask(CommunicationTasks.Terminate);
-                                }
-
-                                break;
-
-                            case CommunicationTasks.Dump:
-
-                                var bytes = await CorrectDumpDataAsync(DumpConfigParameter);
-
-                                CollectDumpCompletedCallBack?.Invoke(bytes);
-                                break;
-
-                            case CommunicationTasks.Logging:
-                                LogActivityParameter activity;
-                                activity = await RunLoggingAsync(myCancellationTokenSource.Token);
-
-                                if (isBreakable && !activity.IsSuccess)
-                                {
-                                    msg = "Something happened during logging.";
-                                    ClearWaitingTasks();
-                                    EnqueueTask(CommunicationTasks.Terminate);
-                                }
-
-                                if (isBreakable && activity.IsTimeout)
-                                {
-                                    msg = "Communication timeout.";
-                                    ClearWaitingTasks();
-                                    EnqueueTask(CommunicationTasks.Terminate);
-                                }
-
-                                break;
-
-                            case CommunicationTasks.Bypass:
-
-                                string inputText;
-                                if(BypassRequest.TryDequeue(out inputText))
-                                {
-                                    var outputText = await BypassFunctionAsync(inputText);
-                                    if (!string.IsNullOrEmpty(outputText))
-                                        BypassResponse.Enqueue(outputText);
-                                }
-
-                                break;
-
-                            case CommunicationTasks.Terminate:
-                                myCommMainCtrl.Close();
-                                DisconnectedCallBack?.Invoke();
-                                isBreak = true;
-                                break;
-
-                        }
+                        case CommunicationTasks.Dump:
+                            System.Diagnostics.Debug.WriteLine("--Dump--");
+                            info = await CollectDumpDataAsync(DumpConfigParameter, taskCancellationTokenSource.Token);
+                            break;
 
                     }
 
-                    if (isBreak == true)
-                        break;
+                    if (info.Status != TaskCompletionStatus.Success)
+                        ClearWaitingTasks();
 
-                    if (myCancellationTokenSource.IsCancellationRequested == true)
-                        myCancellationTokenSource = new CancellationTokenSource();
-
-                }
-                catch(Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex);
-
-                    ClearWaitingTasks();
-
-                    if (isBreakable)
-                        EnqueueTask(CommunicationTasks.Terminate);
-                    else
+                    if (info.Status == TaskCompletionStatus.Timeout)
                         EnqueueTask(CommunicationTasks.Close);
 
-                    myCancellationTokenSource = new CancellationTokenSource();
+                    TaskCompletaionFunctionCallback?.Invoke(request, info);
 
+                    taskCancellationTokenSource.Dispose();
+                    taskCancellationTokenSource = null;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
 
             }
 
-            return msg;
+            commMainCtrl.Close();
+
+            logicCancellationTokenSource.Dispose();
+            logicCancellationTokenSource = null;
+
+            return;
         }
 
-        private async Task<InitializeResponse> InitializeAsync(uint passNumber, CancellationToken ct)
+        private async Task<TaskCompletionInformation> QueryAsync(byte[] txFrame, CancellationToken ct, int retry = 1)
         {
-            InitializeResponse response = new InitializeResponse();
-            response.IsSuccess = false;
-            response.IsEchoed = false;
-            response.VersionName = string.Empty;
+            var info = new TaskCompletionInformation();
+            info.Status = TaskCompletionStatus.Failure;
 
-            List<byte> txFrame = new List<byte>();
-            List<byte> rxFrame = new List<byte>();
+            commMainCtrl.PurgeReceiveBuffer();
 
-            myCommMainCtrl.PurgeReceiveBuffer();
+            await commMainCtrl.PushAsync(txFrame);
 
-            txFrame = myCommInstructions.MakeTryConnectionRequest(passNumber);
-
-            await myCommMainCtrl.PushAsync(txFrame);
-
-            while(true)
+            while(retry-- > 0)
             {
-                rxFrame = await myCommMainCtrl.PullAsync(ct);
+                double timeout = 100;
+                if (commMainCtrl.Mode == CommMainCtrl.CommunicationMode.LocalNet)
+                    timeout = 1000;
 
-                if (rxFrame.Count == 0)
+                using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeout)))
                 {
-                    break;
-                }
+                    var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct);
 
-                if (ct.IsCancellationRequested == true)
-                {
-                    break;
-                }
+                    var rxFrame = await commMainCtrl.PullAsync(linkedCts.Token);
 
-                if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
-                {
-                    if(txFrame.SequenceEqual(rxFrame))
+                    if (rxFrame.Length == 0)
+                        break;
+
+                    if (ct.IsCancellationRequested == true)
                     {
-                        response.IsEchoed = true;
-                    }
-                    else
-                    {
-                        rxFrame.RemoveAt(0);                    // remove unnecessary header data
-                        rxFrame.RemoveAt(rxFrame.Count - 1);    // remove unnecessary crc data
-
-                        var endIndex = rxFrame.Count() - 1;
-                        if (rxFrame[endIndex] == 0x00)
+                        if (cts.IsCancellationRequested)
                         {
-                            rxFrame.RemoveAt(endIndex);         // remove null data
+                            info.Status = TaskCompletionStatus.Timeout;
+                            break;
                         }
+                    }
 
-                        response.IsSuccess = true;
-                        response.VersionName = System.Text.Encoding.ASCII.GetString(rxFrame.ToArray());
+                    info.EchoDetected = false;
+                    if (txFrame.SequenceEqual(rxFrame))
+                        info.EchoDetected = true;
+
+                    if (commInstructions.IsResponseValid(txFrame, rxFrame))
+                    {
+                        info.Status = TaskCompletionStatus.Success;
+
+                        // remove unnecessary header data and crc data
+                        if (rxFrame.Length > 2)
+                        {
+#if true
+                            info.Data = new byte[rxFrame.Length - 2];
+                            Array.Copy(rxFrame, 1, info.Data, 0, info.Data.Length);
+#else
+                            info.Data = rxFrame.Skip(1).Take(rxFrame.Length - 2).ToArray();
+#endif
+                        }
+                        break;
 
                     }
 
-                    break;
-
                 }
 
             }
 
-            return response;
+            return info;
         }
 
-        private async Task<bool> SetTimeStepAsync(uint timeStep, CancellationToken ct)
+        private async Task<TaskCompletionInformation> InitializeAsync(uint passNumber, CancellationToken ct)
         {
-            List<byte> txFrame = new List<byte>();
-            List<byte> rxFrame = new List<byte>();
-
-            myCommMainCtrl.PurgeReceiveBuffer();
-
-            currentTimeStep = 0;
-
-            txFrame = myCommInstructions.MakeSetTimeStepRequest(timeStep);
-
-            await myCommMainCtrl.PushAsync(txFrame);
-
-            bool isSuccess = false;
-            while(true)
-            {
-                rxFrame = await myCommMainCtrl.PullAsync(ct);
-
-                if (rxFrame.Count == 0)
-                {
-                    break;
-                }
-
-                if (ct.IsCancellationRequested == true)
-                {
-                    break;
-                }
-
-                if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
-                {
-                    isSuccess = true;
-                    currentTimeStep = (int)timeStep;
-                    break;
-                }
-
-            }
-
-            return isSuccess;
+            return await QueryAsync(commInstructions.MakeTryConnectionRequest(passNumber), ct);
         }
 
-        private async Task<bool> ConfigLogDataAsync(List<DataParameter> parameters, CancellationToken ct)
+        private async Task<TaskCompletionInformation> SetTimeStepAsync(uint millis, CancellationToken ct)
         {
-            if(parameters.Count <= 0)
+            var info = await QueryAsync(commInstructions.MakeSetTimeStepRequest(millis), ct);
+
+            if (info.Status == TaskCompletionStatus.Success)
             {
-                return false;
+                currentMillisStep = (int)millis;
             }
 
-            myCommMainCtrl.PurgeReceiveBuffer();
+            return info;
+        }
 
-            myCommInstructions.ClearLogDataConfiguration();
+        private async Task<TaskCompletionInformation> ConfigLogDataAsync(List<DataParameter> parameters, CancellationToken ct)
+        {
+            var info = new TaskCompletionInformation();
+            info.Status = TaskCompletionStatus.Failure;
+
+            if (parameters.Count <= 0)
+                return info;
+
+            commInstructions.ClearLogDataConfiguration();
 
             UInt32 address;
             UInt32 size;
@@ -454,7 +365,7 @@ namespace rmApplication
                 address = item.Address;
                 size = item.Size;
 
-                if (!myCommInstructions.PushDataForLogDataConfiguration(address, size))
+                if (!commInstructions.PushDataForLogDataConfiguration(address, size))
                 {
                     isFailed = true;
                     break;
@@ -464,153 +375,77 @@ namespace rmApplication
 
             if(isFailed == true)
             {
-                return false;
+                info.Status = TaskCompletionStatus.Failure;
+                return info;
             }
 
-            if(!myCommInstructions.UpdateLogDataConfiguration())
+            if (!commInstructions.UpdateLogDataConfiguration())
             {
-                return false;
+                info.Status = TaskCompletionStatus.Failure;
+                return info;
             }
 
-            List<byte> txFrame = new List<byte>();
-            List<byte> rxFrame = new List<byte>();
-
-            bool isSuccess = true;
-            while (myCommInstructions.IsAvailableLogDataRequest(out txFrame))
+            while (commInstructions.IsAvailableLogDataRequest(out var txFrame))
             {
-                await myCommMainCtrl.PushAsync(txFrame);
-
-                int retryCnt = 0;
-                while(true)
-                {
-                    rxFrame = await myCommMainCtrl.PullAsync(ct);
-
-                    if(rxFrame.Count == 0)
-                    {
-                        isSuccess = false;
-                        break;
-                    }
-
-                    if (ct.IsCancellationRequested == true)
-                    {
-                        isSuccess = false;
-                        break;
-                    }
-
-                    if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        retryCnt++;
-                        if(retryCnt > 10)
-                        {
-                            isSuccess = false;
-                            break;
-                        }
-                        else
-                        {
-                            await myCommMainCtrl.PushAsync(txFrame);
-                        }
-
-                    }
-
-                }
-
-                if (isSuccess == false)
+                info = await QueryAsync(txFrame, ct);
+                if (info.Status != TaskCompletionStatus.Success)
                     break;
-
             }
 
-            return isSuccess;
+            return info;
 
         }
 
-
-        private async Task<List<byte>> CorrectDumpDataAsync(DataParameter parameter)
+        private async Task<TaskCompletionInformation> StartLogAsync(CancellationToken ct)
         {
-            List<byte> dumpData = new List<byte>();
+            return await QueryAsync(commInstructions.MakeStartLogModeRequest(), ct, 3);
+        }
 
-            myCommMainCtrl.PurgeReceiveBuffer();
+        private async Task<TaskCompletionInformation> StopLogAsync(CancellationToken ct)
+        {
+            return await QueryAsync(commInstructions.MakeStopLogModeRequest(), ct, 3);
+        }
 
-            List<byte> txFrame = new List<byte>();
-            List<byte> rxFrame = new List<byte>();
+        private async Task<TaskCompletionInformation> CollectDumpDataAsync(DataParameter parameter, CancellationToken ct)
+        {
+            var info = new TaskCompletionInformation();
+            info.Status = TaskCompletionStatus.Failure;
+
+            var dumpData = new List<byte>();
 
             uint address = parameter.Address;
             uint size = parameter.Size;
 
-            bool isRequestAssert = true;
-            bool isRetry = false;
-            int retryCount = 0;
             while (true)
             {
-                if(isRequestAssert)
+                info = await QueryAsync(commInstructions.MakeDumpDataRequest(address, size), ct);
+                if (info.Status != TaskCompletionStatus.Success)
+                    break;
+
+                dumpData.AddRange(info.Data);
+
+                if (size <= (uint)info.Data.Length)
                 {
-                    if (!isRetry)
-                        txFrame = myCommInstructions.MakeDumpDataRequest(address, size);
-
-                    await myCommMainCtrl.PushAsync(txFrame);
-
+                    info.Status = TaskCompletionStatus.Success;
+                    info.Data = dumpData.ToArray();
+                    break;
                 }
 
-                CancellationTokenSource dumpCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-                rxFrame = await myCommMainCtrl.PullAsync(dumpCts.Token);
-
-                if (dumpCts.IsCancellationRequested)
-                {
-                    isRequestAssert = true;
-                    isRetry = true;
-                }
-                else if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
-                {
-                    isRequestAssert = true;
-                    isRetry = false;
-                    retryCount = 0;
-
-                    rxFrame.RemoveAt(0);                    // remove unnecessary header data
-                    rxFrame.RemoveAt(rxFrame.Count - 1);    // remove unnecessary crc data
-
-                    dumpData.AddRange(rxFrame);
-
-                    if(size <= (uint)rxFrame.Count)
-                        break;
-
-                    address += (uint)rxFrame.Count;
-                    size -= (uint)rxFrame.Count;
-
-                }
-                else
-                {
-                    isRequestAssert = false;
-                    isRetry = true;
-                }
-
-                if(isRetry)
-                {
-                    retryCount++;
-                    if (retryCount > 10)
-                        break;
-
-                }
+                address += (uint)info.Data.Length;
+                size -= (uint)info.Data.Length;
 
             }
 
-            return dumpData;
+            return info;
         }
 
-        private async Task<LogActivityParameter> RunLoggingAsync(CancellationToken ct)
+        private async Task<TaskCompletionInformation> LoggingAsync(CancellationToken ct)
         {
-            // Main task
-            LogActivityParameter activity = new LogActivityParameter();
-            activity.IsSuccess = true;
-            activity.IsTimeout = false;
+            var info = new TaskCompletionInformation();
+            info.Status = TaskCompletionStatus.Success;
 
-            if (!myCommMainCtrl.IsOpen)
-            {
-                activity.IsSuccess = false;
-                return activity;
-            }
+            while (DataRequest.Count != 0)
+                DataRequest.TryDequeue(out var tmp);
 
             var txSW = new System.Diagnostics.Stopwatch();
             var rxSW = new System.Diagnostics.Stopwatch();
@@ -618,247 +453,124 @@ namespace rmApplication
             long rxTimeOffset = 0;
             long slvRxTime = 0;
 
-            List<byte> txFrame = new List<byte>();
-            List<byte> rxFrame = new List<byte>();
+            txSW.Restart();
+            rxSW.Restart();
+            timeoutSW.Restart();
 
-            myCommMainCtrl.PurgeReceiveBuffer();
+            while (logDataQueue.Count != 0)
+                logDataQueue.TryDequeue(out var tmp);
 
-            try
+            while (true)
             {
-                txSW.Restart();
-                rxSW.Restart();
-                timeoutSW.Restart();
+                if (ct.IsCancellationRequested)
+                    break;
 
+                if (!DataRequest.TryDequeue(out var txFrame))
+                {
+                    var msec = txSW.ElapsedMilliseconds;
+                    if (msec > 500)
+                    {
+                        txFrame = commInstructions.MakeStartLogModeRequest();
+                        txSW.Restart();
+                    }
+                }
+
+                if (txFrame != null)
+                    await commMainCtrl.PushAsync(txFrame);
+
+                Queue<byte[]> rxFrames = new Queue<byte[]>();
                 while (true)
                 {
-                    ct.ThrowIfCancellationRequested();
-
-                    if (SendTextRequest.TryDequeue(out txFrame))
-                    {
-
-                    }
-                    else if (WriteDataRequest.TryDequeue(out txFrame))
-                    {
-
-                    }
-                    else
-                    {
-                        var msec = txSW.ElapsedMilliseconds;
-                        if (msec > 500)
-                        {
-                            txFrame = myCommInstructions.MakeStartLogModeRequest();
-                            txSW.Restart();
-                        }
-                    }
-
-                    if (txFrame != null)
-                    {
-                        if (txFrame.Count != 0)
-                        {
-                            await myCommMainCtrl.PushAsync(txFrame);
-
-                        }
-
-                    }
-
-                    rxFrame = myCommMainCtrl.Pull();
-
-                    if (rxFrame.Count != 0)
-                    {
-                        timeoutSW.Restart();
-
-                        var msec = rxSW.ElapsedMilliseconds;
-
-                        var tmp = new LogData();
-                        tmp.RawData = new Queue<ulong>();
-                        int lostCnt;
-
-                        var bytes = new List<byte>();
-                        int code;
-
-                        if (myCommInstructions.CheckUnmanagedStream(rxFrame, ref bytes, out code))
-                        {
-                            if(code == 1)
-                                TextReceivedCallBack?.Invoke(bytes);
-
-                        }
-                        else if (myCommInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
-                        {
-                            if (rxTimeOffset == 0)
-                            {
-                                rxTimeOffset = msec;
-                            }
-                            else
-                            {
-                                slvRxTime += currentTimeStep * (lostCnt + 1);
-
-                            }
-
-                            if (lostCnt != 0)
-                            {
-                                tmp.Status = lostCnt.ToString() + " messages might be lost";
-                            }
-                            else
-                            {
-                                tmp.Status = "OK";
-                            }
-
-                            tmp.SlvTime = slvRxTime;
-                            tmp.OsTime = msec - rxTimeOffset;
-
-                            mylogData.Enqueue(tmp);
-
-                        }
-
-                    }
-
-                    if (timeoutSW.ElapsedMilliseconds >= 5000)
-                    {
-                        activity.IsTimeout = true;
-
-                        var tmp = new LogData();
-                        tmp.RawData = new Queue<ulong>();
-                        tmp.Status = "Timeout";
-                        tmp.SlvTime = 0;
-                        tmp.OsTime = 0;
-
-                        mylogData.Enqueue(tmp);
-
+                    var rxFrame = commMainCtrl.Pull();
+                    if (rxFrame.Length == 0)
                         break;
-                    }
-
-                    await Task.Delay(1);
-
+                    rxFrames.Enqueue(rxFrame);
                 }
 
-            }
-            catch (OperationCanceledException)
-            {
-                System.Diagnostics.Debug.WriteLine("Canceled");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
-                activity.IsSuccess = false;
-            }
-
-            //Clear log data
-            mylogData = new ConcurrentQueue<LogData>();
-
-            // Assert "StopLog" when logging task was finished
-            try
-            {
-                txFrame = myCommInstructions.MakeStopLogModeRequest();
-                await myCommMainCtrl.PushAsync(txFrame);
-
-                while(true)
+                while (rxFrames.Count > 0)
                 {
-                    CancellationTokenSource otherCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-                    rxFrame = await myCommMainCtrl.PullAsync(otherCts.Token);
+                    var rxFrame = rxFrames.Dequeue();
 
-                    if (otherCts.IsCancellationRequested)
-                        break;
+                    timeoutSW.Restart();
 
-                    if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
-                        break;
+                    var msec = rxSW.ElapsedMilliseconds;
+
+                    var tmp = new LogData();
+                    tmp.RawData = new Queue<ulong>();
+                    int lostCnt;
+
+                    var bytes = new byte[0];
+                    CommInstructions.RmDerivedMode mode;
+
+                    if (commInstructions.CheckDerivedFrame(rxFrame, ref bytes, out mode))
+                    {
+                        if (mode == CommInstructions.RmDerivedMode.SerialCommunicationEmulation)
+                            SerialCommunicationEmulationReceivedCallBack?.Invoke(bytes);
+
+                    }
+                    else if (commInstructions.CheckLogSequence(rxFrame, ref tmp.RawData, out lostCnt))
+                    {
+                        long osRXTime = 0;
+                        if (rxTimeOffset == 0)
+                        {
+                            rxTimeOffset = msec;
+                        }
+                        else
+                        {
+                            osRXTime = msec - rxTimeOffset;
+                            slvRxTime += currentMillisStep;
+                        }
+
+                        if (lostCnt != 0)
+                        {
+                            tmp.Status = lostCnt.ToString() + " messages might be lost";
+                            slvRxTime = ((osRXTime / currentMillisStep) + 1) * currentMillisStep;
+                        }
+                        else
+                        {
+                            tmp.Status = "OK";
+                        }
+
+                        tmp.SlvTime = slvRxTime;
+                        tmp.OsTime = osRXTime;
+
+                        logDataQueue.Enqueue(tmp);
+
+                    }
 
                 }
 
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
+                if (timeoutSW.ElapsedMilliseconds >= 5000)
+                {
+                    info.Status = TaskCompletionStatus.Timeout;
+
+                    var tmp = new LogData();
+                    tmp.RawData = new Queue<ulong>();
+                    tmp.Status = "Timeout";
+                    tmp.SlvTime = 0;
+                    tmp.OsTime = 0;
+
+                    logDataQueue.Enqueue(tmp);
+
+                    break;
+                }
+
+                await Task.Delay(1);
+
             }
 
-            return activity;
+            return info;
         }
 
         public bool GetLogData(out LogData result)
         {
             result = new LogData();
 
-            if (!mylogData.TryDequeue(out result))
+            if (!logDataQueue.TryDequeue(out result))
                 return false;
             else
                 return true;
 
-        }
-
-        private async Task<string> BypassFunctionAsync(string inputText)
-        {
-            string outputText = string.Empty;
-
-            if (string.IsNullOrEmpty(inputText))
-                return outputText;
-
-            if (!System.Text.RegularExpressions.Regex.IsMatch(inputText, @"\A\b[0-9a-fA-F]+\b\Z") ||
-                (inputText.Length % 2) != 0)
-            {
-                return outputText;
-            }
-
-            List<byte> bytes = new List<byte>();
-            for (int i = 0; i < inputText.Length; i+=2)
-                bytes.Add(Convert.ToByte(inputText.Substring(i, 2), 16));
-
-            myCommMainCtrl.PurgeReceiveBuffer();
-
-            List<byte> txFrame = new List<byte>();
-            List<byte> rxFrame = new List<byte>();
-
-            bool isRequestAssert = true;
-            bool isRetry = false;
-            int retryCount = 0;
-            while (true)
-            {
-                if(isRequestAssert)
-                {
-                    txFrame = myCommInstructions.MakeBypassRequest(bytes);
-
-                    await myCommMainCtrl.PushAsync(txFrame);
-
-                }
-
-                CancellationTokenSource dumpCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-                rxFrame = await myCommMainCtrl.PullAsync(dumpCts.Token);
-
-                if (dumpCts.IsCancellationRequested)
-                {
-                    isRequestAssert = true;
-                    isRetry = true;
-                }
-                else if (myCommInstructions.IsResponseValid(txFrame, rxFrame))
-                {
-                    isRequestAssert = true;
-                    isRetry = false;
-                    retryCount = 0;
-
-                    rxFrame.RemoveAt(0);                    // remove unnecessary header data
-                    rxFrame.RemoveAt(rxFrame.Count - 1);    // remove unnecessary crc data
-
-                    outputText = string.Empty;
-                    foreach (var abyte in rxFrame)
-                        outputText += abyte.ToString("X2");
-
-                    break;
-                }
-                else
-                {
-                    isRequestAssert = false;
-                    isRetry = true;
-                }
-
-                if (isRetry)
-                {
-                    retryCount++;
-                    if (retryCount > 3)
-                        break;
-
-                }
-
-            }
-
-            return outputText;
         }
 
     }

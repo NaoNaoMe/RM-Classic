@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.IO.Ports;
 
-namespace rmApplication
+namespace SerialTerminal
 {
-    class SerialPortResource
+    public class SerialPortResource : IDisposable
     {
         // https://stackoverflow.com/questions/3742022/c-sharp-event-with-custom-arguments
         public enum CtsDsrEvents
@@ -24,7 +24,8 @@ namespace rmApplication
             public CtsDsrEvents CtsDsrEvent { get; set; }
         }
 
-        public struct Parameters{
+        public struct Parameters
+        {
             public string PortName;
             public int BaudRate;
             public Handshake HandShake;
@@ -116,11 +117,17 @@ namespace rmApplication
 
         private StringBuilder receivedTextBuffer;
         private SerialPort comm;
-
+        private bool disposedValue;
 
         public SerialPortResource()
         {
+            receivedTextBuffer = new StringBuilder();
             Delimiter = string.Empty;
+        }
+
+        ~SerialPortResource()
+        {
+            Close();
         }
 
         public bool Write(string text)
@@ -130,14 +137,14 @@ namespace rmApplication
             if (string.IsNullOrEmpty(text))
                 return isSuccess;
 
-            var bytes = new List<Byte>(Encoding.UTF8.GetBytes(text + Delimiter));
+            var bytes = Encoding.UTF8.GetBytes(text + Delimiter);
 
             isSuccess = Write(bytes);
 
             return isSuccess;
         }
 
-        public bool Write(List<byte> bytes)
+        public bool Write(byte[] bytes)
         {
             bool isSuccess = false;
 
@@ -147,64 +154,44 @@ namespace rmApplication
             if (!comm.IsOpen)
                 return isSuccess;
 
-            try
-            {
-                comm.Write(bytes.ToArray(), 0, bytes.Count());
-                isSuccess = true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
-            }
+            comm.Write(bytes, 0, bytes.Length);
+            isSuccess = true;
 
             return isSuccess;
         }
 
         public bool Open(Parameters param)
         {
-            bool isOpen = false;
-
-            if ((string.IsNullOrEmpty(param.PortName) == false) &&
-                (param.BaudRate != 0))
+            if (string.IsNullOrEmpty(param.PortName) ||
+                param.BaudRate == 0)
             {
-                receivedTextBuffer = new StringBuilder();
-
-                comm = new SerialPort();
-
-                comm.PortName = param.PortName;
-                comm.BaudRate = param.BaudRate;
-
-                comm.DataBits = param.DataBits;
-                comm.Parity = param.Parity;
-                comm.StopBits = param.StopBits;
-                comm.Handshake = param.HandShake;
-
-                comm.Encoding = Encoding.ASCII;
-
-                comm.PinChanged += PinChanged;
-
-                try
-                {
-                    comm.Open();
-
-                    isOpen = true;
-
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex);
-
-                }
-
+                return false;
             }
 
-            return isOpen;
+            receivedTextBuffer.Clear();
+
+            comm = new SerialPort();
+
+            comm.PortName = param.PortName;
+            comm.BaudRate = param.BaudRate;
+
+            comm.DataBits = param.DataBits;
+            comm.Parity = param.Parity;
+            comm.StopBits = param.StopBits;
+            comm.Handshake = param.HandShake;
+
+            comm.Encoding = Encoding.ASCII;
+
+            comm.PinChanged += PinChanged;
+
+            comm.Open();
+
+            return true;
         }
 
         public void PurgeReceiveBuffer()
         {
-            if (receivedTextBuffer != null)
-                receivedTextBuffer.Clear();
+            receivedTextBuffer.Clear();
 
             if (comm == null)
                 return;
@@ -221,9 +208,9 @@ namespace rmApplication
             }
         }
 
-        public List<byte> ReadBytes()
+        public byte[] ReadBytes()
         {
-            List<byte> bytes = new List<byte>(); ;
+            byte[] bytes = new byte[0];
 
             if (comm == null)
                 return bytes;
@@ -231,94 +218,73 @@ namespace rmApplication
             if (!comm.IsOpen)
                 return bytes;
 
-            try
+            int size = comm.BytesToRead;
+
+            if (size > 0)
             {
-                int size = comm.BytesToRead;
-
-                if (size > 0)
-                {
-                    var tmp = new byte[size];
-                    comm.Read(tmp, 0, size);
-
-                    foreach (var item in tmp)
-                    {
-                        bytes.Add(item);
-                    }
-
-                }
-
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
+                bytes = new byte[size];
+                comm.Read(bytes, 0, size);
             }
 
             return bytes;
         }
 
-        public async Task<string> ReadTextAsync(CancellationToken ct)
+        private string ExtractDelimitedString(byte[] newBytes)
         {
-            if (string.IsNullOrEmpty(Delimiter))
-            {
-                var bytes = await ReadBytesAsync(ct);
-                return Encoding.UTF8.GetString(bytes.ToArray());
-            }
+            if (newBytes != null && newBytes.Length > 0)
+                receivedTextBuffer.Append(Encoding.UTF8.GetString(newBytes));
 
             string output = string.Empty;
-            string rawText = receivedTextBuffer.ToString();
-
-            int firstOccurrence = rawText.IndexOf(Delimiter);
+            var firstOccurrence = receivedTextBuffer.ToString().IndexOf(Delimiter);
 
             if (firstOccurrence != -1)
             {
-                output = rawText.Substring(0, firstOccurrence);
-                receivedTextBuffer.Clear();
+                output = receivedTextBuffer.ToString().Substring(0, firstOccurrence);
 
-                var startindex = firstOccurrence + Delimiter.Length;
-                var length = rawText.Length - startindex;
+                var length = firstOccurrence + Delimiter.Length;
 
                 if (length > 0)
-                    receivedTextBuffer.Append(rawText.Substring(startindex, length));
-
-                return output;
-            }
-
-            while (true)
-            {
-                var bytes = await ReadBytesAsync(ct);
-
-                rawText = Encoding.UTF8.GetString(bytes.ToArray());
-
-                if (string.IsNullOrEmpty(rawText))
-                    break;
-
-                firstOccurrence = rawText.IndexOf(Delimiter);
-
-                if (firstOccurrence != -1)
-                {
-                    receivedTextBuffer.Append(rawText.Substring(0, firstOccurrence));
-                    output = receivedTextBuffer.ToString();
-                    receivedTextBuffer.Clear();
-
-                    var startindex = firstOccurrence + Delimiter.Length;
-                    var length = rawText.Length - startindex;
-
-                    if (length > 0)
-                        receivedTextBuffer.Append(rawText.Substring(startindex, length));
-
-                    break;
-                }
-
-                receivedTextBuffer.Append(rawText);
+                    receivedTextBuffer.Remove(0, length);
 
             }
 
             return output;
         }
 
-        public async Task<List<byte>> ReadBytesAsync(CancellationToken ct)
+        public async Task<string> ReadTextAsync(CancellationToken ct)
         {
-            List<byte> bytes = new List<byte>();
+            var bytes = new byte[0];
+
+            if (string.IsNullOrEmpty(Delimiter))
+            {
+                bytes = await ReadBytesAsync(ct);
+                return Encoding.UTF8.GetString(bytes);
+            }
+
+            string output = string.Empty;
+
+            do
+            {
+                output = ExtractDelimitedString(bytes);
+                if (!string.IsNullOrEmpty(output))
+                    break;
+
+                bytes = await ReadBytesAsync(ct);
+
+            } while (true);
+
+            return output;
+        }
+
+        public async Task<byte[]> ReadBytesAsync(CancellationToken ct)
+        {
+            return await ReadBytesAsync(0, ct);
+        }
+
+        public async Task<byte[]> ReadBytesAsync(int timeout, CancellationToken ct)
+        {
+            Exception exception = new Exception();
+            byte[] bytes = new byte[0];
 
             if (comm == null)
                 return bytes;
@@ -326,61 +292,43 @@ namespace rmApplication
             if (!comm.IsOpen)
                 return bytes;
 
-            await Task.Run(() =>
+            var timeoutSW = new System.Diagnostics.Stopwatch();
+            if (timeout > 0)
+                timeoutSW.Restart();
+            else
+                timeout = 1;
+
+            while (true)
             {
-                try
+                if (timeoutSW.ElapsedMilliseconds >= timeout)
+                    break;
+
+                int size = comm.BytesToRead;
+
+                if (size > 0)
                 {
-                    while (true)
-                    {
-                        ct.ThrowIfCancellationRequested();
-
-                        int size = comm.BytesToRead;
-
-                        if (size > 0)
-                        {
-                            var tmp = new byte[size];
-                            comm.Read(tmp, 0, size);
-
-                            foreach (var item in tmp)
-                                bytes.Add(item);
-
-                            break;
-
-                        }
-
-                        Thread.Sleep(1);
-
-                    }
+                    bytes = new byte[size];
+                    comm.Read(bytes, 0, size);
+                    break;
 
                 }
-                catch (OperationCanceledException)
-                {
-                    System.Diagnostics.Debug.WriteLine("Canceled ReadBytesAsync");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine(ex);
-                }
+
+                ct.ThrowIfCancellationRequested();
+
+                await Task.Delay(1);
             }
-            );
 
             return bytes;
         }
 
         public void Close()
         {
-            try
-            {
-                if (comm.IsOpen == true)
-                    comm.Close();
-                comm.Dispose();
+            if (comm == null)
+                return;
 
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine(ex);
-
-            }
+            if (comm.IsOpen == true)
+                comm.Close();
+            comm.Dispose();
 
         }
 
@@ -394,7 +342,7 @@ namespace rmApplication
             }
             else if (e.EventType == SerialPinChange.CtsChanged)
             {
-                if(comm.CtsHolding)
+                if (comm.CtsHolding)
                     EventPinChanged?.Invoke(null, new CtsDsrEventArgs { CtsDsrEvent = CtsDsrEvents.CtsHighEvent });
                 else
                     EventPinChanged?.Invoke(null, new CtsDsrEventArgs { CtsDsrEvent = CtsDsrEvents.CtsLowEvent });
@@ -415,6 +363,34 @@ namespace rmApplication
 
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    // TODO: dispose managed state (managed objects)
+                    Close();
+                }
 
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~SerialPortResource()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        void IDisposable.Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

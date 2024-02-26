@@ -16,9 +16,6 @@ namespace rmApplication
         [XmlElement("Check")]
         public bool Check { set; get; }
 
-        [XmlElement("Variable")]    // obsolute
-        public string Variable { set; get; }
-
         [XmlElement("Symbol")]
         public string Symbol { set; get; }
 
@@ -56,7 +53,6 @@ namespace rmApplication
         {
             Group = null;
             Check = false;
-            Variable = null;
             Symbol = null;
             Address = null;
             Offset = "0";
@@ -74,7 +70,6 @@ namespace rmApplication
         {
             Group = ds.Group;
             Check = ds.Check;
-            Variable = ds.Variable;
             Symbol = ds.Symbol;
             Address = ds.Address;
             Offset = ds.Offset;

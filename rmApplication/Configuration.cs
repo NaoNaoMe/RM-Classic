@@ -31,8 +31,8 @@ namespace rmApplication
 
             SerialPortName = string.Empty;
 
-            ClientAddress = System.Net.IPAddress.Parse("192.168.10.0");
-            ClientPort = 4000;
+            ClientAddress = System.Net.IPAddress.Parse("192.168.0.39");
+            ClientPort = 23;
 
             ServerAddress = System.Net.IPAddress.Parse("127.0.0.2");
             ServerPort = 4001;
@@ -54,6 +54,70 @@ namespace rmApplication
 
             ServerAddress = conf.ServerAddress;
             ServerPort = conf.ServerPort;
+
+        }
+
+        public bool ValidateCommunicationResource(string text, out Configuration config)
+        {
+            config = new Configuration();
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            var factors = text.Split(',');
+
+            if (factors.Count() < 4)
+                return false;
+
+            uint passNumber;
+            if (uint.TryParse(factors[0], out passNumber))
+                config.PassNumber = passNumber;
+            else
+                return false;
+
+            CommMainCtrl.CommunicationMode mode;
+            if (Enum.TryParse<CommMainCtrl.CommunicationMode>(factors[1], out mode))
+                config.CommMode = mode;
+            else
+                return false;
+
+            CommInstructions.RmAddr range;
+            if (Enum.TryParse<CommInstructions.RmAddr>(factors[2], out range))
+                config.RmRange = range;
+            else
+                return false;
+
+            int baudRate;
+            if (int.TryParse(factors[3], out baudRate))
+                config.BaudRate = baudRate;
+            else
+                return false;
+
+            if (mode == CommMainCtrl.CommunicationMode.Serial && factors.Count() == 5)
+            {
+                config.SerialPortName = factors[4];
+                return true;
+
+            }
+            else if (mode == CommMainCtrl.CommunicationMode.LocalNet && factors.Count() == 6)
+            {
+                System.Net.IPAddress clientAddress;
+                if (System.Net.IPAddress.TryParse(factors[4], out clientAddress))
+                    config.ClientAddress = clientAddress;
+                else
+                    return false;
+
+                int clientPort;
+                if (int.TryParse(factors[5], out clientPort))
+                    config.ClientPort = clientPort;
+                else
+                    return false;
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
 
         }
     }

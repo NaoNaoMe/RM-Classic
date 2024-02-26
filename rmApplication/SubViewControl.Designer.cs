@@ -96,7 +96,7 @@
             this.mainDataGridView.Size = new System.Drawing.Size(1100, 297);
             this.mainDataGridView.TabIndex = 0;
             this.mainDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellContentClick);
-            this.mainDataGridView.CellValidated += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellValidated);
+            this.mainDataGridView.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellEndEdit);
             this.mainDataGridView.CellValidating += new System.Windows.Forms.DataGridViewCellValidatingEventHandler(this.mainDataGridView_CellValidating);
             this.mainDataGridView.EditingControlShowing += new System.Windows.Forms.DataGridViewEditingControlShowingEventHandler(this.mainDataGridView_EditingControlShowing);
             this.mainDataGridView.RowPostPaint += new System.Windows.Forms.DataGridViewRowPostPaintEventHandler(this.mainDataGridView_RowPostPaint);

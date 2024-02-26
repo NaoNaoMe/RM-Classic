@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Sockets;
 
-namespace rmApplication
+namespace TcpClientTerminal
 {
-    class TCPClientResource
+    public class TCPClientResource
     {
         public bool IsConnected
         {
@@ -29,6 +29,7 @@ namespace rmApplication
 
         public TCPClientResource()
         {
+            receivedTextBuffer = new StringBuilder();
             Delimiter = string.Empty;
         }
 
@@ -39,14 +40,14 @@ namespace rmApplication
             if (string.IsNullOrEmpty(text))
                 return isSuccess;
 
-            var bytes = new List<Byte>(Encoding.UTF8.GetBytes(text + Delimiter));
+            var bytes = Encoding.UTF8.GetBytes(text + Delimiter);
 
             isSuccess = await WriteAsync(bytes);
 
             return isSuccess;
         }
 
-        public async Task<bool> WriteAsync(List<byte> bytes)
+        public async Task<bool> WriteAsync(byte[] bytes)
         {
             bool isSuccess = false;
 
@@ -60,9 +61,7 @@ namespace rmApplication
             {
                 NetworkStream stream = client.GetStream();
 
-                var txBuff = bytes.ToArray();
-
-                await stream.WriteAsync(txBuff, 0, txBuff.Length);
+                await stream.WriteAsync(bytes, 0, bytes.Length);
 
                 isSuccess = true;
 
@@ -82,7 +81,7 @@ namespace rmApplication
 
             try
             {
-                receivedTextBuffer = new StringBuilder();
+                receivedTextBuffer.Clear();
 
                 client = new TcpClient();
                 await client.ConnectAsync(ip, port).ContinueWith(t => t.IsCompleted, ct);
@@ -102,8 +101,7 @@ namespace rmApplication
 
         public void PurgeReceiveBuffer()
         {
-            if (receivedTextBuffer != null)
-                receivedTextBuffer.Clear();
+            receivedTextBuffer.Clear();
 
             if (client == null)
                 return;
@@ -137,9 +135,9 @@ namespace rmApplication
 
         }
 
-        public List<byte> ReadBytes()
+        public byte[] ReadBytes()
         {
-            List<byte> bytes = new List<byte>();
+            byte[] bytes = new byte[0];
 
             if (client == null)
                 return bytes;
@@ -150,21 +148,20 @@ namespace rmApplication
             try
             {
                 NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[1024];
+                bytes = new byte[1024];
 
-                if(stream.DataAvailable)
+                if (stream.DataAvailable)
                 {
-                    var readBytes = stream.Read(buffer, 0, buffer.Length);
+                    var readBytes = stream.Read(bytes, 0, bytes.Length);
 
-                    if (readBytes != 0)
+                    if (readBytes == 0)
                     {
-                        bytes = new List<byte>(buffer.ToList());
-
-                        while (bytes.Count > readBytes)
-                        {
-                            bytes.RemoveAt(bytes.Count - 1);
-                        }
-
+                        client.Close();
+                        client.Dispose();
+                    }
+                    else
+                    {
+                        Array.Resize(ref bytes, readBytes);
                     }
 
                 }
@@ -178,69 +175,64 @@ namespace rmApplication
             return bytes;
         }
 
-        public async Task<string> ReadTextAsync(CancellationToken ct)
+        private string ExtractDelimitedString(byte[] newBytes)
         {
-            if (string.IsNullOrEmpty(Delimiter))
-            {
-                var bytes = await ReadBytesAsync(ct);
-                return Encoding.UTF8.GetString(bytes.ToArray());
-            }
+            if (newBytes != null && newBytes.Length > 0)
+                receivedTextBuffer.Append(Encoding.UTF8.GetString(newBytes));
 
             string output = string.Empty;
-            string rawText = receivedTextBuffer.ToString();
-
-            int firstOccurrence = rawText.IndexOf(Delimiter);
+            var firstOccurrence = receivedTextBuffer.ToString().IndexOf(Delimiter);
 
             if (firstOccurrence != -1)
             {
-                output = rawText.Substring(0, firstOccurrence);
-                receivedTextBuffer.Clear();
+                output = receivedTextBuffer.ToString().Substring(0, firstOccurrence);
 
-                var startindex = firstOccurrence + Delimiter.Length;
-                var length = rawText.Length - startindex;
+                var length = firstOccurrence + Delimiter.Length;
 
                 if (length > 0)
-                    receivedTextBuffer.Append(rawText.Substring(startindex, length));
-
-                return output;
-            }
-
-            while (true)
-            {
-                var bytes = await ReadBytesAsync(ct);
-
-                rawText = Encoding.UTF8.GetString(bytes.ToArray());
-
-                if (string.IsNullOrEmpty(rawText))
-                    break;
-
-                firstOccurrence = rawText.IndexOf(Delimiter);
-
-                if (firstOccurrence != -1)
-                {
-                    receivedTextBuffer.Append(rawText.Substring(0, firstOccurrence));
-                    output = receivedTextBuffer.ToString();
-                    receivedTextBuffer.Clear();
-
-                    var startindex = firstOccurrence + Delimiter.Length;
-                    var length = rawText.Length - startindex;
-
-                    if (length > 0)
-                        receivedTextBuffer.Append(rawText.Substring(startindex, length));
-
-                    break;
-                }
-
-                receivedTextBuffer.Append(rawText);
+                    receivedTextBuffer.Remove(0, length);
 
             }
 
             return output;
         }
 
-        public async Task<List<byte>> ReadBytesAsync(CancellationToken ct)
+        public async Task<string> ReadTextAsync(CancellationToken ct)
         {
-            List<byte> bytes = new List<byte>();
+            var bytes = new byte[0];
+
+            if (string.IsNullOrEmpty(Delimiter))
+            {
+                bytes = await ReadBytesAsync(ct);
+                return Encoding.UTF8.GetString(bytes);
+            }
+
+            string output = string.Empty;
+
+            do
+            {
+                output = ExtractDelimitedString(bytes);
+                if (!string.IsNullOrEmpty(output))
+                    break;
+
+                bytes = await ReadBytesAsync(ct);
+
+                if (bytes.Length == 0)
+                    break;
+
+                if (ct.IsCancellationRequested)
+                    break;
+
+                await Task.Delay(10);
+
+            } while (true);
+
+            return output;
+        }
+
+        public async Task<byte[]> ReadBytesAsync(CancellationToken ct)
+        {
+            byte[] bytes = new byte[0];
 
             if (client == null)
                 return bytes;
@@ -251,21 +243,29 @@ namespace rmApplication
             try
             {
                 NetworkStream stream = client.GetStream();
-                byte[] buffer = new byte[1024];
+                bytes = new byte[1024];
 
-                var readTask = stream.ReadAsync(buffer, 0, buffer.Length, ct);
-                await await Task.WhenAny(readTask, Task.Delay(-1, ct));
+                var readTask = stream.ReadAsync(bytes, 0, bytes.Length, ct);
+                var cancellationTask = Task.Delay(-1, ct);
+                var completedTask = await Task.WhenAny(readTask, cancellationTask);
 
-                var readBytes = readTask.Result;
-                if (readBytes != 0)
+                if (completedTask == cancellationTask)
                 {
-                    bytes = new List<byte>(buffer.ToList());
-
-                    while (bytes.Count > readBytes)
+                    client.Close();
+                    client.Dispose();
+                }
+                else
+                {
+                    var readBytes = readTask.Result;
+                    if (readBytes == 0)
                     {
-                        bytes.RemoveAt(bytes.Count - 1);
+                        client.Close();
+                        client.Dispose();
                     }
-
+                    else
+                    {
+                        Array.Resize(ref bytes, readBytes);
+                    }
                 }
 
             }
@@ -286,7 +286,7 @@ namespace rmApplication
             if (client != null)
             {
                 client.Close();
-                client = null;
+                client.Dispose();
             }
 
         }

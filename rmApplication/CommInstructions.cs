@@ -8,16 +8,60 @@ namespace rmApplication
 {
     public class CommInstructions
     {
+        #region CRC
+        public class Crc8
+        {
+            //http://sanity-free.org/146/crc8_implementation_in_csharp.html
+            static byte[] table = new byte[256];
+
+            const byte init = 0x00;
+            const byte poly = 0xd5;     // x8 + x7 + x6 + x4 + x2 + 1
+
+            public static byte Calculate(byte[] bytes)
+            {
+                byte crc = init;
+                if (bytes != null && bytes.Length > 0)
+                {
+                    foreach (byte b in bytes)
+                    {
+                        crc = table[crc ^ b];
+                    }
+                }
+                return crc;
+            }
+
+            static Crc8()
+            {
+                for (int i = 0; i < 256; ++i)
+                {
+                    int temp = i + (int)init;
+                    for (int j = 0; j < 8; ++j)
+                    {
+                        if ((temp & 0x80) != 0)
+                        {
+                            temp = (temp << 1) ^ poly;
+                        }
+                        else
+                        {
+                            temp <<= 1;
+                        }
+                    }
+                    table[i] = (byte)temp;
+                }
+            }
+        }
+        #endregion
+
         public static readonly int MaxPayloadSize = 128;
         public static readonly int MaxElementNum = 32;
 
-        public enum RmAddr : int
+        public enum RmAddr
         {
             Byte2 = 0,
             Byte4
         };
 
-        public enum RmInstr : byte
+        public enum RmInstr
         {
             StartLog = 1,
             StopLog = 2,
@@ -26,30 +70,43 @@ namespace rmApplication
             SetAddr = 5,
             ReadInfo = 6,
             ReadDump = 7,
-            Bypass = 8,
-            Text = 9
+            Bypass = 8
         };
+
+        public enum RmFrameType
+        {
+            Derived = 0x00
+        }
+
+        public enum RmDerivedMode
+        {
+            Undefined = 0x00,
+            SerialCommunicationEmulation = 0x01
+        }
 
         private RmAddr ByteRange;
 
         private int MasCnt;
         private int NextSlvCnt;
 
+        private Queue<uint> LogDataSizeQueue;
+        private Queue<byte> LogDataImageQueue;
+        private Queue<byte[]> LogDataRequestQueue;
+
+
         public CommInstructions(RmAddr range)
         {
             ByteRange = range;
 
-            Terminate();
-
-        }
-
-
-        public void Terminate()
-        {
             MasCnt = 0;
             NextSlvCnt = 0;
 
+            LogDataSizeQueue = new Queue<uint>();
+            LogDataImageQueue = new Queue<byte>();
+            LogDataRequestQueue = new Queue<byte[]>();
         }
+
+
 
         private byte GenerateOpCode(RmInstr instruction)
         {
@@ -64,13 +121,13 @@ namespace rmApplication
         }
 
 
-        public bool IsResponseValid(List<byte> txFrame, List<byte> rxFrame)
+        public bool IsResponseValid(byte[] txFrame, byte[] rxFrame)
         {
-            if( (txFrame.Count == 0) ||
-                (rxFrame.Count == 0) )
+            if( (txFrame.Length == 0) ||
+                (rxFrame.Length == 0) )
                 return false;
 
-            if (CommProtocol.Crc8.Calculate(rxFrame) != 0x00)
+            if (Crc8.Calculate(rxFrame) != 0x00)
                 return false;
 
             if ( (rxFrame[0] & 0xF0) != (txFrame[0] & 0xF0) )
@@ -80,7 +137,7 @@ namespace rmApplication
         }
 
 
-        public List<byte> MakeTryConnectionRequest(uint passNumber)
+        public byte[] MakeTryConnectionRequest(uint passNumber)
         {
             List<byte> frame = new List<byte>();
 
@@ -93,40 +150,42 @@ namespace rmApplication
 
             frame.AddRange(bytes);
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
-
-        public List<byte> MakeStartLogModeRequest()
+        public byte[] MakeStartLogModeRequest()
         {
             List<byte> frame = new List<byte>();
 
             frame.Add(GenerateOpCode(RmInstr.StartLog));
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
 
-        public List<byte> MakeStopLogModeRequest()
+        public byte[] MakeStopLogModeRequest()
         {
             List<byte> frame = new List<byte>();
 
             frame.Add(GenerateOpCode(RmInstr.StopLog));
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
 
-        public List<byte> MakeSetTimeStepRequest(uint timeStep = 500)
+        public byte[] MakeSetTimeStepRequest(uint timeStep = 500)
         {
             List<byte> frame = new List<byte>();
 
             if(timeStep > 65535)
             {
-                return frame;
+                return frame.ToArray();
             }
 
             frame.Add(GenerateOpCode(RmInstr.SetTimeStep));
@@ -143,12 +202,13 @@ namespace rmApplication
 
             frame.AddRange(bytes);
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
 
-        public List<byte> MakeWirteDataRequest(uint address, uint size, ulong value)
+        public byte[] MakeWirteDataRequest(uint address, uint size, ulong value)
         {
             List<byte> frame = new List<byte>();
 
@@ -157,7 +217,7 @@ namespace rmApplication
                 (size != 4) &&
                 (size != 8))
             {
-                return frame;
+                return frame.ToArray();
             }
 
             frame.Add(GenerateOpCode(RmInstr.Write));
@@ -200,23 +260,19 @@ namespace rmApplication
             frame.AddRange(addressBytes);
             frame.AddRange(valueBytes);
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
-
-        private Queue<uint> LogDataSizeQueue;
-        private Queue<byte> LogDataImageQueue;
-        private Queue<List<byte>> LogDataRequestQueue;
 
         public void ClearLogDataConfiguration()
         {
             NextSlvCnt = 0;
 
-            LogDataSizeQueue = new Queue<uint>();
-            LogDataImageQueue = new Queue<byte>();
-            LogDataRequestQueue = new Queue<List<byte>>();
-
+            LogDataSizeQueue.Clear();
+            LogDataImageQueue.Clear();
+            LogDataRequestQueue.Clear();
         }
 
 
@@ -272,7 +328,6 @@ namespace rmApplication
             }
 
             return true;
-
         }
 
         public bool UpdateLogDataConfiguration()
@@ -289,7 +344,7 @@ namespace rmApplication
                 maxFrameDataCnt = 24;  // size = 1, address = 2 => total 3 bytes => 3 * 8 slots = 24
             }
 
-            LogDataRequestQueue = new Queue<List<byte>>();
+            LogDataRequestQueue.Clear();
 
             int totalFrameCnt = LogDataImageQueue.Count / maxFrameDataCnt;
 
@@ -336,45 +391,45 @@ namespace rmApplication
 
                 }
 
-                LogDataRequestQueue.Enqueue(frame);
+                frame.Add(Crc8.Calculate(frame.ToArray()));
+
+                LogDataRequestQueue.Enqueue(frame.ToArray());
                 frameCnt++;
 
             }
 
             return true;
-
         }
 
-        public bool IsAvailableLogDataRequest(out List<byte> frame)
+        public bool IsAvailableLogDataRequest(out byte[] frame)
         {
-            frame = new List<byte>();
+            frame = new byte[0];
 
             if(LogDataRequestQueue.Count <= 0)
-            {
                 return false;
-
-            }
 
             frame = LogDataRequestQueue.Dequeue();
 
             return true;
         }
 
-        public bool CheckLogSequence(List<byte> decodedData, ref Queue<ulong> dataList, out int lostCnt)
+        public bool CheckLogSequence(byte[] decodedData, ref Queue<ulong> dataList, out int lostCnt)
         {
             lostCnt = 0;
 
-            if (decodedData.Count <= 0)
+            if (decodedData.Length <= 0)
                 return false;
 
-            if (CommProtocol.Crc8.Calculate(decodedData) != 0x00)
+            if (Crc8.Calculate(decodedData) != 0x00)
                 return false;
+
+            var tmpDecodedData = new List<byte>(decodedData);
 
             // delete useless crc data size
-            decodedData.RemoveAt(decodedData.Count - 1);
+            tmpDecodedData.RemoveAt(tmpDecodedData.Count - 1);
 
             bool isValid = true;
-            int slvCnt = decodedData[0] & 0x0F;
+            int slvCnt = tmpDecodedData[0] & 0x0F;
 
             if( (NextSlvCnt != 0) &&
                 (slvCnt != NextSlvCnt) )
@@ -394,28 +449,26 @@ namespace rmApplication
                 NextSlvCnt = 1;
             }
 
-            decodedData.RemoveAt(0);    // remove opcode
+            tmpDecodedData.RemoveAt(0);    // remove opcode
 
             var sizeQueue = new Queue<uint>(LogDataSizeQueue);
 
             while(sizeQueue.Count != 0)
             {
                 var size = sizeQueue.Dequeue();
-                if(decodedData.Count >= size)
+                if(tmpDecodedData.Count >= size)
                 {
-                    var tmp = decodedData.GetRange(0, (int)size);
+                    var tmp = tmpDecodedData.GetRange(0, (int)size);
 
                     if (!BitConverter.IsLittleEndian)
                         tmp.Reverse();
 
                     while(tmp.Count < 8)
-                    {
                         tmp.Add(0x00);
-                    }
 
                     dataList.Enqueue(BitConverter.ToUInt64(tmp.ToArray(), 0));
 
-                    decodedData.RemoveRange(0, (int)size);
+                    tmpDecodedData.RemoveRange(0, (int)size);
                 }
                 else
                 {
@@ -425,11 +478,10 @@ namespace rmApplication
 
             }
 
-
             return isValid;
         }
 
-        public List<byte> MakeDumpDataRequest(uint address, uint size)
+        public byte[] MakeDumpDataRequest(uint address, uint size)
         {
             List<byte> frame = new List<byte>();
 
@@ -456,12 +508,13 @@ namespace rmApplication
 
             frame.Add((byte)size);
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
 
-        public List<byte> MakeBypassRequest(List<byte> bytes)
+        public byte[] MakeBypassRequest(List<byte> bytes)
         {
             List<byte> frame = new List<byte>();
 
@@ -469,40 +522,53 @@ namespace rmApplication
 
             frame.AddRange(bytes);
 
-            return frame;
+            frame.Add(Crc8.Calculate(frame.ToArray()));
 
+            return frame.ToArray();
         }
 
-        // Unmanaged data frame
-        public bool CheckUnmanagedStream(List<byte> decodedData, ref List<byte> bytes, out int code)
+        public bool CheckDerivedFrame(byte[] decodedData, ref byte[] bytes, out RmDerivedMode mode)
         {
-            code = 0;
+            const int FrameIdentificationIndex = 0;
+            const int DerivedModeIndex = 1;
+            const int DerivedPayloadIndex = 2;
 
-            if (decodedData.Count <= 2)
+            mode = RmDerivedMode.Undefined;
+
+            if (decodedData.Length <= 2)
                 return false;
 
-            if (decodedData[0] != 0)    // Unmanaged data frame
+
+            if (decodedData[FrameIdentificationIndex] != (int)RmFrameType.Derived)
                 return false;
 
-            code = decodedData[1];      // Unmanaged data code
+            if (Enum.IsDefined(typeof(RmDerivedMode), (int)decodedData[DerivedModeIndex]))
+            {
+                mode = (RmDerivedMode)decodedData[DerivedModeIndex];
+            }
 
-            for (int i = 2; i < decodedData.Count; i++)
-                bytes.Add(decodedData[i]);
+            var total = decodedData.Length - DerivedPayloadIndex;
+            bytes = new byte[total];
+            for (int i = 0; i < bytes.Length; i++)
+                bytes[i] = decodedData[DerivedPayloadIndex+i];
+
+            // CRC is not used for the derived frame.
 
             return true;
         }
 
-        public List<byte> MakeSendTextRequest(List<byte> bytes)
+        public byte[] MakeDerivedFrame(List<byte> bytes, RmDerivedMode mode)
         {
             List<byte> frame = new List<byte>();
 
-            frame.Add(0x00);    // Unmanaged data frame
-            frame.Add(0x01);    // Text data
+            frame.Add((byte)RmFrameType.Derived);
+            frame.Add((byte)mode);
 
             frame.AddRange(bytes);
 
-            return frame;
+            // CRC is not used for the derived frame.
 
+            return frame.ToArray();
         }
 
     }

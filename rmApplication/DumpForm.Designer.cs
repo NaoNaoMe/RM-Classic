@@ -34,6 +34,9 @@
             this.sizeTextBox = new System.Windows.Forms.TextBox();
             this.requestButton = new System.Windows.Forms.Button();
             this.splitContainerMain = new System.Windows.Forms.SplitContainer();
+            this.label4 = new System.Windows.Forms.Label();
+            this.incrementalValueTextBox = new System.Windows.Forms.TextBox();
+            this.enableOffsetCheckBox = new System.Windows.Forms.CheckBox();
             this.endiannessGroupBox = new System.Windows.Forms.GroupBox();
             this.tms320c28xEndianRadioButton = new System.Windows.Forms.RadioButton();
             this.bigEndianRadioButton = new System.Windows.Forms.RadioButton();
@@ -45,7 +48,6 @@
             this.subSplitContainer = new System.Windows.Forms.SplitContainer();
             this.dumpDataGridView = new System.Windows.Forms.DataGridView();
             this.mainHexBox = new Be.Windows.Forms.HexBox();
-            this.enableOffsetCheckBox = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).BeginInit();
             this.splitContainerMain.Panel1.SuspendLayout();
             this.splitContainerMain.Panel2.SuspendLayout();
@@ -113,6 +115,8 @@
             // 
             // splitContainerMain.Panel1
             // 
+            this.splitContainerMain.Panel1.Controls.Add(this.label4);
+            this.splitContainerMain.Panel1.Controls.Add(this.incrementalValueTextBox);
             this.splitContainerMain.Panel1.Controls.Add(this.enableOffsetCheckBox);
             this.splitContainerMain.Panel1.Controls.Add(this.endiannessGroupBox);
             this.splitContainerMain.Panel1.Controls.Add(this.copyToClipBoardButton);
@@ -133,6 +137,37 @@
             this.splitContainerMain.SplitterWidth = 5;
             this.splitContainerMain.TabIndex = 7;
             // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(291, 106);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(148, 12);
+            this.label4.TabIndex = 38;
+            this.label4.Text = "Incremental value for series";
+            // 
+            // incrementalValueTextBox
+            // 
+            this.incrementalValueTextBox.Location = new System.Drawing.Point(291, 121);
+            this.incrementalValueTextBox.Name = "incrementalValueTextBox";
+            this.incrementalValueTextBox.Size = new System.Drawing.Size(100, 19);
+            this.incrementalValueTextBox.TabIndex = 37;
+            this.incrementalValueTextBox.Text = "1";
+            this.incrementalValueTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.incrementalValueTextBox_KeyPress);
+            this.incrementalValueTextBox.Leave += new System.EventHandler(this.incrementalValueTextBox_Leave);
+            // 
+            // enableOffsetCheckBox
+            // 
+            this.enableOffsetCheckBox.AutoSize = true;
+            this.enableOffsetCheckBox.Checked = true;
+            this.enableOffsetCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.enableOffsetCheckBox.Location = new System.Drawing.Point(348, 22);
+            this.enableOffsetCheckBox.Name = "enableOffsetCheckBox";
+            this.enableOffsetCheckBox.Size = new System.Drawing.Size(94, 16);
+            this.enableOffsetCheckBox.TabIndex = 36;
+            this.enableOffsetCheckBox.Text = "Enable Offset";
+            this.enableOffsetCheckBox.UseVisualStyleBackColor = true;
+            // 
             // endiannessGroupBox
             // 
             this.endiannessGroupBox.Controls.Add(this.tms320c28xEndianRadioButton);
@@ -150,7 +185,7 @@
             this.tms320c28xEndianRadioButton.AutoSize = true;
             this.tms320c28xEndianRadioButton.Location = new System.Drawing.Point(108, 20);
             this.tms320c28xEndianRadioButton.Name = "tms320c28xEndianRadioButton";
-            this.tms320c28xEndianRadioButton.Size = new System.Drawing.Size(55, 16);
+            this.tms320c28xEndianRadioButton.Size = new System.Drawing.Size(90, 16);
             this.tms320c28xEndianRadioButton.TabIndex = 2;
             this.tms320c28xEndianRadioButton.Text = "TMS320C28x";
             this.tms320c28xEndianRadioButton.UseVisualStyleBackColor = true;
@@ -243,6 +278,7 @@
             this.dumpDataGridView.RowTemplate.Height = 21;
             this.dumpDataGridView.Size = new System.Drawing.Size(155, 296);
             this.dumpDataGridView.TabIndex = 0;
+            this.dumpDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dumpDataGridView_CellContentClick);
             this.dumpDataGridView.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.dumpDataGridView_CellEndEdit);
             this.dumpDataGridView.RowPostPaint += new System.Windows.Forms.DataGridViewRowPostPaintEventHandler(this.dumpDataGridView_RowPostPaint);
             // 
@@ -261,18 +297,6 @@
             this.mainHexBox.TabIndex = 0;
             this.mainHexBox.UseFixedBytesPerLine = true;
             this.mainHexBox.VScrollBarVisible = true;
-            // 
-            // enableOffsetCheckBox
-            // 
-            this.enableOffsetCheckBox.AutoSize = true;
-            this.enableOffsetCheckBox.Checked = true;
-            this.enableOffsetCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.enableOffsetCheckBox.Location = new System.Drawing.Point(348, 22);
-            this.enableOffsetCheckBox.Name = "enableOffsetCheckBox";
-            this.enableOffsetCheckBox.Size = new System.Drawing.Size(94, 16);
-            this.enableOffsetCheckBox.TabIndex = 36;
-            this.enableOffsetCheckBox.Text = "Enable Offset";
-            this.enableOffsetCheckBox.UseVisualStyleBackColor = true;
             // 
             // DumpForm
             // 
@@ -317,5 +341,7 @@
         private System.Windows.Forms.RadioButton bigEndianRadioButton;
         private System.Windows.Forms.RadioButton littleEndianRadioButton;
         private System.Windows.Forms.CheckBox enableOffsetCheckBox;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.TextBox incrementalValueTextBox;
     }
 }

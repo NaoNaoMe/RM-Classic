@@ -8,50 +8,6 @@ namespace rmApplication
 {
     public class CommProtocol
     {
-        #region CRC
-        public class Crc8
-        {
-            //http://sanity-free.org/146/crc8_implementation_in_csharp.html
-            static byte[] table = new byte[256];
-
-            const byte init = 0x00;
-            const byte poly = 0xd5;     // x8 + x7 + x6 + x4 + x2 + 1
-
-            public static byte Calculate(List<byte> bytes)
-            {
-                byte crc = init;
-                if (bytes != null && bytes.Count > 0)
-                {
-                    foreach (byte b in bytes)
-                    {
-                        crc = table[crc ^ b];
-                    }
-                }
-                return crc;
-            }
-
-            static Crc8()
-            {
-                for (int i = 0; i < 256; ++i)
-                {
-                    int temp = i + (int)init;
-                    for (int j = 0; j < 8; ++j)
-                    {
-                        if ((temp & 0x80) != 0)
-                        {
-                            temp = (temp << 1) ^ poly;
-                        }
-                        else
-                        {
-                            temp <<= 1;
-                        }
-                    }
-                    table[i] = (byte)temp;
-                }
-            }
-        }
-        #endregion
-
         private enum FrameChar : byte
         {
             END = 0xC0,
@@ -79,19 +35,15 @@ namespace rmApplication
         }
 
 
-        public List<byte> Encode(List<byte> rawBytes)
+        public byte[] Encode(byte[] rawBytes)
         {
-            List<byte> tmpBytes = new List<byte>(rawBytes);
-
-            tmpBytes.Add(Crc8.Calculate(tmpBytes));
-
             List<byte> encodedData = new List<byte>();
 
             encodedData.Add((byte)FrameChar.END);
 
-            for (int i = 0; i < tmpBytes.Count; i++)
+            foreach (var item in rawBytes)
             {
-                switch (tmpBytes[i])
+                switch (item)
                 {
                     case (byte)FrameChar.END:
                         encodedData.Add((byte)FrameChar.ESC);
@@ -103,21 +55,20 @@ namespace rmApplication
                         break;
 
                     default:
-                        encodedData.Add(tmpBytes[i]);
+                        encodedData.Add(item);
                         break;
-
                 }
             }
 
             encodedData.Add((byte)FrameChar.END);
 
-            return encodedData;
+            return encodedData.ToArray();
         }
 
 
-        public List<byte> Decode(byte rawByte)
+        public byte[] Decode(byte rawByte)
         {
-            List<byte> decodedData = new List<byte>();
+            var decodedData = new byte[0];
 
             if (rawByte == (byte)FrameChar.END)
             {
@@ -125,7 +76,7 @@ namespace rmApplication
                 if (IsReceiving == false)
                 {
                     IsReceiving = true;
-                    DecodingData = new List<byte>();
+                    DecodingData.Clear();
 
                 }
                 else
@@ -145,7 +96,8 @@ namespace rmApplication
                         if (DecodingData.Count >= 2)
                         {
                             // End SLIP Frame
-                            decodedData = new List<byte>(DecodingData);
+                            decodedData = new byte[DecodingData.Count];
+                            Array.Copy(DecodingData.ToArray(), decodedData, decodedData.Length);
                         }
 
                     }
@@ -189,8 +141,8 @@ namespace rmApplication
             }
 
             return decodedData;
-
         }
 
     }
+
 }
