@@ -12,6 +12,8 @@ Live variable debugging is crucial in embedded system development. It allows dev
 
 **RM Classic** uses UART for communication with microcontrollers, offering a straightforward, cost-effective solution for real-time debugging without the need for JTAG or similar proprietary technologies. Integration of RM Classic's communication code into the microcontroller is essential. Despite not matching the data throughput of specialized devices, RM Classic is versatile and vendor-independent, suitable for various microcontrollers.
 
+For a practical example of integrating RM Classic with a microcontroller, check out the [rm_embedded](https://github.com/NaoNaoMe/rm_embedded) repository. It demonstrates how to enable connectivity between RM Classic and microcontrollers, specifically showcasing the process using an Arduino. This repository serves as a guide for those looking to implement RM Classic in embedded systems projects.
+
 ## Advantages of RM Classic
 
 RM Classic offers a suite of features that enhance the debugging workflow:
