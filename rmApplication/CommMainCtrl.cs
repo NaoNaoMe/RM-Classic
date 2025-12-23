@@ -258,6 +258,10 @@ namespace rmApplication
                 }
 
             }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine("Canceled PullAsync");
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex);

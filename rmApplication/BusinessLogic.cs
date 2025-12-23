@@ -272,12 +272,10 @@ namespace rmApplication
             var info = new TaskCompletionInformation();
             info.Status = TaskCompletionStatus.Failure;
 
-            commMainCtrl.PurgeReceiveBuffer();
-
-            await commMainCtrl.PushAsync(txFrame);
-
             while(retry-- > 0)
             {
+                await commMainCtrl.PushAsync(txFrame);
+
                 double timeout = 100;
                 if (commMainCtrl.Mode == CommMainCtrl.CommunicationMode.LocalNet)
                     timeout = 1000;
@@ -289,7 +287,11 @@ namespace rmApplication
                     var rxFrame = await commMainCtrl.PullAsync(linkedCts.Token);
 
                     if (rxFrame.Length == 0)
-                        break;
+                    {
+                        System.Diagnostics.Debug.WriteLine("** No response received from device. **");
+                        System.Diagnostics.Debug.WriteLine("** Retrying transmission... **");
+                        continue;
+                    }
 
                     if (ct.IsCancellationRequested == true)
                     {
@@ -304,19 +306,26 @@ namespace rmApplication
                     if (txFrame.SequenceEqual(rxFrame))
                         info.EchoDetected = true;
 
-                    if (commInstructions.IsResponseValid(txFrame, rxFrame))
+                    if (!commInstructions.IsResponseValid(txFrame, rxFrame))
+                    {
+                        System.Diagnostics.Debug.WriteLine("** Unexpected or invalid response received. **");
+                        System.Diagnostics.Debug.WriteLine("** Retrying transmission... **");
+
+                        await Task.Delay(200);
+
+                        commMainCtrl.PurgeReceiveBuffer();
+
+                        continue;
+                    }
+                    else
                     {
                         info.Status = TaskCompletionStatus.Success;
 
                         // remove unnecessary header data and crc data
                         if (rxFrame.Length > 2)
                         {
-#if true
                             info.Data = new byte[rxFrame.Length - 2];
                             Array.Copy(rxFrame, 1, info.Data, 0, info.Data.Length);
-#else
-                            info.Data = rxFrame.Skip(1).Take(rxFrame.Length - 2).ToArray();
-#endif
                         }
                         break;
 
@@ -387,7 +396,7 @@ namespace rmApplication
 
             while (commInstructions.IsAvailableLogDataRequest(out var txFrame))
             {
-                info = await QueryAsync(txFrame, ct);
+                info = await QueryAsync(txFrame, ct, 3);
                 if (info.Status != TaskCompletionStatus.Success)
                     break;
             }

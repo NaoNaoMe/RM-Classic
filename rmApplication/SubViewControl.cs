@@ -68,7 +68,7 @@ namespace rmApplication
 
         private int logLength;
         private readonly int logLengthDefault = 1000;
-        private readonly int logLengthMin = 10;
+        private readonly int logLengthMin = 1;
         private readonly int logLengthMax = 200000;
 
         private string targetVersionName;
@@ -151,7 +151,19 @@ namespace rmApplication
             if (factors.Count() == 1)
             {
                 if (!FindSymbolInfo(factors[0], out var info))
-                    return false;
+                {
+                    var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Symbol == factors[0]);
+                    if (found != null)
+                    {
+                        info.Address = found.Address;
+                        info.Size = found.Size;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+
+                }
 
                 addressText = info.Address;
                 sizeText = info.Size;
@@ -239,13 +251,22 @@ namespace rmApplication
             {
                 if (!FindSymbolInfo(message, out var info))
                 {
-                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Symbol == message);
+                    if (found != null)
+                    {
+                        info.Address = found.Address;
+                        info.Size = found.Size;
+                    }
+                    else
+                    {
+                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        return;
+                    }
+
                 }
-                else
-                {
-                    var text = info.Address + "," + info.Offset + "," + info.Size;
-                    remoteCtrl.UpadateRequestedTaskResponse(task, true, text);
-                }
+
+                var text = info.Address + "," + info.Offset + "," + info.Size;
+                remoteCtrl.UpadateRequestedTaskResponse(task, true, text);
 
                 return;
             }
@@ -819,7 +840,6 @@ namespace rmApplication
         public void RunRemoteMode()
         {
             remoteToolStripButton.PerformClick();
-            commToolStripButton.PerformClick();
         }
 
 
@@ -1195,7 +1215,7 @@ namespace rmApplication
 
             return true;
         }
-
+            
         private bool ValidateWriteInformation(string text, out BusinessLogic.DataParameter result)
         {
             result = new BusinessLogic.DataParameter();
@@ -1206,7 +1226,7 @@ namespace rmApplication
             if (elements.Count() == 1)
             {
                 // text = "TriggerON";
-                var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Name == text);
+                var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Name == elements[0]);
 
                 if (found != null)
                     isSuccess = ValidateWriteParameters(found.Address, found.Offset, found.Size, found.Type, found.Write, out result);
@@ -1216,6 +1236,15 @@ namespace rmApplication
             {
                 // text = "debugData.trigger,Hex,1";
                 isSuccess = ValidateWriteParametersFromMap(elements[0], elements[1], elements[2], out result);
+
+                if(!isSuccess)
+                {
+                    var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Symbol == elements[0]);
+
+                    if (found != null)
+                        isSuccess = ValidateWriteParameters(found.Address, found.Offset, found.Size, found.Type, found.Write, out result);
+                }
+
             }
             else if (elements.Count() == 4)
             {
@@ -1796,6 +1825,16 @@ namespace rmApplication
 
         private async void remoteToolStripButton_Click(object sender, EventArgs e)
         {
+            if (IsCustomizingMode)
+            {
+                MessageBox.Show("Quit custmizing mode.",
+                                    "Caution",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
+
+                return;
+            }
+
             if (IsRemote)
             {
                 remoteCtrl.Terminate();
@@ -1810,6 +1849,9 @@ namespace rmApplication
                 remoteToolStripButton.Text = "LOCAL";
 
                 area1ToolStripStatusLabel.Text = "Remote @ " + Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString();
+
+                if (!IsCommunicationActive)
+                    commToolStripButton.PerformClick();
 
                 await remoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
 
@@ -1887,7 +1929,12 @@ namespace rmApplication
                 commToolStripButton.Text = COMM_CLOSE_TEXT;
 
                 logic.ClearWaitingTasks();
-                if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
+                if(IsRemote)
+                {
+                    await logic.RunAsync();
+
+                }
+                else if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
                 {
                     logic.EnqueueTask(BusinessLogic.CommunicationTasks.Open);
                     logic.EnqueueTask(BusinessLogic.CommunicationTasks.Initialize);
@@ -1904,7 +1951,10 @@ namespace rmApplication
                 }
                 else
                 {
-                    await logic.RunAsync();
+                    MessageBox.Show("The current view's configuration is either empty or invalid.",
+                                        "Caution",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Warning);
                 }
 
                 if (isFormClosing)
