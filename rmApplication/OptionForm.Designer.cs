@@ -96,7 +96,7 @@
             this.label4.AutoSize = true;
             this.label4.Location = new System.Drawing.Point(135, 25);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(61, 13);
+            this.label4.Size = new System.Drawing.Size(61, 12);
             this.label4.TabIndex = 33;
             this.label4.Text = "Baud Rate:";
             // 
@@ -105,7 +105,7 @@
             this.label5.AutoSize = true;
             this.label5.Location = new System.Drawing.Point(135, 56);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(56, 13);
+            this.label5.Size = new System.Drawing.Size(56, 12);
             this.label5.TabIndex = 34;
             this.label5.Text = "Password:";
             // 
@@ -114,7 +114,7 @@
             this.addr2byteRadioButton.AutoSize = true;
             this.addr2byteRadioButton.Location = new System.Drawing.Point(6, 54);
             this.addr2byteRadioButton.Name = "addr2byteRadioButton";
-            this.addr2byteRadioButton.Size = new System.Drawing.Size(92, 17);
+            this.addr2byteRadioButton.Size = new System.Drawing.Size(95, 16);
             this.addr2byteRadioButton.TabIndex = 29;
             this.addr2byteRadioButton.TabStop = true;
             this.addr2byteRadioButton.Text = "Address:2byte";
@@ -124,7 +124,7 @@
             // 
             this.passwordTextBox.Location = new System.Drawing.Point(243, 53);
             this.passwordTextBox.Name = "passwordTextBox";
-            this.passwordTextBox.Size = new System.Drawing.Size(162, 20);
+            this.passwordTextBox.Size = new System.Drawing.Size(162, 19);
             this.passwordTextBox.TabIndex = 27;
             this.passwordTextBox.Text = "00000000";
             this.passwordTextBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
@@ -134,7 +134,7 @@
             this.addr4byteRadioButton.AutoSize = true;
             this.addr4byteRadioButton.Location = new System.Drawing.Point(6, 23);
             this.addr4byteRadioButton.Name = "addr4byteRadioButton";
-            this.addr4byteRadioButton.Size = new System.Drawing.Size(92, 17);
+            this.addr4byteRadioButton.Size = new System.Drawing.Size(95, 16);
             this.addr4byteRadioButton.TabIndex = 28;
             this.addr4byteRadioButton.TabStop = true;
             this.addr4byteRadioButton.Text = "Address:4byte";
@@ -142,11 +142,12 @@
             // 
             // cmbBaudRate
             // 
+            this.cmbBaudRate.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbBaudRate.FormattingEnabled = true;
             this.cmbBaudRate.Location = new System.Drawing.Point(243, 22);
             this.cmbBaudRate.Margin = new System.Windows.Forms.Padding(4);
             this.cmbBaudRate.Name = "cmbBaudRate";
-            this.cmbBaudRate.Size = new System.Drawing.Size(162, 21);
+            this.cmbBaudRate.Size = new System.Drawing.Size(162, 20);
             this.cmbBaudRate.TabIndex = 16;
             // 
             // settingTabControl
@@ -184,11 +185,12 @@
             // 
             // cmbPortName
             // 
+            this.cmbPortName.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPortName.FormattingEnabled = true;
             this.cmbPortName.Location = new System.Drawing.Point(121, 7);
             this.cmbPortName.Margin = new System.Windows.Forms.Padding(4);
             this.cmbPortName.Name = "cmbPortName";
-            this.cmbPortName.Size = new System.Drawing.Size(162, 21);
+            this.cmbPortName.Size = new System.Drawing.Size(162, 20);
             this.cmbPortName.TabIndex = 15;
             // 
             // label1
@@ -196,7 +198,7 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(6, 10);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(61, 13);
+            this.label1.Size = new System.Drawing.Size(64, 12);
             this.label1.TabIndex = 26;
             this.label1.Text = "Comm Port:";
             // 
@@ -230,7 +232,7 @@
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(9, 37);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(58, 13);
+            this.label3.Size = new System.Drawing.Size(59, 12);
             this.label3.TabIndex = 32;
             this.label3.Text = "Local Port:";
             // 
@@ -238,7 +240,7 @@
             // 
             this.localIPTextBox.Location = new System.Drawing.Point(112, 6);
             this.localIPTextBox.Name = "localIPTextBox";
-            this.localIPTextBox.Size = new System.Drawing.Size(162, 20);
+            this.localIPTextBox.Size = new System.Drawing.Size(162, 19);
             this.localIPTextBox.TabIndex = 0;
             this.localIPTextBox.Text = "192.168.0.7";
             // 
@@ -246,7 +248,7 @@
             // 
             this.portTextBox.Location = new System.Drawing.Point(112, 34);
             this.portTextBox.Name = "portTextBox";
-            this.portTextBox.Size = new System.Drawing.Size(162, 20);
+            this.portTextBox.Size = new System.Drawing.Size(162, 19);
             this.portTextBox.TabIndex = 1;
             this.portTextBox.Text = "16383";
             // 
@@ -255,7 +257,7 @@
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(9, 9);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(49, 13);
+            this.label2.Size = new System.Drawing.Size(48, 12);
             this.label2.TabIndex = 31;
             this.label2.Text = "Local IP:";
             // 
@@ -272,7 +274,6 @@
             this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "OptionForm";
             this.Text = "OptionForm";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.OptionForm_FormClosing);
             this.Load += new System.EventHandler(this.OptionForm_Load);
             this.groupBoxCommon.ResumeLayout(false);
             this.groupBoxCommon.PerformLayout();

@@ -78,7 +78,7 @@ namespace rmApplication
         }
 
  
-        public void UpadateRequestedTaskResponse(RequestTasks task, bool isSuccess, string text = "")
+        public void UpdateRequestedTaskResponse(RequestTasks task, bool isSuccess, string text = "")
         {
             var tmp = new TaskResponseInformation();
             if (RequestedTaskResponse != null && !RequestedTaskResponse.Task.IsCompleted)

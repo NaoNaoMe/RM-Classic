@@ -25,32 +25,38 @@ namespace rmApplication
                 serverPortTextBox.Text = config.ServerPort.ToString();
             }
 
+            serverAddressTextBox.KeyPress += textbox_KeyPress;
+            serverPortTextBox.KeyPress += textbox_KeyPress;
+        }
+
+        private void textbox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == (char)Keys.Enter)
+                e.Handled = true;
         }
 
         private void okButton_Click(object sender, EventArgs e)
         {
-            System.Net.IPAddress address;
-            int port;
-            if ((System.Net.IPAddress.TryParse(serverAddressTextBox.Text, out address)) &&
-                (int.TryParse(serverPortTextBox.Text, out port)))
+            if (!System.Net.IPAddress.TryParse(serverAddressTextBox.Text, out System.Net.IPAddress address))
             {
-                config.ServerAddress = address;
-                config.ServerPort = port;
-
-                this.DialogResult = DialogResult.OK;
-                this.Close();
+                MessageBox.Show("Invalid IP address format.", "Input Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                serverAddressTextBox.Focus();
+                return;
             }
-            else
+
+            if (!int.TryParse(serverPortTextBox.Text, out int port))
             {
-                serverAddressTextBox.Text = config.ServerAddress.ToString();
-                serverPortTextBox.Text = config.ServerPort.ToString();
-
-                MessageBox.Show("Invalid parameters.",
-                    "Caution",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-
+                MessageBox.Show("Invalid port format.", "Input Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                serverPortTextBox.Focus();
+                return;
             }
+
+            config.ServerAddress = address;
+            config.ServerPort = port;
+            this.DialogResult = DialogResult.OK;
+            this.Close();
         }
 
         private void cancelButton_Click(object sender, EventArgs e)

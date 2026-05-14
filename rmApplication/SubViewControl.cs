@@ -8,7 +8,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 
 namespace rmApplication
 {
@@ -37,7 +36,7 @@ namespace rmApplication
         private DataGridViewButtonColumn writeButtonColumn;
         private DataGridViewTextBoxColumn descriptionColumn;
 
-        private enum DgvRowName : int       // Column name of datagridview
+        private enum DgvColumnName : int
         {
             Group = 0,
             CK,
@@ -113,7 +112,7 @@ namespace rmApplication
             Config = new Configuration();
 
             logic = new BusinessLogic();
-            logic.TaskCompletaionFunctionCallback = TaskCompletaionFunction;
+            logic.TaskCompletionFunctionCallback = TaskCompletionFunction;
             logic.SerialCommunicationEmulationReceivedCallBack = TerminalReceived;
 
             remoteCtrl = new RemoteControl();
@@ -139,7 +138,7 @@ namespace rmApplication
             currentLogForRemote = new ConcurrentQueue<string>();
         }
 
-        private bool ValidateDumpConfigrations(string text, out BusinessLogic.DataParameter param)
+        private bool ValidateDumpConfigurations(string text, out BusinessLogic.DataParameter param)
         {
             param = new BusinessLogic.DataParameter();
 
@@ -203,7 +202,7 @@ namespace rmApplication
         {
             if (!IsCommunicationActive)
             {
-                remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                remoteCtrl.UpdateRequestedTaskResponse(task, false);
                 return;
             }
 
@@ -211,11 +210,11 @@ namespace rmApplication
             {
                 if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
                 {
-                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
                 }
                 else if (!LoadViewFile(message))
                 {
-                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
                 }
                 else
                 {
@@ -223,7 +222,7 @@ namespace rmApplication
                     if (ViewFileName.GetName(fileName, out var tmp))
                         SetTargetVersionName(tmp.SoftwareVersion);
 
-                    remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true);
                 }
 
                 return;
@@ -233,15 +232,15 @@ namespace rmApplication
             {
                 if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
                 {
-                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
                 }
                 else if (!ChangeViewPage(message))
                 {
-                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
                 }
                 else
                 {
-                    remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true);
                 }
 
                 return;
@@ -259,14 +258,14 @@ namespace rmApplication
                     }
                     else
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                         return;
                     }
 
                 }
 
                 var text = info.Address + "," + info.Offset + "," + info.Size;
-                remoteCtrl.UpadateRequestedTaskResponse(task, true, text);
+                remoteCtrl.UpdateRequestedTaskResponse(task, true, text);
 
                 return;
             }
@@ -283,11 +282,11 @@ namespace rmApplication
                     }
                     else if (!Config.ValidateCommunicationResource(message, out var tmpConfig))
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     }
                     else if (!logic.UpdateResource(tmpConfig))
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     }
                     else
                     {
@@ -320,7 +319,7 @@ namespace rmApplication
                     }
                     else
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, true);
                     }
                     break;
 
@@ -333,7 +332,7 @@ namespace rmApplication
                     }
                     else
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, true);
                     }
                     break;
 
@@ -354,31 +353,31 @@ namespace rmApplication
 
                 case RemoteControl.RequestTasks.LogRead:
                     if (currentLogForRemote.TryDequeue(out var text))
-                        remoteCtrl.UpadateRequestedTaskResponse(task, true, text);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, true, text);
                     else
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     break;
 
                 case RemoteControl.RequestTasks.LogWrite:
                     if (logic.TaskState != BusinessLogic.CommunicationTasks.Logging)
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     }
                     else if (!ValidateWriteInformation(message, out var wrParam))
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     }
                     else
                     {
                         logic.EditValue(wrParam);
-                        remoteCtrl.UpadateRequestedTaskResponse(task, true);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, true);
                     }
                     break;
 
                 case RemoteControl.RequestTasks.Dump:
-                    if (!ValidateDumpConfigrations(message, out var param))
+                    if (!ValidateDumpConfigurations(message, out var param))
                     {
-                        remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     }
                     else
                     {
@@ -392,13 +391,13 @@ namespace rmApplication
                     break;
 
                 default:
-                    remoteCtrl.UpadateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
                     break;
             }
 
         }
 
-        private void TaskCompletaionFunction(BusinessLogic.CommunicationTasks task, BusinessLogic.TaskCompletionInformation info)
+        private void TaskCompletionFunction(BusinessLogic.CommunicationTasks task, BusinessLogic.TaskCompletionInformation info)
         {
             if (isFormClosing)
                 return;
@@ -406,160 +405,59 @@ namespace rmApplication
             switch (task)
             {
                 case BusinessLogic.CommunicationTasks.Open:
-                    if (IsRemote)
-                    {
-                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Open, true, null);
-                        else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Open, false, null);
-                    }
-
+                    NotifyRemote(RemoteControl.RequestTasks.Open, info);
                     if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
-                    {
-                        if (!IsRemote)
-                        {
-                            string message = "Failed to open a communication resource.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
-                    }
-
+                        ShowWarningIfLocal("Failed to open a communication resource.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.Close:
-                    if (IsRemote)
-                    {
-                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Close, true);
-                        else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Close, false);
-                    }
-
+                    NotifyRemote(RemoteControl.RequestTasks.Close, info);
                     if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
-                    {
-                        if (!IsRemote)
-                        {
-                            string message = "Failed to close a communication resource.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
-                    }
-
+                        ShowWarningIfLocal("Failed to close a communication resource.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.Initialize:
+                    // Initialize returns a version string in the data payload on success, so it needs individual handling.
                     if (IsRemote)
                     {
                         if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
                         {
                             var text = System.Text.Encoding.ASCII.GetString(info.Data);
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, true, text.TrimEnd());
+                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, true, text.TrimEnd());
                         }
                         else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, false);
+                        {
+                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, false);
+                        }
                     }
 
                     if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
                     {
                         receivedVersionViewControl.TextBox = System.Text.Encoding.ASCII.GetString(info.Data);
-
                     }
-                    else
+                    else if (!IsRemote)
                     {
-                        if (!IsRemote)
-                        {
-                            if(info.EchoDetected)
-                            {
-                                string message = "The request was echoed back." + Environment.NewLine + "The Tx and Rx lines might be shorted together.";
-                                string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                                MessageBox.Show(message + Environment.NewLine + dateTime,
-                                                "Caution",
-                                                MessageBoxButtons.OK,
-                                                MessageBoxIcon.Warning);
-                            }
-                            else
-                            {
-                                string message = "Failed to initialize.";
-                                string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                                MessageBox.Show(message + Environment.NewLine + dateTime,
-                                                "Caution",
-                                                MessageBoxButtons.OK,
-                                                MessageBoxIcon.Warning);
-                            }
-
-                        }
-
+                        string initMessage = info.EchoDetected
+                            ? "The request was echoed back." + Environment.NewLine + "The Tx and Rx lines might be shorted together."
+                            : "Failed to initialize.";
+                        ShowWarning(initMessage);
                     }
-
                     break;
 
                 case BusinessLogic.CommunicationTasks.Config:
-                    if (IsRemote)
-                    {
-                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Config, true);
-                        else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Config, false);
-                    }
-
-                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
-                    {
-                        if (!IsRemote)
-                        {
-                            string message = "Failed to config.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
-                    }
-
+                    NotifyRemote(RemoteControl.RequestTasks.Config, info);
+                    if (IsFailureOrTimeout(info))
+                        ShowWarningIfLocal("Failed to config.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.TimeStep:
-                    if (IsRemote)
-                    {
-                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.TimeStep, true);
-                        else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.TimeStep, false);
-                    }
-
-                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
-                    {
-                        if (!IsRemote)
-                        {
-                            string message = "Failed to change timestep.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
-                    }
-
+                    NotifyRemote(RemoteControl.RequestTasks.TimeStep, info);
+                    if (IsFailureOrTimeout(info))
+                        ShowWarningIfLocal("Failed to change timestep.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.StartLog:
-                    if (IsRemote)
-                    {
-                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStart, true);
-                        else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStart, false);
-                    }
-
+                    NotifyRemote(RemoteControl.RequestTasks.LogStart, info);
                     if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
                     {
                         activityToolStripProgressBar.Style = ProgressBarStyle.Marquee;
@@ -567,77 +465,39 @@ namespace rmApplication
                     }
                     else
                     {
-                        if (!IsRemote)
-                        {
-                            string message = "Failed to start logging.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
+                        ShowWarningIfLocal("Failed to start logging.");
                     }
-
                     periodAveraging.Clear();
                     break;
 
                 case BusinessLogic.CommunicationTasks.Logging:
-
                     activityToolStripProgressBar.Style = ProgressBarStyle.Blocks;
                     activityToolStripProgressBar.MarqueeAnimationSpeed = 0;
-
-                    if (info.Status == BusinessLogic.TaskCompletionStatus.Timeout)
-                    {
-                        if (!IsRemote)
-                        {
-                            string message = "Communication timeout.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
-                    }
-
+                    if (info.Status == BusinessLogic.TaskCompletionStatus.Failure)
+                        ShowWarning("Something happened.", MessageBoxIcon.Error);
+                    else if (info.Status == BusinessLogic.TaskCompletionStatus.Timeout)
+                        ShowWarningIfLocal("Communication timeout.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.StopLog:
-                    if (IsRemote)
-                    {
-                        if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStop, true);
-                        else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.LogStop, false);
-                    }
-
-                    if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
-                    {
-                        if (!IsRemote)
-                        {
-                            string message = "Failed to stop logging.";
-                            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-                            MessageBox.Show(message + Environment.NewLine + dateTime,
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                        }
-                    }
-
+                    NotifyRemote(RemoteControl.RequestTasks.LogStop, info);
+                    if (IsFailureOrTimeout(info))
+                        ShowWarningIfLocal("Failed to stop logging.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.Dump:
+                    // Dump returns hex data in the payload on success, so it needs individual handling.
                     if (IsRemote)
                     {
                         if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
                         {
                             string hex = BitConverter.ToString(info.Data).Replace("-", string.Empty);
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, true, hex);
+                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, true, hex);
                         }
                         else
-                            remoteCtrl.UpadateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, false);
+                        {
+                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, false);
+                        }
                     }
 
                     if (dumpFormInstance != null && !dumpFormInstance.IsDisposed)
@@ -645,16 +505,105 @@ namespace rmApplication
                         if (info.Status == BusinessLogic.TaskCompletionStatus.Success)
                             dumpFormInstance.UploadHexbox(info.Data.ToList());
                         else
-                        {
-                            var tmp = new byte[] { 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64 };    // Failed
-                            dumpFormInstance.UploadHexbox(tmp.ToList());
-                        }
-
+                            ShowWarningIfLocal("Failed to correct dump data.");
                     }
-
                     break;
             }
+        }
 
+        // --- TaskCompletionFunction helpers ---
+
+        /// <summary>
+        /// Returns true when the task ended with Failure or Timeout.
+        /// Shared predicate used by Config, TimeStep, StopLog, and similar tasks.
+        /// </summary>
+        private bool IsFailureOrTimeout(BusinessLogic.TaskCompletionInformation info)
+            => info.Status == BusinessLogic.TaskCompletionStatus.Failure
+            || info.Status == BusinessLogic.TaskCompletionStatus.Timeout;
+
+        /// <summary>
+        /// Notifies RemoteControl of a task completion result.
+        /// Not used for Initialize or Dump, which carry response data and are handled individually.
+        /// </summary>
+        private void NotifyRemote(RemoteControl.RequestTasks remoteTask, BusinessLogic.TaskCompletionInformation info)
+        {
+            if (!IsRemote)
+                return;
+            remoteCtrl.UpdateRequestedTaskResponse(remoteTask, info.Status == BusinessLogic.TaskCompletionStatus.Success);
+        }
+
+        /// <summary>
+        /// Shows a warning dialog only when running in local (non-remote) mode.
+        /// </summary>
+        private void ShowWarningIfLocal(string message)
+        {
+            if (!IsRemote)
+                ShowWarning(message);
+        }
+
+        /// <summary>
+        /// Shows a warning dialog. A timestamp is appended automatically.
+        /// </summary>
+        private void ShowWarning(string message, MessageBoxIcon icon = MessageBoxIcon.Warning)
+        {
+            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
+            MessageBox.Show(
+                message + Environment.NewLine + dateTime,
+                icon == MessageBoxIcon.Error ? "Error" : "Caution",
+                MessageBoxButtons.OK,
+                icon);
+        }
+
+        // --- Map file management helpers ---
+
+        /// <summary>
+        /// Reloads the address map file if it has been updated since the last load.
+        /// When <paramref name="requireConfirmation"/> is true, a Yes/No dialog is shown before reloading (used on Comm Open).
+        /// When false, a missing file produces a warning and resets map state; an updated file prompts
+        /// a confirmation dialog before reloading (used when entering Customize mode).
+        /// </summary>
+        private void ReloadMapFileIfUpdated(bool requireConfirmation)
+        {
+            if (!System.IO.File.Exists(ValidMapPath))
+            {
+                if (!requireConfirmation)
+                {
+                    // Entering Customize mode: warn and reset map state if the file is missing.
+                    MessageBox.Show("The address map file is not found.",
+                                    "Caution",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Warning);
+
+                    MapList = new List<SymbolFactor>();
+                    ValidMapPath = null;
+                    ValidMapLastWrittenDate = DateTime.MinValue;
+                    autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
+                }
+                return;
+            }
+
+            DateTime now = System.IO.File.GetLastWriteTime(ValidMapPath);
+
+            if (now <= ValidMapLastWrittenDate)
+                return;
+
+            DialogResult dialogResult = MessageBox.Show(
+                "The address map file is updated.\nDo you want to reload Address in the DataGridView?",
+                "Question",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Exclamation,
+                MessageBoxDefaultButton.Button2);
+
+            if (dialogResult != DialogResult.Yes)
+                return;
+
+            if (!LoadMapFile(ValidMapPath))
+            {
+                MessageBox.Show("Can't read the address map file",
+                                "Caution",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+            }
         }
 
         private void TerminalReceived(byte[] bytes)
@@ -702,61 +651,61 @@ namespace rmApplication
             // 
             this.groupColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Group.ToString();
             this.groupColumn.Frozen = true;
-            this.groupColumn.HeaderText = DgvRowName.Group.ToString();
-            this.groupColumn.Name = DgvRowName.Group.ToString();
+            this.groupColumn.HeaderText = DgvColumnName.Group.ToString();
+            this.groupColumn.Name = DgvColumnName.Group.ToString();
             this.groupColumn.Visible = false;
             // 
             // CheckColumn
             // 
             this.checkColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Check.ToString();
             this.checkColumn.Frozen = true;
-            this.checkColumn.HeaderText = DgvRowName.CK.ToString();
-            this.checkColumn.Name = DgvRowName.CK.ToString();
+            this.checkColumn.HeaderText = DgvColumnName.CK.ToString();
+            this.checkColumn.Name = DgvColumnName.CK.ToString();
             this.checkColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
             this.checkColumn.Width = 38;
             // 
             // SymbolColumn
             // 
             this.symbolColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Symbol.ToString();
-            this.symbolColumn.HeaderText = DgvRowName.Symbol.ToString();
-            this.symbolColumn.Name = DgvRowName.Symbol.ToString();
+            this.symbolColumn.HeaderText = DgvColumnName.Symbol.ToString();
+            this.symbolColumn.Name = DgvColumnName.Symbol.ToString();
             this.symbolColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // AddressColumn
             // 
             this.addressColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Address.ToString();
-            this.addressColumn.HeaderText = DgvRowName.Address.ToString();
-            this.addressColumn.Name = DgvRowName.Address.ToString();
+            this.addressColumn.HeaderText = DgvColumnName.Address.ToString();
+            this.addressColumn.Name = DgvColumnName.Address.ToString();
             this.addressColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             // 
             // OffsetColumn
             // 
             this.offsetColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Offset.ToString();
-            this.offsetColumn.HeaderText = DgvRowName.Offset.ToString();
-            this.offsetColumn.Name = DgvRowName.Offset.ToString();
+            this.offsetColumn.HeaderText = DgvColumnName.Offset.ToString();
+            this.offsetColumn.Name = DgvColumnName.Offset.ToString();
             this.offsetColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             this.offsetColumn.Width = 58;
             // 
             // SizeColumn
             // 
             this.sizeColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Size.ToString();
-            this.sizeColumn.HeaderText = DgvRowName.Size.ToString();
-            this.sizeColumn.Name = DgvRowName.Size.ToString();
+            this.sizeColumn.HeaderText = DgvColumnName.Size.ToString();
+            this.sizeColumn.Name = DgvColumnName.Size.ToString();
             this.sizeColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             this.sizeColumn.Width = 58;
             // 
             // NameColumn
             // 
             this.nameColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Name.ToString();
-            this.nameColumn.HeaderText = DgvRowName.Name.ToString();
-            this.nameColumn.Name = DgvRowName.Name.ToString();
+            this.nameColumn.HeaderText = DgvColumnName.Name.ToString();
+            this.nameColumn.Name = DgvColumnName.Name.ToString();
             // 
             // TypeColumn
             // 
             this.typeColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Type.ToString();
             this.typeColumn.DisplayStyle = System.Windows.Forms.DataGridViewComboBoxDisplayStyle.ComboBox;
-            this.typeColumn.HeaderText = DgvRowName.Type.ToString();
-            this.typeColumn.Name = DgvRowName.Type.ToString();
+            this.typeColumn.HeaderText = DgvColumnName.Type.ToString();
+            this.typeColumn.Name = DgvColumnName.Type.ToString();
             this.typeColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
             this.typeColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
             this.typeColumn.Width = 58;
@@ -779,33 +728,33 @@ namespace rmApplication
             // ReadRawColumn
             // 
             this.readRawColumn.DataPropertyName = ViewSetting.DgvPropertyNames.ReadRaw.ToString();
-            this.readRawColumn.HeaderText = DgvRowName.ReadRaw.ToString();
-            this.readRawColumn.Name = DgvRowName.ReadRaw.ToString();
+            this.readRawColumn.HeaderText = DgvColumnName.ReadRaw.ToString();
+            this.readRawColumn.Name = DgvColumnName.ReadRaw.ToString();
             this.readRawColumn.Visible = false;
             // 
             // ReadColumn
             // 
             this.readValueColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Read.ToString();
-            this.readValueColumn.HeaderText = DgvRowName.Read.ToString();
-            this.readValueColumn.Name = DgvRowName.Read.ToString();
+            this.readValueColumn.HeaderText = DgvColumnName.Read.ToString();
+            this.readValueColumn.Name = DgvColumnName.Read.ToString();
             // 
             // WriteRawColumn
             // 
             this.writeRawColumn.DataPropertyName = ViewSetting.DgvPropertyNames.WriteRaw.ToString();
-            this.writeRawColumn.HeaderText = DgvRowName.WriteRaw.ToString();
-            this.writeRawColumn.Name = DgvRowName.WriteRaw.ToString();
+            this.writeRawColumn.HeaderText = DgvColumnName.WriteRaw.ToString();
+            this.writeRawColumn.Name = DgvColumnName.WriteRaw.ToString();
             this.writeRawColumn.Visible = false;
             // 
             // WriteColumn
             // 
             this.writeValueColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Write.ToString();
-            this.writeValueColumn.HeaderText = DgvRowName.Write.ToString();
-            this.writeValueColumn.Name = DgvRowName.Write.ToString();
+            this.writeValueColumn.HeaderText = DgvColumnName.Write.ToString();
+            this.writeValueColumn.Name = DgvColumnName.Write.ToString();
             // 
             // WriteButtonColumn
             // 
-            this.writeButtonColumn.HeaderText = DgvRowName.WR.ToString();
-            this.writeButtonColumn.Name = DgvRowName.WR.ToString();
+            this.writeButtonColumn.HeaderText = DgvColumnName.WR.ToString();
+            this.writeButtonColumn.Name = DgvColumnName.WR.ToString();
             this.writeButtonColumn.Resizable = System.Windows.Forms.DataGridViewTriState.False;
             this.writeButtonColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
             this.writeButtonColumn.Width = 42;
@@ -813,8 +762,8 @@ namespace rmApplication
             // DescriptionColumn
             // 
             this.descriptionColumn.DataPropertyName = ViewSetting.DgvPropertyNames.Description.ToString();
-            this.descriptionColumn.HeaderText = DgvRowName.Description.ToString();
-            this.descriptionColumn.Name = DgvRowName.Description.ToString();
+            this.descriptionColumn.HeaderText = DgvColumnName.Description.ToString();
+            this.descriptionColumn.Name = DgvColumnName.Description.ToString();
             this.descriptionColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
             mainDataGridView.AutoGenerateColumns = false;
@@ -872,55 +821,11 @@ namespace rmApplication
 
         public void LoadViewSettingFile(ViewSetting tmp)
         {
-            ViewSettingList = new List<ViewSetting>();
-            var view = new ViewSetting();
-            var pageList = new List<string>();
+            // Page-splitting logic is consolidated in ViewSetting.SplitByGroup.
+            ViewSettingList = ViewSetting.SplitByGroup(tmp, out var pageList);
 
-            string previousGroupName = null;
-            bool isFirstRow = true;
-            bool isFailed = false;
-            foreach (var setting in tmp.Settings)
-            {
-                if (isFirstRow == true)
-                {
-                    isFirstRow = false;
-
-                    if (setting.Group == null)
-                    {
-                        isFailed = true;
-                        break;
-
-                    }
-
-                    view.Settings.Add(setting);
-                    pageList.Add(setting.Group);
-                    previousGroupName = setting.Group;
-
-                }
-                else if ((!string.IsNullOrEmpty(setting.Group)) &&
-                          (setting.Group != previousGroupName))
-                {
-                    ViewSettingList.Add(view);
-
-                    view = new ViewSetting();
-                    view.Settings.Add(setting);
-                    pageList.Add(setting.Group);
-                    previousGroupName = setting.Group;
-
-                }
-                else
-                {
-                    view.Settings.Add(setting);
-
-                }
-
-            }
-
-            if (isFailed)
+            if (ViewSettingList.Count == 0)
                 return;
-
-            if (view.Settings.Count > 0)
-                ViewSettingList.Add(view);
 
             viewPageComboBox.SelectedIndexChanged -= new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
 
@@ -1031,6 +936,9 @@ namespace rmApplication
             var date = System.IO.File.GetLastWriteTime(path);
 
             bool isValid = ReadELFMap.Interpret(textArray, MapList);
+
+            if (isValid == false)
+                isValid = NmMap.Interpret(textArray, MapList);
 
             if (isValid == false)
                 isValid = GCCLinkerMap.Interpret(textArray, MapList);
@@ -1211,7 +1119,6 @@ namespace rmApplication
 
             timeStep = value;
             timeStepToolStripTextBox.Text = value.ToString();
-            this.ActiveControl = mainDataGridView;
 
             return true;
         }
@@ -1369,11 +1276,11 @@ namespace rmApplication
                 return;
             }
 
-            string note = "Start Logging time: " + DateTime.Now.ToString();
+            string note = "Log Start time: " + DateTime.Now.ToString();
 
             text.AppendLine(note);
 
-            string header = "1.Status" + logTextDelimiter + "2.OS Time" + logTextDelimiter + "3.Slave Time";
+            string header = "1.Status" + logTextDelimiter + "2.Received Time" + logTextDelimiter + "3.Nominal Time";
 
             foreach (var setting in ViewSettingList[currentPageIndex].Settings)
             {
@@ -1532,6 +1439,7 @@ namespace rmApplication
                 if (UpdateConfigurationParameter(ViewSettingList[currentPageIndex].Settings, out var parameters))
                 {
                     logic.LogConfigParameter = parameters;
+                    logic.EnqueueTask(BusinessLogic.CommunicationTasks.StopLog);
                     logic.EnqueueTask(BusinessLogic.CommunicationTasks.Config);
                     logic.EnqueueTask(BusinessLogic.CommunicationTasks.StartLog);
                 }
@@ -1646,44 +1554,7 @@ namespace rmApplication
 
                 }
 
-                if (System.IO.File.Exists(ValidMapPath) != true)
-                {
-                    MessageBox.Show("The address map file is not found.",
-                                    "Caution",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
-
-                    MapList = new List<SymbolFactor>();
-                    ValidMapPath = null;
-                    ValidMapLastWrittenDate = DateTime.MinValue;
-                    autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
-                }
-                else
-                {
-                    DateTime now = System.IO.File.GetLastWriteTime(ValidMapPath);
-
-                    if (now <= ValidMapLastWrittenDate)
-                        return;
-
-                    DialogResult result = MessageBox.Show("The map file is updated.\nDo you want to reload Address in the DataGridView?",
-                                    "Question",
-                                    MessageBoxButtons.YesNo,
-                                    MessageBoxIcon.Exclamation,
-                                    MessageBoxDefaultButton.Button2);
-
-                    if (result != DialogResult.Yes)
-                        return;
-
-                    if (!LoadMapFile(ValidMapPath))
-                    {
-                        MessageBox.Show("Can't read address map file",
-                                            "Caution",
-                                            MessageBoxButtons.OK,
-                                            MessageBoxIcon.Warning);
-
-                    }
-
-                }
+                ReloadMapFileIfUpdated(requireConfirmation: false);
 
             }
             else
@@ -1709,13 +1580,13 @@ namespace rmApplication
 
         private void timeStepToolStripTextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-                e.Handled = true;
-
             if (e.KeyChar != (char)Keys.Enter)
                 return;
 
-            ChangeTimeStep(timeStepToolStripTextBox.Text);
+            e.Handled = true;
+
+            if(ChangeTimeStep(timeStepToolStripTextBox.Text))
+                this.ActiveControl = mainDataGridView;
 
             if (IsCommunicationActive)
             {
@@ -1737,11 +1608,10 @@ namespace rmApplication
 
         private void logLengthToolStripTextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
-                e.Handled = true;
-
             if (e.KeyChar != (char)Keys.Enter)
                 return;
+
+            e.Handled = true;
 
             if (int.TryParse(logLengthToolStripTextBox.Text, out var length))
             {
@@ -1754,6 +1624,10 @@ namespace rmApplication
                 logLengthToolStripTextBox.Text = length.ToString();
                 this.ActiveControl = mainDataGridView;
 
+            }
+            else
+            {
+                logLengthToolStripTextBox.Text = logLength.ToString();
             }
 
         }
@@ -1890,34 +1764,7 @@ namespace rmApplication
             }
             else
             {
-                if (System.IO.File.Exists(ValidMapPath) == true)
-                {
-                    DateTime now = System.IO.File.GetLastWriteTime(ValidMapPath);
-
-                    if (now > ValidMapLastWrittenDate)
-                    {
-                        DialogResult result = MessageBox.Show("The map file is updated.\nDo you want to reload Address in the DataGridView?",
-                                                                "Question",
-                                                                MessageBoxButtons.YesNo,
-                                                                MessageBoxIcon.Exclamation,
-                                                                MessageBoxDefaultButton.Button2);
-
-                        if (result == DialogResult.Yes)
-                        {
-                            if (LoadMapFile(ValidMapPath) == false)
-                            {
-                                MessageBox.Show("Can't read address map file",
-                                                    "Caution",
-                                                    MessageBoxButtons.OK,
-                                                    MessageBoxIcon.Warning);
-
-                            }
-
-                        }
-
-                    }
-
-                }
+                ReloadMapFileIfUpdated(requireConfirmation: true);
 
                 IsCommunicationActive = true;
 
@@ -2009,9 +1856,9 @@ namespace rmApplication
                             setting.ReadRaw = value.ToString();
 
                             if (UserString.TryParse(setting.Type, setting.Size, value, out var textValue))
-                                mainDataGridView[DgvRowName.Read.ToString(), index].Value = textValue;
+                                mainDataGridView[DgvColumnName.Read.ToString(), index].Value = textValue;
                             else
-                                mainDataGridView[DgvRowName.Read.ToString(), index].Value = null;
+                                mainDataGridView[DgvColumnName.Read.ToString(), index].Value = null;
 
                             lineText += logTextDelimiter;
                             lineText += textValue;
@@ -2092,10 +1939,9 @@ namespace rmApplication
             {
                 TextBox tb = (TextBox)e.Control;
 
-                if (dgv.CurrentCell.OwningColumn.Name == DgvRowName.Symbol.ToString())
+                if (dgv.CurrentCell.OwningColumn.Name == DgvColumnName.Symbol.ToString())
                 {
                     tb.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
-
                     tb.AutoCompleteSource = AutoCompleteSource.CustomSource;
                     tb.AutoCompleteCustomSource = autoCompleteSourceForSymbol;
                 }
@@ -2103,9 +1949,7 @@ namespace rmApplication
                 {
                     tb.AutoCompleteMode = AutoCompleteMode.None;
                 }
-
             }
-
         }
 
         private void mainDataGridView_KeyDown(object sender, KeyEventArgs e)
@@ -2115,31 +1959,22 @@ namespace rmApplication
             {
                 foreach (DataGridViewCell cell in mainDataGridView.SelectedCells)
                 {
-                    int tmp = cell.ColumnIndex;
-
-                    if (tmp == (int)DgvRowName.Group)
-                    {
-                        tmp = (int)DgvRowName.Group + 1;
-
-                    }
-
-                    mainDataGridView[tmp, cell.RowIndex].Value = null;
-
+                    if (cell.ColumnIndex != (int)DgvColumnName.Group)
+                        mainDataGridView[cell.ColumnIndex, cell.RowIndex].Value = null;
                 }
-
             }
         }
 
         private void mainDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             DataGridView dgv = (DataGridView)sender;
-            int ckColumnIndex = dgv.Columns[DgvRowName.CK.ToString()].Index;
-            int addressColumnIndex = dgv.Columns[DgvRowName.Address.ToString()].Index;
-            int offsetColumnIndex = dgv.Columns[DgvRowName.Offset.ToString()].Index;
-            int sizeColumnIndex = dgv.Columns[DgvRowName.Size.ToString()].Index;
-            int typeColumnIndex = dgv.Columns[DgvRowName.Type.ToString()].Index;
-            int writeColumnIndex = dgv.Columns[DgvRowName.Write.ToString()].Index;
-            int wrColumnIndex = dgv.Columns[DgvRowName.WR.ToString()].Index;
+            int ckColumnIndex = dgv.Columns[DgvColumnName.CK.ToString()].Index;
+            int addressColumnIndex = dgv.Columns[DgvColumnName.Address.ToString()].Index;
+            int offsetColumnIndex = dgv.Columns[DgvColumnName.Offset.ToString()].Index;
+            int sizeColumnIndex = dgv.Columns[DgvColumnName.Size.ToString()].Index;
+            int typeColumnIndex = dgv.Columns[DgvColumnName.Type.ToString()].Index;
+            int writeColumnIndex = dgv.Columns[DgvColumnName.Write.ToString()].Index;
+            int wrColumnIndex = dgv.Columns[DgvColumnName.WR.ToString()].Index;
 
             if ((e.ColumnIndex < 0) ||
                 (e.RowIndex < 0))
@@ -2267,14 +2102,19 @@ namespace rmApplication
 
         }
 
+        // The DataGridView edit flow fires events in the order: CellValidating -> CellEndEdit.
+        // CellValidating decides whether to accept the edit and, if so, stores the validated value here.
+        // CellEndEdit then applies that value to the underlying model.
+        // A null value means the edit was rejected (cancelled).
         private string cellValueBuffer;
+
         private void mainDataGridView_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
         {
             DataGridView dgv = (DataGridView)sender;
-            int ckColumnIndex = dgv.Columns[DgvRowName.CK.ToString()].Index;
-            int typeColumnIndex = dgv.Columns[DgvRowName.Type.ToString()].Index;
-            int writeColumnIndex = dgv.Columns[DgvRowName.Write.ToString()].Index;
-            int descriptionColumnIndex = dgv.Columns[DgvRowName.Description.ToString()].Index;
+            int ckColumnIndex = dgv.Columns[DgvColumnName.CK.ToString()].Index;
+            int typeColumnIndex = dgv.Columns[DgvColumnName.Type.ToString()].Index;
+            int writeColumnIndex = dgv.Columns[DgvColumnName.Write.ToString()].Index;
+            int descriptionColumnIndex = dgv.Columns[DgvColumnName.Description.ToString()].Index;
 
             dgv.CancelEdit();
 
@@ -2314,18 +2154,18 @@ namespace rmApplication
         private void mainDataGridView_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             DataGridView dgv = (DataGridView)sender;
-            int groupColumnIndex = dgv.Columns[DgvRowName.Group.ToString()].Index;
-            int symbolColumnIndex = dgv.Columns[DgvRowName.Symbol.ToString()].Index;
-            int addressColumnIndex = dgv.Columns[DgvRowName.Address.ToString()].Index;
-            int offsetColumnIndex = dgv.Columns[DgvRowName.Offset.ToString()].Index;
-            int sizeColumnIndex = dgv.Columns[DgvRowName.Size.ToString()].Index;
-            int nameColumnIndex = dgv.Columns[DgvRowName.Name.ToString()].Index;
-            int typeColumnIndex = dgv.Columns[DgvRowName.Type.ToString()].Index;
-            int readrawColumnIndex = dgv.Columns[DgvRowName.ReadRaw.ToString()].Index;
-            int readColumnIndex = dgv.Columns[DgvRowName.Read.ToString()].Index;
-            int writerawColumnIndex = dgv.Columns[DgvRowName.WriteRaw.ToString()].Index;
-            int writeColumnIndex = dgv.Columns[DgvRowName.Write.ToString()].Index;
-            int descriptionColumnIndex = dgv.Columns[DgvRowName.Description.ToString()].Index;
+            int groupColumnIndex = dgv.Columns[DgvColumnName.Group.ToString()].Index;
+            int symbolColumnIndex = dgv.Columns[DgvColumnName.Symbol.ToString()].Index;
+            int addressColumnIndex = dgv.Columns[DgvColumnName.Address.ToString()].Index;
+            int offsetColumnIndex = dgv.Columns[DgvColumnName.Offset.ToString()].Index;
+            int sizeColumnIndex = dgv.Columns[DgvColumnName.Size.ToString()].Index;
+            int nameColumnIndex = dgv.Columns[DgvColumnName.Name.ToString()].Index;
+            int typeColumnIndex = dgv.Columns[DgvColumnName.Type.ToString()].Index;
+            int readrawColumnIndex = dgv.Columns[DgvColumnName.ReadRaw.ToString()].Index;
+            int readColumnIndex = dgv.Columns[DgvColumnName.Read.ToString()].Index;
+            int writerawColumnIndex = dgv.Columns[DgvColumnName.WriteRaw.ToString()].Index;
+            int writeColumnIndex = dgv.Columns[DgvColumnName.Write.ToString()].Index;
+            int descriptionColumnIndex = dgv.Columns[DgvColumnName.Description.ToString()].Index;
 
             if ((e.ColumnIndex < 0) ||
                 (e.RowIndex < 0))
@@ -2548,38 +2388,13 @@ namespace rmApplication
 
         }
 
+        // These methods have been moved to ValidationHelper.
+        // The wrappers below are kept to avoid touching every call site.
         private bool ValidateSize(string value, ref int result)
-        {
-            if (string.IsNullOrEmpty(value))
-                return false;
-
-            bool isValid = false;
-            if (uint.TryParse(value, out var tmp) == true)
-            {
-                if ((tmp == 1) ||
-                    (tmp == 2) ||
-                    (tmp == 4) ||
-                    (tmp == 8))
-                {
-                    result = (int)tmp;
-                    isValid = true;
-                }
-
-            }
-
-            return isValid;
-        }
+            => ValidationHelper.ValidateSize(value, ref result);
 
         private bool IsHexString(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-                return false;
-
-            if (Regex.IsMatch(text, @"^(0[xX]){1}[A-Fa-f0-9]+$"))
-                return true;
-            else
-                return false;
-        }
+            => ValidationHelper.IsHexString(text);
 
         private void mainDataGridView_MouseDown(object sender, MouseEventArgs e)
         {
@@ -2612,8 +2427,8 @@ namespace rmApplication
             {
                 if (rowValue == 0)
                 {
-                    var tmpGroupName = mainDataGridView[DgvRowName.Group.ToString(), rowValue].Value.ToString();
-                    mainDataGridView[DgvRowName.Group.ToString(), (rowValue+1)].Value = tmpGroupName;
+                    var tmpGroupName = mainDataGridView[DgvColumnName.Group.ToString(), rowValue].Value.ToString();
+                    mainDataGridView[DgvColumnName.Group.ToString(), (rowValue+1)].Value = tmpGroupName;
                 }
 
                 mainDataGridView.Rows.RemoveAt(rowValue);
@@ -2665,7 +2480,7 @@ namespace rmApplication
         private void OnDeletePageButtonPressed(object sender, EventArgs e)
         {
             if ((viewPageComboBox.Items.Count == 1) &&
-                (viewPageComboBox.SelectedIndex == -0))
+                (viewPageComboBox.SelectedIndex == 0))
             {
                 MessageBox.Show("Can not delete.",
                 "Caution",

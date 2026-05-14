@@ -34,9 +34,9 @@
             this.sizeTextBox = new System.Windows.Forms.TextBox();
             this.requestButton = new System.Windows.Forms.Button();
             this.splitContainerMain = new System.Windows.Forms.SplitContainer();
+            this.saveButton = new System.Windows.Forms.Button();
             this.label4 = new System.Windows.Forms.Label();
             this.incrementalValueTextBox = new System.Windows.Forms.TextBox();
-            this.enableOffsetCheckBox = new System.Windows.Forms.CheckBox();
             this.endiannessGroupBox = new System.Windows.Forms.GroupBox();
             this.tms320c28xEndianRadioButton = new System.Windows.Forms.RadioButton();
             this.bigEndianRadioButton = new System.Windows.Forms.RadioButton();
@@ -47,7 +47,7 @@
             this.makeButton = new System.Windows.Forms.Button();
             this.subSplitContainer = new System.Windows.Forms.SplitContainer();
             this.dumpDataGridView = new System.Windows.Forms.DataGridView();
-            this.mainHexBox = new Be.Windows.Forms.HexBox();
+            this.mainHexBox = new rmApplication.HexBoxControl();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainerMain)).BeginInit();
             this.splitContainerMain.Panel1.SuspendLayout();
             this.splitContainerMain.Panel2.SuspendLayout();
@@ -85,6 +85,7 @@
             this.addressTextBox.Size = new System.Drawing.Size(141, 19);
             this.addressTextBox.TabIndex = 4;
             this.addressTextBox.Text = "0x20000000";
+            this.addressTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.addressTextBox_KeyPress);
             // 
             // sizeTextBox
             // 
@@ -93,6 +94,7 @@
             this.sizeTextBox.Size = new System.Drawing.Size(141, 19);
             this.sizeTextBox.TabIndex = 5;
             this.sizeTextBox.Text = "1";
+            this.sizeTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.sizeTextBox_KeyPress);
             // 
             // requestButton
             // 
@@ -115,9 +117,9 @@
             // 
             // splitContainerMain.Panel1
             // 
+            this.splitContainerMain.Panel1.Controls.Add(this.saveButton);
             this.splitContainerMain.Panel1.Controls.Add(this.label4);
             this.splitContainerMain.Panel1.Controls.Add(this.incrementalValueTextBox);
-            this.splitContainerMain.Panel1.Controls.Add(this.enableOffsetCheckBox);
             this.splitContainerMain.Panel1.Controls.Add(this.endiannessGroupBox);
             this.splitContainerMain.Panel1.Controls.Add(this.copyToClipBoardButton);
             this.splitContainerMain.Panel1.Controls.Add(this.symbolTextBox);
@@ -137,6 +139,17 @@
             this.splitContainerMain.SplitterWidth = 5;
             this.splitContainerMain.TabIndex = 7;
             // 
+            // saveButton
+            // 
+            this.saveButton.Location = new System.Drawing.Point(347, 15);
+            this.saveButton.Margin = new System.Windows.Forms.Padding(4);
+            this.saveButton.Name = "saveButton";
+            this.saveButton.Size = new System.Drawing.Size(109, 29);
+            this.saveButton.TabIndex = 39;
+            this.saveButton.Text = "Save Dump";
+            this.saveButton.UseVisualStyleBackColor = true;
+            this.saveButton.Click += new System.EventHandler(this.saveButton_Click);
+            // 
             // label4
             // 
             this.label4.AutoSize = true;
@@ -155,18 +168,6 @@
             this.incrementalValueTextBox.Text = "1";
             this.incrementalValueTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.incrementalValueTextBox_KeyPress);
             this.incrementalValueTextBox.Leave += new System.EventHandler(this.incrementalValueTextBox_Leave);
-            // 
-            // enableOffsetCheckBox
-            // 
-            this.enableOffsetCheckBox.AutoSize = true;
-            this.enableOffsetCheckBox.Checked = true;
-            this.enableOffsetCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.enableOffsetCheckBox.Location = new System.Drawing.Point(348, 22);
-            this.enableOffsetCheckBox.Name = "enableOffsetCheckBox";
-            this.enableOffsetCheckBox.Size = new System.Drawing.Size(94, 16);
-            this.enableOffsetCheckBox.TabIndex = 36;
-            this.enableOffsetCheckBox.Text = "Enable Offset";
-            this.enableOffsetCheckBox.UseVisualStyleBackColor = true;
             // 
             // endiannessGroupBox
             // 
@@ -214,7 +215,7 @@
             // 
             // copyToClipBoardButton
             // 
-            this.copyToClipBoardButton.Location = new System.Drawing.Point(348, 51);
+            this.copyToClipBoardButton.Location = new System.Drawing.Point(347, 51);
             this.copyToClipBoardButton.Margin = new System.Windows.Forms.Padding(4);
             this.copyToClipBoardButton.Name = "copyToClipBoardButton";
             this.copyToClipBoardButton.Size = new System.Drawing.Size(109, 29);
@@ -242,7 +243,7 @@
             // 
             // makeButton
             // 
-            this.makeButton.Location = new System.Drawing.Point(231, 51);
+            this.makeButton.Location = new System.Drawing.Point(230, 51);
             this.makeButton.Margin = new System.Windows.Forms.Padding(4);
             this.makeButton.Name = "makeButton";
             this.makeButton.Size = new System.Drawing.Size(109, 29);
@@ -284,17 +285,17 @@
             // 
             // mainHexBox
             // 
+            this.mainHexBox.BackColor = System.Drawing.Color.White;
             this.mainHexBox.ColumnInfoVisible = true;
             this.mainHexBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.mainHexBox.Font = new System.Drawing.Font("MS Gothic", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
-            this.mainHexBox.HexCasing = Be.Windows.Forms.HexCasing.Lower;
+            this.mainHexBox.HexCasing = rmApplication.HexCasing.Lower;
             this.mainHexBox.LineInfoVisible = true;
             this.mainHexBox.Location = new System.Drawing.Point(0, 0);
             this.mainHexBox.Name = "mainHexBox";
-            this.mainHexBox.ShadowSelectionColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(60)))), ((int)(((byte)(188)))), ((int)(((byte)(255)))));
             this.mainHexBox.Size = new System.Drawing.Size(307, 296);
-            this.mainHexBox.StringViewVisible = true;
             this.mainHexBox.TabIndex = 0;
+            this.mainHexBox.TabStop = false;
             this.mainHexBox.UseFixedBytesPerLine = true;
             this.mainHexBox.VScrollBarVisible = true;
             // 
@@ -335,13 +336,13 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button copyToClipBoardButton;
         private System.Windows.Forms.SplitContainer subSplitContainer;
-        private Be.Windows.Forms.HexBox mainHexBox;
+        private HexBoxControl mainHexBox;
         private System.Windows.Forms.GroupBox endiannessGroupBox;
         private System.Windows.Forms.RadioButton tms320c28xEndianRadioButton;
         private System.Windows.Forms.RadioButton bigEndianRadioButton;
         private System.Windows.Forms.RadioButton littleEndianRadioButton;
-        private System.Windows.Forms.CheckBox enableOffsetCheckBox;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.TextBox incrementalValueTextBox;
+        private System.Windows.Forms.Button saveButton;
     }
 }

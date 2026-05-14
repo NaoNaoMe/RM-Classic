@@ -12,7 +12,7 @@ namespace rmApplication
     {
         public static readonly int TimeStepDefault = 500;
         public static readonly int TimeStepMin = 1;
-        public static readonly int TimeStepMax = 2000;
+        public static readonly int TimeStepMax = 1000;
 
         public struct DataParameter
         {
@@ -48,7 +48,8 @@ namespace rmApplication
         {
             Success,
             Failure,
-            Timeout
+            Timeout,
+            Canceled
         }
 
         public struct TaskCompletionInformation
@@ -58,8 +59,8 @@ namespace rmApplication
             public byte[] Data;
         }
 
-        public delegate void TaskCompletaionFunction(CommunicationTasks task, TaskCompletionInformation info);
-        public TaskCompletaionFunction TaskCompletaionFunctionCallback;
+        public delegate void TaskCompletionFunction(CommunicationTasks task, TaskCompletionInformation info);
+        public TaskCompletionFunction TaskCompletionFunctionCallback;
 
         public delegate void DerivedFrameReceivedFunction(byte[] bytes);
         public DerivedFrameReceivedFunction SerialCommunicationEmulationReceivedCallBack;
@@ -84,6 +85,8 @@ namespace rmApplication
 
         private ConcurrentQueue<LogData> logDataQueue;
 
+        private ConcurrentQueue<byte[]> DataRequest;
+
         public BusinessLogic()
         {
             var config = new Configuration();
@@ -97,6 +100,7 @@ namespace rmApplication
             DumpConfigParameter = new DataParameter();
 
             logDataQueue = new ConcurrentQueue<LogData>();
+            DataRequest = new ConcurrentQueue<byte[]>();
 
             TaskState = CommunicationTasks.Nothing;
 
@@ -141,10 +145,9 @@ namespace rmApplication
 
         }
 
-        private ConcurrentQueue<byte[]> DataRequest = new ConcurrentQueue<byte[]>();
         public void EditValue(DataParameter param)
         {
-            DataRequest.Enqueue(commInstructions.MakeWirteDataRequest(param.Address, param.Size, param.Value));
+            DataRequest.Enqueue(commInstructions.MakeWriteDataRequest(param.Address, param.Size, param.Value));
         }
 
         public void SendDataUsingSerialCommunicationEmulation(byte[] bytes)
@@ -237,13 +240,16 @@ namespace rmApplication
 
                     }
 
-                    if (info.Status != TaskCompletionStatus.Success)
+                    if (info.Status == TaskCompletionStatus.Failure)
                         ClearWaitingTasks();
 
                     if (info.Status == TaskCompletionStatus.Timeout)
-                        EnqueueTask(CommunicationTasks.Close);
+                    {
+                        ClearWaitingTasks();
+                        // TODO: Consider whether to auto-enqueue Close on timeout.
+                    }
 
-                    TaskCompletaionFunctionCallback?.Invoke(request, info);
+                    TaskCompletionFunctionCallback?.Invoke(request, info);
 
                     taskCancellationTokenSource.Dispose();
                     taskCancellationTokenSource = null;
@@ -274,6 +280,12 @@ namespace rmApplication
 
             while(retry-- > 0)
             {
+                if (ct.IsCancellationRequested)
+                {
+                    info.Status = TaskCompletionStatus.Canceled;
+                    break;
+                }
+
                 await commMainCtrl.PushAsync(txFrame);
 
                 double timeout = 100;
@@ -289,17 +301,19 @@ namespace rmApplication
                     if (rxFrame.Length == 0)
                     {
                         System.Diagnostics.Debug.WriteLine("** No response received from device. **");
-                        System.Diagnostics.Debug.WriteLine("** Retrying transmission... **");
-                        continue;
-                    }
 
-                    if (ct.IsCancellationRequested == true)
-                    {
+                        if(retry > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("** Retrying transmission... **");
+                            await Task.Delay(100);
+                            commMainCtrl.PurgeReceiveBuffer();
+                        }
+
                         if (cts.IsCancellationRequested)
                         {
                             info.Status = TaskCompletionStatus.Timeout;
-                            break;
                         }
+                        continue;
                     }
 
                     info.EchoDetected = false;
@@ -309,11 +323,13 @@ namespace rmApplication
                     if (!commInstructions.IsResponseValid(txFrame, rxFrame))
                     {
                         System.Diagnostics.Debug.WriteLine("** Unexpected or invalid response received. **");
-                        System.Diagnostics.Debug.WriteLine("** Retrying transmission... **");
 
-                        await Task.Delay(200);
-
-                        commMainCtrl.PurgeReceiveBuffer();
+                        if (retry > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("** Retrying transmission... **");
+                            await Task.Delay(100);
+                            commMainCtrl.PurgeReceiveBuffer();
+                        }
 
                         continue;
                     }
@@ -345,7 +361,7 @@ namespace rmApplication
 
         private async Task<TaskCompletionInformation> SetTimeStepAsync(uint millis, CancellationToken ct)
         {
-            var info = await QueryAsync(commInstructions.MakeSetTimeStepRequest(millis), ct);
+            var info = await QueryAsync(commInstructions.MakeSetTimeStepRequest(millis), ct ,3);
 
             if (info.Status == TaskCompletionStatus.Success)
             {
@@ -427,7 +443,7 @@ namespace rmApplication
 
             while (true)
             {
-                info = await QueryAsync(commInstructions.MakeDumpDataRequest(address, size), ct);
+                info = await QueryAsync(commInstructions.MakeDumpDataRequest(address, size), ct, 2);
                 if (info.Status != TaskCompletionStatus.Success)
                     break;
 
@@ -451,7 +467,7 @@ namespace rmApplication
         private async Task<TaskCompletionInformation> LoggingAsync(CancellationToken ct)
         {
             var info = new TaskCompletionInformation();
-            info.Status = TaskCompletionStatus.Success;
+            info.Status = TaskCompletionStatus.Failure;
 
             while (DataRequest.Count != 0)
                 DataRequest.TryDequeue(out var tmp);
@@ -472,9 +488,16 @@ namespace rmApplication
             while (true)
             {
                 if (ct.IsCancellationRequested)
+                {
+                    info.Status = TaskCompletionStatus.Success;
                     break;
+                }
 
-                if (!DataRequest.TryDequeue(out var txFrame))
+                if(DataRequest.TryDequeue(out var txFrame))
+                {
+                    System.Diagnostics.Debug.WriteLine("  <- Send data request frame ->");
+                }
+                else
                 {
                     var msec = txSW.ElapsedMilliseconds;
                     if (msec > 500)
@@ -513,6 +536,7 @@ namespace rmApplication
 
                     if (commInstructions.CheckDerivedFrame(rxFrame, ref bytes, out mode))
                     {
+                        System.Diagnostics.Debug.WriteLine(" └-→ Received a derived frame");
                         if (mode == CommInstructions.RmDerivedMode.SerialCommunicationEmulation)
                             SerialCommunicationEmulationReceivedCallBack?.Invoke(bytes);
 

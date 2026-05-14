@@ -117,9 +117,58 @@ namespace rmApplication
         public ViewSetting(ViewSetting vs)
         {
             Settings = new BindingList<DataSetting>(vs.Settings);
-
         }
 
+        /// <summary>
+        /// Splits a flat ViewSetting (containing all pages' DataSettings) into per-page ViewSettings,
+        /// using changes in the Group property as page boundaries.
+        /// Returns an empty list if the first row has a null Group (invalid format).
+        /// </summary>
+        /// <param name="source">Flat ViewSetting as deserialized directly from XML</param>
+        /// <param name="pageNames">Group name of each page, for use in the page ComboBox</param>
+        /// <returns>List of ViewSettings, one per page</returns>
+        public static List<ViewSetting> SplitByGroup(ViewSetting source, out List<string> pageNames)
+        {
+            pageNames = new List<string>();
+            var result = new List<ViewSetting>();
+
+            if (source == null || source.Settings.Count == 0)
+                return result;
+
+            ViewSetting currentPage = null;
+            string previousGroup = null;
+
+            foreach (var setting in source.Settings)
+            {
+                bool isGroupBoundary = !string.IsNullOrEmpty(setting.Group)
+                                    && setting.Group != previousGroup;
+
+                if (currentPage == null)
+                {
+                    // First row: Group is required
+                    if (setting.Group == null)
+                        return new List<ViewSetting>(); // Invalid format
+
+                    currentPage = new ViewSetting();
+                    pageNames.Add(setting.Group);
+                    previousGroup = setting.Group;
+                }
+                else if (isGroupBoundary)
+                {
+                    result.Add(currentPage);
+                    currentPage = new ViewSetting();
+                    pageNames.Add(setting.Group);
+                    previousGroup = setting.Group;
+                }
+
+                currentPage.Settings.Add(setting);
+            }
+
+            if (currentPage != null && currentPage.Settings.Count > 0)
+                result.Add(currentPage);
+
+            return result;
+        }
     }
 
 }

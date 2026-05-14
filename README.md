@@ -1,60 +1,64 @@
-# RM Classic: Enhanced Real-Time Data Monitoring for Embedded Systems
+# RM Classic: Real-Time Variable Monitoring for Embedded Systems
 
-**RM Classic** is a real-time data monitoring tool that aids the debugging process of live variables in embedded software. This tool is designed to streamline the analysis and diagnosis of embedded systems by providing live insights without halting the execution of programs.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows-blue)](#requirements)
+[![GitHub release](https://img.shields.io/github/v/release/NaoNaoMe/RM-Classic)](https://github.com/NaoNaoMe/RM-Classic/releases)
 
-![Screenshot 1](screenshots/screenshot1.png)
+**RM Classic** is a real-time data monitoring tool for embedded systems development. It lets you observe and modify live variables in a running MCU over UART — all you need is a serial connection, no JTAG adapter or debug probe required.
 
-## Introduction to Live Variable Debugging
+![Screenshot](screenshots/screenshot1.png)
 
-Live variable debugging is crucial in embedded system development. It allows developers to observe and diagnose the real-time behavior of variables within a running program, ensuring continuous monitoring for any unexpected system behaviors.
+## Requirements
 
-## Communication with Microcontrollers
+- Windows 10 or later
+- No installation — download the single `.exe` from [Releases](https://github.com/NaoNaoMe/RM-Classic/releases)
 
-**RM Classic** uses UART for communication with microcontrollers, offering a straightforward, cost-effective solution for real-time debugging without the need for JTAG or similar proprietary technologies. Integration of RM Classic's communication code into the microcontroller is essential. Despite not matching the data throughput of specialized devices, RM Classic is versatile and vendor-independent, suitable for various microcontrollers.
+## Features
 
-For a practical example of integrating RM Classic with a microcontroller, check out the [rm_embedded](https://github.com/NaoNaoMe/rm_embedded) repository. It demonstrates how to enable connectivity between RM Classic and microcontrollers, specifically showcasing the process using an Arduino. This repository serves as a guide for those looking to implement RM Classic in embedded systems projects.
+### Real-Time Variable Monitoring
 
-## Advantages of RM Classic
+Observe statically allocated variables by address and type. Values update continuously without halting the MCU or requiring breakpoints.
 
-RM Classic offers a suite of features that enhance the debugging workflow:
+### Data Injection
 
-- **Uninterrupted Monitoring**: It enables real-time observation of variable changes, maintaining system operation without the need for breakpoints.
-- **Remote Operation**: Control systems remotely via TCP/IP for tasks such as modifying variables and managing data logs, much like remote systems in measurement and instrumentation.
-- **Non-Invasive Debugging**: Monitor and log data without disrupting the system's normal functioning.
+Write new values to variables at runtime to test parameter changes or directly override system behavior.
 
-## Core Functionality
+### Remote Operation
 
-### Real-Time Variable Monitoring and Data Injection
+RM Classic exposes a TCP server interface that allows external programs to read and write variables programmatically.
 
-- **Variable Monitoring**: Monitors statically allocated variables with known addresses and sizes, displaying values based on type information.
-- **Data Injection**: Allows for real-time value overwriting, facilitating dynamic system parameter adjustments and monitoring behavioral changes.
+- **Automated test sequences** — drive parameter changes and read results from Python or MATLAB with precise, repeatable timing.
+- **Instrument integration** — synchronize with external measurement devices to automate data collection and inspection workflows.
 
-### Data Logging and Retrieval
+### Data Logging
 
-- **Continuous Data Logging**: Data observation is continuously recorded. Since issues can arise unexpectedly, the 'Copy log' button is a handy tool for capturing potentially valuable data in such events.
-- **Data Dump**: The 'Dump' feature permits retrieval of data from specific addresses and sizes, complementing the debugging tools.
+All observed values are recorded continuously in the background. Use **Copy Log** to capture a snapshot at any moment; use **Dump** to read a raw block of MCU memory by address and size.
 
-### Pseudo-Serial Communication Capability
+### Terminal
 
-- **Terminal Interface**: It comes equipped with a serial communication terminal interface, modeled after the Arduino serial monitor. While it doesn't constitute genuine serial communication since it operates through the RM communication interface, it enables asynchronous sending and receiving of data. This function can be particularly useful for displaying text when specific points in a program are reached, akin to printf-style debugging.
+A built-in terminal — similar to the Arduino IDE Serial Monitor — lets you send and receive plain text over the same UART connection alongside the monitoring protocol, useful for printf-style debug output from firmware.
 
-### Automation and Remote Control
+## Quick Start
 
-- **TCP Server**: RM Classic features a TCP server mode that allows for remote operations.
-- **Automation**: Automation is also feasible using programming languages like Python and MATLAB, greatly easing complex tasks like experimenting with multiple parameters in real systems and data collection.
+The following example uses an Arduino Uno with the [rm_embedded](https://github.com/NaoNaoMe/rm_embedded) sample sketch.
 
-### User Interface
+1. **Flash the MCU** — upload `RmSample/RmSample.ino` to your Arduino Uno.
+2. **Connect** the Arduino to your PC.
+3. **Download RM Classic** from [Releases](https://github.com/NaoNaoMe/RM-Classic/releases) and run the `.exe`.
+4. **Load the configuration** — go to **File > Open > View File** and open `RMConfiguration--RmSample.rmxml` (included in the rm_embedded repository).
+5. **Configure the connection** — set baud rate to **9600 bps**, password to **`0x0000FFFF`**, and address width to **2 bytes**.
+6. **Connect** — click **Comm Open**. The version string `RmSample` confirms a successful connection.
 
-- **Classical Interface**: The hallmark of RM Classic lies in its classic user interface. While the Winforms-based interface might be outdated, but it ensures clarity and avoids confusion.
+Variables such as `count` and `isCounting` are now visible and editable in real time.
 
-## Additional Considerations
+## Protocol
 
-- **Data Visualization**: While RM Classic focuses on simplicity and lacks built-in data visualization, its remote operation functionality enables the development of custom visualization interfaces using various languages and frameworks.
+The wire format between RM Classic and MCU firmware is documented in [RM\_Protocol\_Specification.md](RM_Protocol_Specification.md).
 
-## Contributing
+## MCU Integration
 
-Contributions are welcome! If you find a bug or have a feature request, please open an issue on GitHub.
+Firmware library and integration examples for connecting MCUs to RM Classic are available in the [rm_embedded](https://github.com/NaoNaoMe/rm_embedded) repository.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for more information.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

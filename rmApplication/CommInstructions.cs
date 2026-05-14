@@ -69,8 +69,7 @@ namespace rmApplication
             Write = 4,
             SetAddr = 5,
             ReadInfo = 6,
-            ReadDump = 7,
-            Bypass = 8
+            ReadDump = 7
         };
 
         public enum RmFrameType
@@ -208,7 +207,7 @@ namespace rmApplication
         }
 
 
-        public byte[] MakeWirteDataRequest(uint address, uint size, ulong value)
+        public byte[] MakeWriteDataRequest(uint address, uint size, ulong value)
         {
             List<byte> frame = new List<byte>();
 
@@ -286,7 +285,7 @@ namespace rmApplication
                 return false;
             }
 
-            if(LogDataSizeQueue.Count > MaxElementNum)
+            if(LogDataSizeQueue.Count >= MaxElementNum)
             {
                 return false;
             }
@@ -425,7 +424,7 @@ namespace rmApplication
 
             var tmpDecodedData = new List<byte>(decodedData);
 
-            // delete useless crc data size
+            // delete useless crc data
             tmpDecodedData.RemoveAt(tmpDecodedData.Count - 1);
 
             bool isValid = true;
@@ -513,19 +512,6 @@ namespace rmApplication
             return frame.ToArray();
         }
 
-
-        public byte[] MakeBypassRequest(List<byte> bytes)
-        {
-            List<byte> frame = new List<byte>();
-
-            frame.Add(GenerateOpCode(RmInstr.Bypass));
-
-            frame.AddRange(bytes);
-
-            frame.Add(Crc8.Calculate(frame.ToArray()));
-
-            return frame.ToArray();
-        }
 
         public bool CheckDerivedFrame(byte[] decodedData, ref byte[] bytes, out RmDerivedMode mode)
         {

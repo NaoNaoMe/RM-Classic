@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-using Be.Windows.Forms;
 
 namespace rmApplication
 {
@@ -47,7 +46,6 @@ namespace rmApplication
         private AutoCompleteStringCollection autoCompleteSourceForSymbol;
 
         private long hexboxAddress;
-        private long hexboxOffsetAddress;
 
         private List<DumpConfig> configList;
 
@@ -55,6 +53,35 @@ namespace rmApplication
 
         public delegate void RequestFunction(BusinessLogic.DataParameter param);
         public RequestFunction RequestFunctionCallback;
+
+
+        private bool TryParseAddress(string text, out long address)
+        {
+            address = 0;
+            if (string.IsNullOrEmpty(text)) return false;
+
+            if (text.StartsWith("0x"))
+                return long.TryParse(text.Substring(2),
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out address);
+
+            return false;
+        }
+
+        private bool TryParseSize(string text, out int size)
+        {
+            size = 0;
+            if (string.IsNullOrEmpty(text)) return false;
+
+            if (text.StartsWith("0x"))
+                return int.TryParse(text.Substring(2),
+                    System.Globalization.NumberStyles.HexNumber,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out size);
+
+            return int.TryParse(text, out size);
+        }
 
         public DumpForm(List<SymbolFactor> maplist)
         {
@@ -128,11 +155,10 @@ namespace rmApplication
             test.Add(0x00);
             test.Add(0xbb);
 
-            hexboxAddress = 0;
-            hexboxOffsetAddress = 0;
+            hexboxAddress = 0x103;
 
-            mainHexBox.ByteProvider = new DynamicByteProvider(test);
-            mainHexBox.LineInfoOffset = hexboxOffsetAddress;
+            mainHexBox.Write(test.ToArray());
+            mainHexBox.BaseAddress = hexboxAddress;
 
             if ((mapList != null) &&
                 (mapList.Count > 0))
@@ -221,99 +247,106 @@ namespace rmApplication
 
         private void symbolTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Enter)
+            if (e.KeyCode != Keys.Enter)
+                return;
+
+            e.Handled = true;
+
+            if (mapList != null)
             {
-                if (mapList != null)
+                string tmpSymbol = symbolTextBox.Text;
+
+                var result = mapList.Find(item => item.Symbol == tmpSymbol);
+
+                if (result != null)
                 {
-                    string tmpSymbol = symbolTextBox.Text;
-
-                    var result = mapList.Find(item => item.Symbol == tmpSymbol);
-
-                    if (result != null)
-                    {
-                        addressTextBox.Text = result.Address;
-                        sizeTextBox.Text = result.Size;
-
-                    }
+                    addressTextBox.Text = result.Address;
+                    sizeTextBox.Text = result.Size;
 
                 }
 
             }
         }
 
+        private void addressTextBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == (char)Keys.Enter)
+                e.Handled = true;
+        }
+
+        private void sizeTextBox_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == (char)Keys.Enter)
+                e.Handled = true;
+        }
 
         private void requestButton_Click(object sender, EventArgs e)
         {
-            string addressText = addressTextBox.Text;
-            string sizeText = sizeTextBox.Text;
+            mainHexBox.Clear();
 
-            long address = 0;
-            int size = 0;
-
-            bool isSuccess = false;
-
-            var empty = new List<byte>();
-            mainHexBox.ByteProvider = new DynamicByteProvider(empty);
-
-            if (!string.IsNullOrEmpty(addressText))
+            if (!TryParseAddress(addressTextBox.Text, out long address))
             {
-                if (addressText.Length >= 2)
-                {
-                    var header = addressText.Substring(0, 2);
-
-                    if (header == "0x")
-                    {
-                        addressText = addressText.Remove(0, 2);
-
-                        if (long.TryParse(addressText, System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out address))
-                        {
-                            if (tms320c28xEndianRadioButton.Checked)
-                                address = address * 2;
-
-                            hexboxAddress = address;
-
-                            isSuccess = true;
-                        }
-
-                    }
-
-                }
+                MessageBox.Show("Invalid address format. (e.g. 0x1A2B3C4D)", "Input Error",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                addressTextBox.Focus();
+                return;
             }
 
-            if (!isSuccess)
-                return;
-
-            isSuccess = false;
-
-            if (!string.IsNullOrEmpty(sizeText))
+            if (!TryParseSize(sizeTextBox.Text, out int size))
             {
-                if (int.TryParse(sizeText, out size))
-                    isSuccess = true;
+                MessageBox.Show("Invalid size format. (e.g. 256 or 0x100)", "Input Error",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                sizeTextBox.Focus();
+                return;
             }
 
-            if (!isSuccess)
-                return;
+            // C28x is word-addressed (16-bit minimum unit), but ReadDump uses byte
+            // addresses on the wire so that chunk arithmetic on this side stays simple:
+            //   next_address = current_address + chunk_size  (no word/byte conversion needed)
+            // The MCU recovers the word address with addr >> 1 in copy_block().
+            if (tms320c28xEndianRadioButton.Checked)
+                address = address * 2;
 
-            var param = new BusinessLogic.DataParameter();
-            param.Address = (uint)address;
-            param.Size = (uint)size;
-
+            hexboxAddress = address;
+            var param = new BusinessLogic.DataParameter
+            {
+                Address = (uint)address,
+                Size = (uint)size
+            };
             RequestFunctionCallback?.Invoke(param);
         }
 
+        private void saveButton_Click(object sender, EventArgs e)
+        {
+            if (mainHexBox.Data == null || mainHexBox.Data.Length == 0)
+                return;
+
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var address = mainHexBox.BaseAddress.ToString("X8");
+            var size = mainHexBox.Data.Length;
+            var fileName = $"{timestamp}_addr0x{address}_size{size}.bin";
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.FileName = fileName;
+                dialog.Filter = "Binary files (*.bin)|*.bin|All files (*.*)|*.*";
+                dialog.DefaultExt = "bin";
+
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    System.IO.File.WriteAllBytes(dialog.FileName, mainHexBox.Data);
+                }
+            }
+        }
 
         private void makeButton_Click(object sender, EventArgs e)
         {
-            if (mainHexBox.ByteProvider == null)
+            if (mainHexBox.Data == null || mainHexBox.Data.Length == 0)
                 return;
 
-            if (mainHexBox.ByteProvider.Length == 0)
-                return;
-
-            var offsetSize = hexboxAddress - hexboxOffsetAddress;
             Queue<byte> image = new Queue<byte>();
-            for (var index = offsetSize; index < mainHexBox.ByteProvider.Length; index++)
-                image.Enqueue(mainHexBox.ByteProvider.ReadByte(index));
+            for (var index = 0; index < mainHexBox.Data.Length; index++)
+                image.Enqueue(mainHexBox.Data[(int)index]);
 
             for (int index = dumpDataGridView.Columns.Count; index > (int)FixedColumns.DataStart; index--)
                 dumpDataGridView.Columns.RemoveAt((index - 1));
@@ -423,89 +456,60 @@ namespace rmApplication
 
         private void copyToClipBoardButton_Click(object sender, EventArgs e)
         {
-            string delimiter = "\t";
-
-            if (configList == null)
+            if (configList == null || configList.Count <= 0)
                 return;
 
-            if (configList.Count <= 0)
-                return;
+            int rowCount = configList[0].Values.Count;
+            var sb = new System.Text.StringBuilder();
 
-            string[] text = new string[configList[0].Values.Count + 1];
-
-            int index = 0;
-            double indexValue = 0;
-            text[index++] = delimiter;
-            for (int i = 0; i < (text.Length - 1);  i++)
-            {
-                text[index++] += indexValue + delimiter;
-                indexValue += incrementalValue;
-            }
-
-            int column = 0;
+            var header = new List<string> { "" };
             foreach (var config in configList)
             {
-                index = 0;
-                string seriesName = "Series" + column++.ToString();
+                string name = "Series" + configList.IndexOf(config);
                 if (!String.IsNullOrEmpty(config.Name))
-                    seriesName = config.Name;
+                    name = config.Name;
+                header.Add(name);
+            }
+            sb.AppendLine(string.Join("\t", header));
 
-                text[index++] += seriesName + delimiter;
-                foreach (var value in config.Values)
-                    text[index++] += value + delimiter;
-
+            double xValue = 0;
+            for (int i = 0; i < rowCount; i++)
+            {
+                var row = new List<string> { xValue.ToString() };
+                foreach (var config in configList)
+                    row.Add(config.Values[i].ToString());
+                sb.AppendLine(string.Join("\t", row));
+                xValue += incrementalValue;
             }
 
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
-
-            foreach (var item in text)
-                sb.AppendLine(item);
-
             Clipboard.SetText(sb.ToString());
-
         }
 
         public void UploadHexbox(List<byte> bytes)
         {
-            if (enableOffsetCheckBox.Checked)
-            {
-                var remainder = hexboxAddress % 16;
-                hexboxOffsetAddress = hexboxAddress - remainder;
+            mainHexBox.BaseAddress = hexboxAddress;
 
-                for (var i = 0; i < remainder; i++)
-                    bytes.Insert(0x00, 0);
-
-            }
-            else
-            {
-                hexboxOffsetAddress = hexboxAddress;
-
-            }
-
-            mainHexBox.LineInfoOffset = hexboxOffsetAddress;
-
-            mainHexBox.ByteProvider = new DynamicByteProvider(bytes);
+            mainHexBox.Write(bytes.ToArray());
 
         }
 
         private void incrementalValueTextBox_KeyPress(object sender, KeyPressEventArgs e)
         {
-            if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && (e.KeyChar != '.'))
-                e.Handled = true;
-
             if (e.KeyChar != (char)Keys.Enter)
                 return;
+
+            e.Handled = true;
 
             double value;
             if (!double.TryParse(incrementalValueTextBox.Text, out value))
             {
-                e.Handled = true;
+                incrementalValueTextBox.Text = incrementalValue.ToString();
                 return;
             }
 
-            if(value == 0)
+            if (value == 0)
             {
-                e.Handled = true;
+                incrementalValueTextBox.Text = incrementalValue.ToString();
                 return;
             }
 

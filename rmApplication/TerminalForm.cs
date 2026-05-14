@@ -155,7 +155,6 @@ namespace rmApplication
             text = ConvertLineEndings(text);
             if (verbose)
             {
-                text = text.Replace("\r\n", "");
                 string time = DateTime.Now.ToString("HH:mm:ss.fff");
                 text = time + " " + subText + " " + text;
                 logTextBox.AppendText(text + Environment.NewLine);
@@ -187,6 +186,7 @@ namespace rmApplication
         {
             if (e.KeyChar == (char)Keys.Enter)
             {
+                e.Handled = true;
                 SendText(sendTextBox.Text);
             }
         }
