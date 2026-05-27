@@ -40,11 +40,13 @@ namespace rmApplication
             }
         }
 
-        public string AssemblyVersion
+        private string AssemblyVersion
         {
             get
             {
-                return Assembly.GetExecutingAssembly().GetName().Version.ToString();
+                var v = Assembly.GetExecutingAssembly().GetName().Version;
+                string version = $"{v.Major}.{v.Minor}.{v.Build}";
+                return version;
             }
         }
 

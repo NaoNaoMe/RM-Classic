@@ -17,12 +17,8 @@ namespace rmApplication
         {
             get
             {
-                string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
-                var splited = version.Split('.');
-                if (splited.Count() == 4)
-                    version = splited[0] + "." + splited[1] + "." + splited[2];
-
+                var v = Assembly.GetExecutingAssembly().GetName().Version;
+                string version = $"{v.Major}.{v.Minor}.{v.Build}";
                 return version;
             }
         }
