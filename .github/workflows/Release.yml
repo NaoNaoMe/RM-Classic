@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'   # Trigger on tags like v2.0.0
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Setup MSBuild
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      # 3. Extract version number from tag (v2.0.0 -> 2.0.0)
+      - name: Extract version from tag
+        id: version
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      # 4. Update AssemblyInfo.cs with the version from tag
+      - name: Update AssemblyInfo.cs
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          $filePath = "Properties\AssemblyInfo.cs"
+          $content = Get-Content $filePath -Raw
+          $content = $content -replace 'AssemblyVersion\(".*?"\)', "AssemblyVersion(`"$version.0`")"
+          $content = $content -replace 'AssemblyFileVersion\(".*?"\)', "AssemblyFileVersion(`"$version.0`")"
+          Set-Content $filePath $content
+        shell: pwsh
+
+      # 5. Build Release
+      - name: Build Release
+        run: msbuild rmApplication.csproj /p:Configuration=Release /p:Platform="Any CPU"
+
+      # 6. Generate SHA256 hash and save to file
+      - name: Generate SHA256
+        run: |
+          $hash = Get-FileHash "bin\Release\rmApplication.exe" -Algorithm SHA256
+          "rmApplication.exe  $($hash.Hash)" | Out-File -FilePath "bin\Release\sha256.txt" -Encoding utf8
+        shell: pwsh
+
+      # 7. Attach exe and sha256.txt to GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ steps.version.outputs.VERSION }}"
+          files: |
+            bin\Release\rmApplication.exe
+            bin\Release\sha256.txt
