@@ -40,7 +40,7 @@ jobs:
 
       # 5. Build Release
       - name: Build Release
-        run: msbuild rmApplication\rmApplication.csproj /p:Configuration=Release /p:Platform="Any CPU"
+        run: msbuild rmApplication.sln /p:Configuration=Release /p:Platform="Any CPU"
 
       # 6. Generate SHA256 hash and save to file
       - name: Generate SHA256
