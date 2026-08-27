@@ -13,10 +13,13 @@ namespace rmApplication
 {
     public partial class SubViewControl : UserControl
     {
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Configuration Config { get; set; }
         public bool IsCommunicationActive { get; private set; }
         public bool IsCustomizingMode { get; private set; }
         public bool IsRemote { get; private set; }
+        private bool exitOnRemoteBindFailure;
         public List<SymbolFactor> MapList { get; private set; }
         public List<ViewSetting> ViewSettingList { get; private set; }
 
@@ -62,6 +65,11 @@ namespace rmApplication
 
         private string ValidMapPath;
         private DateTime ValidMapLastWrittenDate;
+        private string ValidViewPath;
+
+        // All user dialogs go through this so remote/headless sessions never block.
+        // Swapped to HeadlessInteraction while remote mode is active (see remoteToolStripButton_Click).
+        private IUserInteraction ui = new GuiInteraction();
 
         private int timeStep;
 
@@ -200,21 +208,50 @@ namespace rmApplication
 
         private void TaskRequestFunction(RemoteControl.RequestTasks task, string message)
         {
+            // Self-description commands answer regardless of communication state.
+            switch (task)
+            {
+                case RemoteControl.RequestTasks.Help:
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, RemoteControl.BuildHelpJson());
+                    return;
+                case RemoteControl.RequestTasks.Status:
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, BuildStatusJson());
+                    return;
+                case RemoteControl.RequestTasks.Symbols:
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, BuildSymbolsJson());
+                    return;
+                case RemoteControl.RequestTasks.LogHeader:
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, BuildLogHeaderJson());
+                    return;
+                case RemoteControl.RequestTasks.View:
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, BuildViewJson());
+                    return;
+                case RemoteControl.RequestTasks.DownloadViewData:
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, BuildViewDataBase64());
+                    return;
+                default:
+                    break;
+            }
+
             if (!IsCommunicationActive)
             {
-                remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                remoteCtrl.UpdateRequestedTaskResponse(task, false, "communication not active");
                 return;
             }
 
-            if (task == RemoteControl.RequestTasks.Setting)
+            if (task == RemoteControl.RequestTasks.OpenView)
             {
                 if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
                 {
-                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "rejected while logging");
+                }
+                else if (!System.IO.File.Exists(message))
+                {
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, FileNotFoundReason(message));
                 }
                 else if (!LoadViewFile(message))
                 {
-                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "cannot read or parse the rmxml");
                 }
                 else
                 {
@@ -228,15 +265,74 @@ namespace rmApplication
                 return;
             }
 
+            if (task == RemoteControl.RequestTasks.UploadViewData)
+            {
+                string xml = TryDecodeBase64Utf8(message);
+
+                if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "rejected while logging");
+                else if (xml == null)
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "invalid base64");
+                else if (!LoadViewFromXmlString(xml))
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "cannot parse the rmxml");
+                else
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true);
+
+                return;
+            }
+
+            if (task == RemoteControl.RequestTasks.OpenMap)
+            {
+                // Load a map by path: sets ValidMapPath so the file-mtime auto-resync applies.
+                if (!System.IO.File.Exists(message))
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, FileNotFoundReason(message));
+                else if (LoadMapFile(message))
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true);
+                else
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "cannot read or parse the map");
+
+                return;
+            }
+
+            if (task == RemoteControl.RequestTasks.UploadMapData)
+            {
+                string text = TryDecodeBase64Utf8(message);
+                if (text == null)
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "invalid base64");
+                else if (!LoadMapFromText(text))
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "cannot parse the map");
+                else
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true);
+
+                return;
+            }
+
+            if (task == RemoteControl.RequestTasks.ResyncMap)
+            {
+                // Explicit, reportable substitute for the GUI's automatic resync-on-Comm-Open,
+                // which is suppressed while IsRemote (see commToolStripButton_Click).
+                if (MapList == null || MapList.Count == 0)
+                {
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "no map loaded");
+                }
+                else
+                {
+                    var (updated, unresolved) = ResyncViewAddressesFromMap();
+                    remoteCtrl.UpdateRequestedTaskResponse(task, true, BuildResyncMapJson(updated, unresolved));
+                }
+
+                return;
+            }
+
             if (task == RemoteControl.RequestTasks.Page)
             {
                 if (logic.TaskState == BusinessLogic.CommunicationTasks.Logging)
                 {
-                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "rejected while logging");
                 }
-                else if (!ChangeViewPage(message))
+                else if (!ChangeViewPageForRemote(message))
                 {
-                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "unknown page name");
                 }
                 else
                 {
@@ -258,7 +354,7 @@ namespace rmApplication
                     }
                     else
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "symbol not found");
                         return;
                     }
 
@@ -272,7 +368,7 @@ namespace rmApplication
 
             switch (task)
             {
-                case RemoteControl.RequestTasks.Open:
+                case RemoteControl.RequestTasks.Connect:
                     if (string.IsNullOrEmpty(message))
                     {
                         // Inherit the current settings
@@ -282,11 +378,13 @@ namespace rmApplication
                     }
                     else if (!Config.ValidateCommunicationResource(message, out var tmpConfig))
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false,
+                            "invalid open parameters (expected <pass>,Serial,<Byte2|Byte4>,<baud>,<com> "
+                            + "or <pass>,LocalNet,<Byte2|Byte4>,<baud>,<ip>,<port>)");
                     }
                     else if (!logic.UpdateResource(tmpConfig))
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "cannot open the comm resource");
                     }
                     else
                     {
@@ -297,7 +395,7 @@ namespace rmApplication
                     }
                     break;
 
-                case RemoteControl.RequestTasks.Close:
+                case RemoteControl.RequestTasks.Disconnect:
                     logic.ClearWaitingTasks();
                     logic.CancelCurrentTask();
                     logic.EnqueueTask(BusinessLogic.CommunicationTasks.Close);
@@ -319,20 +417,23 @@ namespace rmApplication
                     }
                     else
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, true);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "no loggable variables on the current page");
                     }
                     break;
 
                 case RemoteControl.RequestTasks.TimeStep:
-                    if (ChangeTimeStep(message))
+                    if (!TryValidateTimeStep(message, out var tsValue, out var tsReason))
                     {
-                        logic.ClearWaitingTasks();
-                        logic.CancelCurrentTask();
-                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
+                        // Out-of-range is rejected (not silently clamped) so a remote caller
+                        // is not surprised; the reason carries the valid range.
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, tsReason);
                     }
                     else
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, true);
+                        ApplyTimeStep(tsValue);
+                        logic.ClearWaitingTasks();
+                        logic.CancelCurrentTask();
+                        logic.EnqueueTask(BusinessLogic.CommunicationTasks.TimeStep);
                     }
                     break;
 
@@ -355,17 +456,34 @@ namespace rmApplication
                     if (currentLogForRemote.TryDequeue(out var text))
                         remoteCtrl.UpdateRequestedTaskResponse(task, true, text);
                     else
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "no buffered log data");
+                    break;
+
+                case RemoteControl.RequestTasks.LogReadAll:
+                    {
+                        // Drain every queued row into one response (rows joined by '\n';
+                        // rows never contain CRLF, so the protocol delimiter is unaffected).
+                        // Empty payload ("OK") means the queue was already drained.
+                        var rows = new System.Text.StringBuilder();
+                        bool first = true;
+                        while (currentLogForRemote.TryDequeue(out var row))
+                        {
+                            if (!first) rows.Append('\n');
+                            rows.Append(row);
+                            first = false;
+                        }
+                        remoteCtrl.UpdateRequestedTaskResponse(task, true, rows.ToString());
+                    }
                     break;
 
                 case RemoteControl.RequestTasks.LogWrite:
                     if (logic.TaskState != BusinessLogic.CommunicationTasks.Logging)
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "not in logging state");
                     }
                     else if (!ValidateWriteInformation(message, out var wrParam))
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "invalid write (symbol/name/format/range)");
                     }
                     else
                     {
@@ -377,7 +495,7 @@ namespace rmApplication
                 case RemoteControl.RequestTasks.Dump:
                     if (!ValidateDumpConfigurations(message, out var param))
                     {
-                        remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                        remoteCtrl.UpdateRequestedTaskResponse(task, false, "invalid dump (symbol not found or bad address/size)");
                     }
                     else
                     {
@@ -391,7 +509,7 @@ namespace rmApplication
                     break;
 
                 default:
-                    remoteCtrl.UpdateRequestedTaskResponse(task, false);
+                    remoteCtrl.UpdateRequestedTaskResponse(task, false, "unsupported task");
                     break;
             }
 
@@ -405,13 +523,13 @@ namespace rmApplication
             switch (task)
             {
                 case BusinessLogic.CommunicationTasks.Open:
-                    NotifyRemote(RemoteControl.RequestTasks.Open, info);
+                    NotifyRemote(RemoteControl.RequestTasks.Connect, info);
                     if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
                         ShowWarningIfLocal("Failed to open a communication resource.");
                     break;
 
                 case BusinessLogic.CommunicationTasks.Close:
-                    NotifyRemote(RemoteControl.RequestTasks.Close, info);
+                    NotifyRemote(RemoteControl.RequestTasks.Disconnect, info);
                     if (info.Status != BusinessLogic.TaskCompletionStatus.Success)
                         ShowWarningIfLocal("Failed to close a communication resource.");
                     break;
@@ -427,7 +545,10 @@ namespace rmApplication
                         }
                         else
                         {
-                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, false);
+                            string reason = info.EchoDetected
+                                ? "handshake echoed (tx/rx shorted?)"
+                                : StatusReason(info);
+                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Initialize, false, reason);
                         }
                     }
 
@@ -496,7 +617,7 @@ namespace rmApplication
                         }
                         else
                         {
-                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, false);
+                            remoteCtrl.UpdateRequestedTaskResponse(RemoteControl.RequestTasks.Dump, false, StatusReason(info));
                         }
                     }
 
@@ -529,29 +650,280 @@ namespace rmApplication
         {
             if (!IsRemote)
                 return;
-            remoteCtrl.UpdateRequestedTaskResponse(remoteTask, info.Status == BusinessLogic.TaskCompletionStatus.Success);
+            bool ok = info.Status == BusinessLogic.TaskCompletionStatus.Success;
+            remoteCtrl.UpdateRequestedTaskResponse(remoteTask, ok, ok ? string.Empty : StatusReason(info));
         }
 
         /// <summary>
-        /// Shows a warning dialog only when running in local (non-remote) mode.
+        /// Maps an MCU-side task completion to the reason we can honestly report: only the
+        /// observable status (timeout vs failed). The physical root cause (power, cabling,
+        /// pass key, baud) is not distinguishable from here, so it is not fabricated.
+        /// </summary>
+        private static string StatusReason(BusinessLogic.TaskCompletionInformation info)
+        {
+            return info.Status == BusinessLogic.TaskCompletionStatus.Timeout
+                ? "timeout (no response from MCU)"
+                : "failed";
+        }
+
+        /// <summary>
+        /// Shows a warning only in local mode. Headless (remote) sessions drop it,
+        /// because <see cref="ui"/> is a HeadlessInteraction whose Notify is a no-op.
         /// </summary>
         private void ShowWarningIfLocal(string message)
         {
-            if (!IsRemote)
-                ShowWarning(message);
+            ui.Notify(message, InteractionSeverity.Warning);
         }
 
         /// <summary>
-        /// Shows a warning dialog. A timestamp is appended automatically.
+        /// Shows a warning/error notification through the interaction abstraction.
         /// </summary>
         private void ShowWarning(string message, MessageBoxIcon icon = MessageBoxIcon.Warning)
         {
-            string dateTime = DateTime.Now.ToString("MM/dd HH:mm:ss");
-            MessageBox.Show(
-                message + Environment.NewLine + dateTime,
-                icon == MessageBoxIcon.Error ? "Error" : "Caution",
-                MessageBoxButtons.OK,
-                icon);
+            ui.Notify(message,
+                icon == MessageBoxIcon.Error ? InteractionSeverity.Error : InteractionSeverity.Warning);
+        }
+
+        /// <summary>
+        /// Builds the `status` response: current session state as single-line JSON.
+        /// </summary>
+        private string BuildStatusJson()
+        {
+            bool isLogging = (logic != null) && (logic.TaskState == BusinessLogic.CommunicationTasks.Logging);
+
+            string pageName = string.Empty;
+            if (currentPageIndex >= 0 && currentPageIndex < viewPageComboBox.Items.Count)
+                pageName = viewPageComboBox.Items[currentPageIndex]?.ToString() ?? string.Empty;
+
+            string mapDate = (ValidMapLastWrittenDate == DateTime.MinValue)
+                ? string.Empty : ValidMapLastWrittenDate.ToString("yyyy-MM-ddTHH:mm:ss");
+
+            string receivedVersion = (receivedVersionViewControl != null)
+                ? (receivedVersionViewControl.TextBox ?? string.Empty) : string.Empty;
+
+            // Same estimate the GUI already shows (area2ToolStripStatusLabel, "Target Tx
+            // Time = ..."), for the current page's checked byte size at the configured baud
+            // rate - lets a remote caller check whether a timestep it's about to request is
+            // even achievable before finding out the hard way. 0/0 if nothing is checked yet
+            // or the baud rate isn't known.
+            GetCurrentPageCheckedTotals(out _, out var checkedByteSize);
+            CommInstructions.EstimateLogFrameTxTimeMs(checkedByteSize, Config.BaudRate, out var estTxTimeMinMs, out var estTxTimeMaxMs);
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("{");
+            sb.Append("\"taskLoopActive\":").Append(IsCommunicationActive ? "true" : "false");
+            sb.Append(",\"portOpen\":").Append((logic != null && logic.IsPortOpen) ? "true" : "false");
+            sb.Append(",\"logging\":").Append(isLogging ? "true" : "false");
+            sb.Append(",\"currentPageIndex\":").Append(currentPageIndex);
+            sb.Append(",\"currentPage\":").Append(Json.Str(pageName));
+            sb.Append(",\"pageCount\":").Append(viewPageComboBox.Items.Count);
+            sb.Append(",\"timestep\":").Append(timeStep);
+            sb.Append(",\"estTxTimeMinMs\":").Append(estTxTimeMinMs.ToString("F2"));
+            sb.Append(",\"estTxTimeMaxMs\":").Append(estTxTimeMaxMs.ToString("F2"));
+            sb.Append(",\"logLength\":").Append(logLength);
+            sb.Append(",\"viewPath\":").Append(Json.Str(ValidViewPath ?? string.Empty));
+            sb.Append(",\"mapPath\":").Append(Json.Str(ValidMapPath ?? string.Empty));
+            sb.Append(",\"mapDate\":").Append(Json.Str(mapDate));
+            sb.Append(",\"targetVersion\":").Append(Json.Str(targetVersionName ?? string.Empty));
+            sb.Append(",\"receivedVersion\":").Append(Json.Str(receivedVersion));
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds the `symbols` response: the known symbol table as single-line JSON.
+        /// Uses the loaded map (MapList) when present, otherwise the addressed entries of
+        /// the current view settings. Fields match the .rmmap layout (symbol,address,offset,size).
+        /// </summary>
+        private string BuildSymbolsJson()
+        {
+            string source;
+            var list = new List<SymbolFactor>();
+
+            if (MapList != null && MapList.Count > 0)
+            {
+                source = "map";
+                list = MapList;
+            }
+            else
+            {
+                source = "view";
+                if (ViewSettingList != null)
+                {
+                    foreach (var page in ViewSettingList)
+                    {
+                        foreach (var s in page.Settings)
+                        {
+                            if (string.IsNullOrEmpty(s.Symbol) || string.IsNullOrEmpty(s.Address))
+                                continue;
+
+                            list.Add(new SymbolFactor
+                            {
+                                Symbol = s.Symbol,
+                                Address = s.Address,
+                                Offset = Convert.ToString(s.Offset),
+                                Size = Convert.ToString(s.Size),
+                            });
+                        }
+                    }
+                }
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("{\"source\":").Append(Json.Str(source));
+            sb.Append(",\"count\":").Append(list.Count);
+            sb.Append(",\"symbols\":[");
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append("{\"symbol\":").Append(Json.Str(list[i].Symbol));
+                sb.Append(",\"address\":").Append(Json.Str(list[i].Address));
+                sb.Append(",\"offset\":").Append(Json.Str(Convert.ToString(list[i].Offset)));
+                sb.Append(",\"size\":").Append(Json.Str(Convert.ToString(list[i].Size)));
+                sb.Append("}");
+            }
+            sb.Append("]}");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds the `logheader` response: the column labels for log rows, aligned 1:1 with
+        /// logread/logreadall (Status, Received Time, Nominal Time, then each checked+addressed
+        /// variable on the current page using Name, or Symbol when Name is empty). This mirrors
+        /// the GUI "Copy log" header so a remote client can label otherwise value-only rows.
+        /// </summary>
+        private string BuildLogHeaderJson()
+        {
+            // Fixed leading columns; their parse types so a client can decode each column.
+            var cols = new List<string> { "Status", "Received Time", "Nominal Time" };
+            var types = new List<string> { "Str", "FLT", "FLT" };
+
+            if (ViewSettingList != null &&
+                currentPageIndex >= 0 && currentPageIndex < ViewSettingList.Count)
+            {
+                foreach (var setting in ViewSettingList[currentPageIndex].Settings)
+                {
+                    if (setting.Check && !string.IsNullOrEmpty(setting.Address))
+                    {
+                        cols.Add(string.IsNullOrEmpty(setting.Name) ? setting.Symbol : setting.Name);
+                        types.Add(string.IsNullOrEmpty(setting.Type) ? "" : setting.Type);
+                    }
+                }
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("{\"columns\":[");
+            for (int i = 0; i < cols.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append(Json.Str(cols[i]));
+            }
+            sb.Append("],\"types\":[");
+            for (int i = 0; i < types.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append(Json.Str(types[i]));
+            }
+            sb.Append("]}");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds the `view` response: every row of the CURRENT view page in display order,
+        /// as single-line JSON. Unlike `logheader` (checked+addressed variables only), this
+        /// includes blank and unchecked rows so a remote client can resolve "the Nth row"
+        /// exactly as a human sees it in the grid. `row` is 1-based (top-to-bottom); fields
+        /// mirror DataSetting (symbol, name, address, offset, size, type, checked, write, description),
+        /// where `write` is the preset one-click write value (macro) and `name` its label.
+        /// </summary>
+        private string BuildViewJson()
+        {
+            string pageName = string.Empty;
+            if (currentPageIndex >= 0 && currentPageIndex < viewPageComboBox.Items.Count)
+                pageName = viewPageComboBox.Items[currentPageIndex]?.ToString() ?? string.Empty;
+
+            var rows = new List<DataSetting>();
+            if (ViewSettingList != null &&
+                currentPageIndex >= 0 && currentPageIndex < ViewSettingList.Count)
+            {
+                rows = ViewSettingList[currentPageIndex].Settings.ToList();
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("{\"page\":").Append(Json.Str(pageName));
+            sb.Append(",\"pageIndex\":").Append(currentPageIndex);
+            sb.Append(",\"pageCount\":").Append(viewPageComboBox.Items.Count);
+            sb.Append(",\"rowCount\":").Append(rows.Count);
+            sb.Append(",\"rows\":[");
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var r = rows[i];
+                if (i > 0) sb.Append(",");
+                sb.Append("{\"row\":").Append(i + 1);
+                sb.Append(",\"symbol\":").Append(Json.Str(r.Symbol ?? string.Empty));
+                sb.Append(",\"name\":").Append(Json.Str(r.Name ?? string.Empty));
+                sb.Append(",\"address\":").Append(Json.Str(r.Address ?? string.Empty));
+                sb.Append(",\"offset\":").Append(Json.Str(r.Offset ?? string.Empty));
+                sb.Append(",\"size\":").Append(Json.Str(r.Size ?? string.Empty));
+                sb.Append(",\"type\":").Append(Json.Str(r.Type ?? string.Empty));
+                sb.Append(",\"checked\":").Append(r.Check ? "true" : "false");
+                sb.Append(",\"write\":").Append(Json.Str(r.Write ?? string.Empty));
+                sb.Append(",\"description\":").Append(Json.Str(r.Description ?? string.Empty));
+                sb.Append("}");
+            }
+            sb.Append("]}");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds the `downloadviewdata` response: the CURRENT live view state (all pages,
+        /// not just the active one), serialized exactly like the GUI's "Save Configuration
+        /// File" menu item (`MainForm.saveViewFileToolStripMenuItem_Click`), but into memory
+        /// and returned as base64 rather than written to a file. This is the safe way to read
+        /// back an in-memory edit (or a GUI change not yet saved to disk) for a round-trip
+        /// via `uploadviewdata`, since it never touches the filesystem.
+        /// </summary>
+        private string BuildViewDataBase64()
+        {
+            var flat = new ViewSetting();
+
+            if (ViewSettingList != null)
+            {
+                foreach (var page in ViewSettingList)
+                {
+                    foreach (var factor in page.Settings)
+                    {
+                        flat.Settings.Add(factor);
+                    }
+                }
+            }
+
+            using (var ms = new System.IO.MemoryStream())
+            {
+                var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ViewSetting));
+                serializer.Serialize(ms, flat);
+                return Convert.ToBase64String(ms.ToArray());
+            }
+        }
+
+        /// <summary>
+        /// Builds the `resyncmap` response: {"updated":N,"unresolved":[{"page":...,"row":...,"symbol":...},...]}.
+        /// </summary>
+        private string BuildResyncMapJson(int updated, List<(string page, int row, string symbol)> unresolved)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("{\"updated\":").Append(updated);
+            sb.Append(",\"unresolved\":[");
+            for (int i = 0; i < unresolved.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append("{\"page\":").Append(Json.Str(unresolved[i].page));
+                sb.Append(",\"row\":").Append(unresolved[i].row);
+                sb.Append(",\"symbol\":").Append(Json.Str(unresolved[i].symbol));
+                sb.Append("}");
+            }
+            sb.Append("]}");
+            return sb.ToString();
         }
 
         // --- Map file management helpers ---
@@ -561,6 +933,9 @@ namespace rmApplication
         /// When <paramref name="requireConfirmation"/> is true, a Yes/No dialog is shown before reloading (used on Comm Open).
         /// When false, a missing file produces a warning and resets map state; an updated file prompts
         /// a confirmation dialog before reloading (used when entering Customize mode).
+        /// NOTE: the Comm Open call site is skipped while IsRemote (see commToolStripButton_Click) -
+        /// a remote/AI client gets no event for this silent resync, so it must call `resyncmap`
+        /// explicitly instead; this stays purely a local-GUI convenience.
         /// </summary>
         private void ReloadMapFileIfUpdated(bool requireConfirmation)
         {
@@ -569,10 +944,7 @@ namespace rmApplication
                 if (!requireConfirmation)
                 {
                     // Entering Customize mode: warn and reset map state if the file is missing.
-                    MessageBox.Show("The address map file is not found.",
-                                    "Caution",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                    ui.Notify("The address map file is not found.", InteractionSeverity.Warning);
 
                     MapList = new List<SymbolFactor>();
                     ValidMapPath = null;
@@ -587,22 +959,17 @@ namespace rmApplication
             if (now <= ValidMapLastWrittenDate)
                 return;
 
-            DialogResult dialogResult = MessageBox.Show(
+            // Remote default = Yes: a newer map should auto-resync addresses headlessly.
+            bool reload = ui.Confirm(
                 "The address map file is updated.\nDo you want to reload Address in the DataGridView?",
-                "Question",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Exclamation,
-                MessageBoxDefaultButton.Button2);
+                remoteDefault: true);
 
-            if (dialogResult != DialogResult.Yes)
+            if (!reload)
                 return;
 
             if (!LoadMapFile(ValidMapPath))
             {
-                MessageBox.Show("Can't read the address map file",
-                                "Caution",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Warning);
+                ui.Notify("Can't read the address map file", InteractionSeverity.Warning);
             }
         }
 
@@ -788,6 +1155,7 @@ namespace rmApplication
 
         public void RunRemoteMode()
         {
+            exitOnRemoteBindFailure = true;
             remoteToolStripButton.PerformClick();
         }
 
@@ -896,17 +1264,78 @@ namespace rmApplication
 
                     LoadViewSettingFile(deserializedData);
 
+                    ValidViewPath = path;
                     isSuccess = true;
                 }
             }
             catch (Exception ex)
             {
-                if(!IsRemote)
-                    MessageBox.Show(ex.Message);
+                ui.Notify(ex.Message, InteractionSeverity.Error);
 
             }
 
             return isSuccess;
+        }
+
+        /// <summary>
+        /// Loads a view-setting from raw XML content (e.g. an uploaded .rmxml) instead of a path.
+        /// </summary>
+        public bool LoadViewFromXmlString(string xml)
+        {
+            if (string.IsNullOrEmpty(xml))
+                return false;
+
+            bool isSuccess = false;
+
+            try
+            {
+                using (var reader = new System.IO.StringReader(xml))
+                {
+                    var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ViewSetting));
+                    var deserializedData = (ViewSetting)serializer.Deserialize(reader);
+
+                    LoadViewSettingFile(deserializedData);
+
+                    ValidViewPath = string.Empty;
+                    isSuccess = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                ui.Notify(ex.Message, InteractionSeverity.Error);
+            }
+
+            return isSuccess;
+        }
+
+        /// <summary>
+        /// Decodes a base64 payload to a UTF-8 string, or returns null on malformed input.
+        /// Used by the over-the-wire upload commands (settingdata / loadmapdata).
+        /// </summary>
+        private static string TryDecodeBase64Utf8(string base64)
+        {
+            if (string.IsNullOrEmpty(base64))
+                return null;
+
+            try
+            {
+                return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Builds the "file not found" reason for openview/openmap. Suggests using an
+        /// absolute path only when the given path is NOT already rooted - a caller with
+        /// an already-absolute (but wrong/moved) path shouldn't get a misleading hint.
+        /// </summary>
+        private static string FileNotFoundReason(string path)
+        {
+            string hint = System.IO.Path.IsPathRooted(path) ? "" : " (use an absolute path)";
+            return "file not found: " + path + hint;
         }
 
         public bool LoadMapFile(string path)
@@ -926,15 +1355,38 @@ namespace rmApplication
             }
             catch (Exception ex)
             {
-                if (!IsRemote)
-                    MessageBox.Show(ex.Message);
+                ui.Notify(ex.Message, InteractionSeverity.Error);
 
                 return false;
 
             }
 
-            var date = System.IO.File.GetLastWriteTime(path);
+            return InterpretAndApplyMap(textArray, path, System.IO.File.GetLastWriteTime(path));
+        }
 
+        /// <summary>
+        /// Loads a map from raw text content (e.g. an uploaded .rmmap) instead of a file path.
+        /// ValidMapPath is left empty, so there is no file-mtime auto-resync for uploaded content
+        /// (the client re-uploads when it rebuilds).
+        /// </summary>
+        public bool LoadMapFromText(string wholeText)
+        {
+            MapList = new List<SymbolFactor>();
+
+            if (string.IsNullOrEmpty(wholeText))
+                return false;
+
+            var textArray = wholeText.Replace("\r\n", "\n").Split('\n');
+
+            return InterpretAndApplyMap(textArray, string.Empty, DateTime.Now);
+        }
+
+        /// <summary>
+        /// Interprets map lines into MapList and re-syncs every view-setting address by symbol.
+        /// <paramref name="sourcePath"/> is stored as ValidMapPath (empty for uploaded content).
+        /// </summary>
+        private bool InterpretAndApplyMap(string[] textArray, string sourcePath, DateTime date)
+        {
             bool isValid = ReadELFMap.Interpret(textArray, MapList);
 
             if (isValid == false)
@@ -948,7 +1400,7 @@ namespace rmApplication
 
             if (isValid == true)
             {
-                ValidMapPath = path;
+                ValidMapPath = sourcePath;
                 ValidMapLastWrittenDate = date;
 
                 List<string> symbolList = new List<string>();
@@ -959,45 +1411,11 @@ namespace rmApplication
                 autoCompleteSourceForSymbol = new AutoCompleteStringCollection();
                 autoCompleteSourceForSymbol.AddRange(symbolList.ToArray());
 
-                if ((ViewSettingList != null) &&
-                    (ViewSettingList.Count > 0))
+                ResyncViewAddressesFromMap();
+
+                if (string.IsNullOrEmpty(targetVersionName) && !string.IsNullOrEmpty(sourcePath))
                 {
-                    foreach (var item in ViewSettingList)
-                    {
-                        foreach (var setting in item.Settings)
-                        {
-
-                            if (string.IsNullOrEmpty(setting.Symbol))
-                                continue;
-
-                            if (!FindSymbolInfo(setting.Symbol.ToString(), out var result))
-                            {
-                                setting.Check = false;
-                                setting.Address = null;
-                            }
-                            else
-                            {
-                                setting.Address = result.Address;
-
-                                if (int.TryParse(result.Size, out var size))
-                                {
-                                    setting.Size = result.Size;
-                                    setting.Offset = result.Offset;
-                                }
-
-                            }
-
-                        }
-
-                    }
-
-                    mainDataGridView.Refresh();
-
-                }
-
-                if (string.IsNullOrEmpty(targetVersionName))
-                {
-                    targetVersionName = System.IO.Path.GetFileNameWithoutExtension(path);
+                    targetVersionName = System.IO.Path.GetFileNameWithoutExtension(sourcePath);
                     targetVersionViewControl.TextBox = targetVersionName;
 
                 }
@@ -1011,7 +1429,64 @@ namespace rmApplication
 
             }
 
-            return true;
+            return isValid;
+        }
+
+        /// <summary>
+        /// Re-resolves every page's row addresses/offset/size against the CURRENTLY loaded
+        /// MapList (however it got there - openmap/uploadmapdata, or a fresh InterpretAndApplyMap),
+        /// mutating ViewSettingList in place. Rows whose symbol no longer resolves are unchecked
+        /// and their address cleared (safety: never log/write against a stale/nonexistent
+        /// address). Shared by InterpretAndApplyMap (load-time resync) and the `resyncmap`
+        /// remote command (on-demand resync with a report).
+        /// </summary>
+        /// <returns>Count of resolved rows, and (page, 1-based row, symbol) for unresolved ones.</returns>
+        private (int updated, List<(string page, int row, string symbol)> unresolved) ResyncViewAddressesFromMap()
+        {
+            int updated = 0;
+            var unresolved = new List<(string, int, string)>();
+
+            if (ViewSettingList == null || ViewSettingList.Count == 0)
+                return (updated, unresolved);
+
+            for (int pageIdx = 0; pageIdx < ViewSettingList.Count; pageIdx++)
+            {
+                string pageName = (pageIdx < viewPageComboBox.Items.Count)
+                    ? viewPageComboBox.Items[pageIdx]?.ToString() ?? string.Empty
+                    : string.Empty;
+
+                var settings = ViewSettingList[pageIdx].Settings;
+                for (int rowIdx = 0; rowIdx < settings.Count; rowIdx++)
+                {
+                    var setting = settings[rowIdx];
+
+                    if (string.IsNullOrEmpty(setting.Symbol))
+                        continue;
+
+                    if (!FindSymbolInfo(setting.Symbol.ToString(), out var result))
+                    {
+                        setting.Check = false;
+                        setting.Address = null;
+                        unresolved.Add((pageName, rowIdx + 1, setting.Symbol));
+                    }
+                    else
+                    {
+                        setting.Address = result.Address;
+
+                        if (int.TryParse(result.Size, out var size))
+                        {
+                            setting.Size = result.Size;
+                            setting.Offset = result.Offset;
+                        }
+
+                        updated++;
+                    }
+                }
+            }
+
+            mainDataGridView.Refresh();
+
+            return (updated, unresolved);
         }
 
         public void UpdateInformation()
@@ -1019,58 +1494,59 @@ namespace rmApplication
             UpdateInformation(displayMode);
         }
 
+        // Shared with BuildStatusJson (remote's estTxTimeMinMs/estTxTimeMaxMs) so both the
+        // GUI display and the remote status reflect the exact same current-page byte count.
+        private void GetCurrentPageCheckedTotals(out int totalChecked, out int totalSize)
+        {
+            totalChecked = 0;
+            totalSize = 0;
+
+            if (ViewSettingList.Count <= currentPageIndex)
+                return;
+
+            foreach (var setting in ViewSettingList[currentPageIndex].Settings)
+            {
+                if (setting.Check && !string.IsNullOrEmpty(setting.Size))
+                {
+                    totalChecked++;
+                    totalSize += int.Parse(setting.Size);
+                }
+
+            }
+        }
+
         private void UpdateInformation(Area2DisplayMode mode)
         {
             string communicationInfo = "-";
 
-            if (ViewSettingList.Count > currentPageIndex)
+            GetCurrentPageCheckedTotals(out var totalChecked, out var totalSize);
+
+            if (totalSize > 0)
             {
-                int totalChecked = 0;
-                int totalSize = 0;
-                foreach (var setting in ViewSettingList[currentPageIndex].Settings)
+                if (mode == Area2DisplayMode.Counts)
                 {
-                    if (setting.Check && !string.IsNullOrEmpty(setting.Size))
-                    {
-                        totalChecked++;
-                        totalSize += int.Parse(setting.Size);
-                    }
-
+                    communicationInfo = "Checked cells = " + totalChecked.ToString() + " / TotalSize(byte) = " + totalSize.ToString();
                 }
-
-                if (totalSize > 0)
+                else
                 {
-                    if (mode == Area2DisplayMode.Counts)
+                    if (Config.BaudRate > 0)
                     {
-                        communicationInfo = "Checked cells = " + totalChecked.ToString() + " / TotalSize(byte) = " + totalSize.ToString();
-                    }
-                    else
-                    {
-                        if (Config.BaudRate > 0)
+                        CommInstructions.EstimateLogFrameTxTimeMs(totalSize, Config.BaudRate, out var targetTxMinTime, out var targetTxMaxTime);
+
+                        communicationInfo =
+                            "Target Tx Time =" + targetTxMinTime.ToString("F2") + " to " + targetTxMaxTime.ToString("F2") + "ms" + " / "
+                            + Config.BaudRate.ToString() + "bps";
+
+                        if (Config.CommMode == CommMainCtrl.CommunicationMode.Serial)
                         {
-                            // MaxSize: SlipCode(1byte) + (MSCnt(1byte) + payload(?byte) + crc(1byte)) * 2 + SlipCode(1byte)
-                            // MinSize: SlipCode(1byte) +  MSCnt(1byte) + payload(?byte) + crc(1byte)      + SlipCode(1byte)
-                            double frameMinSize = 1 + (1 + totalSize + 1) + 1;
-                            double frameMaxSize = 1 + (1 + totalSize + 1) * 2 + 1;
-                            double abyteTxTime = (1 / (double)Config.BaudRate) * 10;
-                            double targetTxMinTime = frameMinSize * abyteTxTime * 1000;
-                            double targetTxMaxTime = frameMaxSize * abyteTxTime * 1000;
-
-                            communicationInfo =
-                                "Target Tx Time =" + targetTxMinTime.ToString("F2") + " to " + targetTxMaxTime.ToString("F2") + "ms" + " / "
-                                + Config.BaudRate.ToString() + "bps";
-
-                            if (Config.CommMode == CommMainCtrl.CommunicationMode.Serial)
-                            {
-                                communicationInfo += " @ " + Config.SerialPortName.ToString();
-                            }
-                            else
-                            {
-                                communicationInfo += " @ " + Config.ClientAddress.ToString() + ":" + Config.ClientPort.ToString();
-                            }
-
-                            //+"MemoryType: " + Config.RmRange.ToString();
+                            communicationInfo += " @ " + Config.SerialPortName.ToString();
+                        }
+                        else
+                        {
+                            communicationInfo += " @ " + Config.ClientAddress.ToString() + ":" + Config.ClientPort.ToString();
                         }
 
+                        //+"MemoryType: " + Config.RmRange.ToString();
                     }
 
                 }
@@ -1099,11 +1575,75 @@ namespace rmApplication
             return true;
         }
 
-        private bool ChangeTimeStep(string text)
+        // Remote-only variant of ChangeViewPage. Keeps the GUI's page selector in sync
+        // for a human supervising the session, but does NOT re-trigger
+        // viewPageComboBox_SelectedIndexChanged's GUI-convenience chain
+        // (StopLog/Config/StartLog) - a remote page switch stays fully explicit; the
+        // caller must call config()/logstart() themselves afterward if they want to log
+        // the new page's variables.
+        private bool ChangeViewPageForRemote(string itemName)
         {
-            if (string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(itemName))
                 return false;
 
+            if (viewPageComboBox.Items.Count == 0)
+                return false;
+
+            int index = viewPageComboBox.FindStringExact(itemName);
+
+            if (index < 0)
+                return false;
+
+            viewPageComboBox.SelectedIndexChanged -= new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
+            viewPageComboBox.SelectedIndex = index;
+            viewPageComboBox.SelectedIndexChanged += new System.EventHandler(viewPageComboBox_SelectedIndexChanged);
+
+            currentPageIndex = index;
+            RefreshLogData();
+            RefreshDataGridView();
+            UpdateInformation();
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validates a timestep string without side effects. On failure, <paramref name="reason"/>
+        /// describes why and includes the valid range so the caller can surface the limits.
+        /// </summary>
+        private static bool TryValidateTimeStep(string text, out int value, out string reason)
+        {
+            reason = null;
+
+            if (!int.TryParse(text, out value))
+            {
+                reason = "timestep must be an integer";
+                return false;
+            }
+
+            if (value < BusinessLogic.TimeStepMin || value > BusinessLogic.TimeStepMax)
+            {
+                reason = "timestep out of range (" + BusinessLogic.TimeStepMin
+                       + "-" + BusinessLogic.TimeStepMax + " ms)";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>Applies an already-validated timestep to the logger and the UI.</summary>
+        private void ApplyTimeStep(int value)
+        {
+            logic.LogTimeStep = (uint)value;
+            timeStep = value;
+            timeStepToolStripTextBox.Text = value.ToString();
+        }
+
+        /// <summary>
+        /// GUI path: parse the textbox, clamping out-of-range to the limits (friendly
+        /// auto-correct). Returns false only for non-integer input.
+        /// </summary>
+        private bool ChangeTimeStep(string text)
+        {
             if (!int.TryParse(text, out var value))
             {
                 timeStepToolStripTextBox.Text = timeStep.ToString();
@@ -1115,10 +1655,7 @@ namespace rmApplication
             else if (value > BusinessLogic.TimeStepMax)
                 value = BusinessLogic.TimeStepMax;
 
-            logic.LogTimeStep = (uint)value;
-
-            timeStep = value;
-            timeStepToolStripTextBox.Text = value.ToString();
+            ApplyTimeStep(value);
 
             return true;
         }
@@ -1146,10 +1683,14 @@ namespace rmApplication
 
                 if(!isSuccess)
                 {
+                    // Fallback when the symbol isn't in the loaded map: resolve
+                    // address/offset/size from the current page's own view settings
+                    // instead. Must still use the CALLER's type/value (elements[1]/[2])
+                    // here, matching ValidateWriteParametersFromMap's contract above.
                     var found = ViewSettingList[currentPageIndex].Settings.ToList().Find(key => key.Symbol == elements[0]);
 
                     if (found != null)
-                        isSuccess = ValidateWriteParameters(found.Address, found.Offset, found.Size, found.Type, found.Write, out result);
+                        isSuccess = ValidateWriteParameters(found.Address, found.Offset, found.Size, elements[1], elements[2], out result);
                 }
 
             }
@@ -1198,6 +1739,9 @@ namespace rmApplication
             result = new BusinessLogic.DataParameter();
 
             if (string.IsNullOrEmpty(addressText))
+                return false;
+
+            if (!IsHexString(addressText))
                 return false;
 
             UInt64 address = Convert.ToUInt64(addressText, 16);
@@ -1373,6 +1917,10 @@ namespace rmApplication
                     {
                         if (!Enum.TryParse<UserType>(setting.Type, out type))
                         {
+                            // Matches the Size/Address/Offset checks above: an invalid value
+                            // disables the row (visible via `view`) instead of silently
+                            // reinterpreting it as Hex and leaving it checked.
+                            setting.Check = false;
                             setting.Type = UserType.Hex.ToString();
                         }
                     }
@@ -1508,10 +2056,7 @@ namespace rmApplication
 
             if (IsCommunicationActive)
             {
-                MessageBox.Show("Stop communication.",
-                                    "Caution",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                ui.Notify("Stop communication.", InteractionSeverity.Warning);
 
                 return;
             }
@@ -1538,14 +2083,10 @@ namespace rmApplication
                     {
                         if (targetVer != receivedVer)
                         {
-                            DialogResult result = MessageBox.Show("The target version name is unmatch the received version name.\n" +
-                                                                  "Do you want to use the received name as the target name?",
-                                            "Question",
-                                            MessageBoxButtons.YesNo,
-                                            MessageBoxIcon.Exclamation,
-                                            MessageBoxDefaultButton.Button2);
-
-                            if (result == DialogResult.Yes)
+                            // Customize mode is local-only; remoteDefault is irrelevant here.
+                            if (ui.Confirm("The target version name is unmatch the received version name.\n" +
+                                           "Do you want to use the received name as the target name?",
+                                           remoteDefault: false))
                                 targetVersionViewControl.TextBox = receivedVer;
 
                         }
@@ -1701,10 +2242,7 @@ namespace rmApplication
         {
             if (IsCustomizingMode)
             {
-                MessageBox.Show("Quit custmizing mode.",
-                                    "Caution",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                ui.Notify("Quit custmizing mode.", InteractionSeverity.Warning);
 
                 return;
             }
@@ -1719,15 +2257,47 @@ namespace rmApplication
                 if (IsCustomizingMode)
                     customizeToolStripButton.PerformClick();
 
+                // Check the port before touching any state, so the common case (another
+                // instance already holds it) never opens Comm in the first place - nothing
+                // to undo. See ReportRemoteBindFailure/IsRemotePortAvailable.
+                if (!remoteCtrl.IsRemotePortAvailable(Config.ServerAddress, Config.ServerPort))
+                {
+                    ReportRemoteBindFailure();
+
+                    // Reached only when exitOnRemoteBindFailure is false (the CLI path
+                    // already exited the process above) - i.e. only for a manual GUI click.
+                    var text = Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString() + " is occupied.";
+                    ui.Notify(text, InteractionSeverity.Error);
+
+                    return;
+                }
+
                 IsRemote = true;
+                ui = new HeadlessInteraction();
                 remoteToolStripButton.Text = "LOCAL";
 
                 area1ToolStripStatusLabel.Text = "Remote @ " + Config.ServerAddress.ToString() + " - " + Config.ServerPort.ToString();
 
-                if (!IsCommunicationActive)
+                bool weOpenedComm = !IsCommunicationActive;
+                if (weOpenedComm)
                     commToolStripButton.PerformClick();
 
-                await remoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
+                bool remoteStarted = await remoteCtrl.RunAsync(Config.ServerAddress, Config.ServerPort);
+
+                if (!remoteStarted)
+                {
+                    // Extremely rare: IsRemotePortAvailable just confirmed the port was free,
+                    // but another process grabbed it in the brief window before RunAsync's own
+                    // bind. Same undo as the pre-check failure above, just after Comm was
+                    // already opened: re-clicking now sees IsCommunicationActive==true and
+                    // takes the existing "close" branch, which correctly tears everything
+                    // down. Skipped if communication was already active before this click (a
+                    // pre-existing, unrelated connection must not be closed here).
+                    if (weOpenedComm)
+                        commToolStripButton.PerformClick();
+
+                    ReportRemoteBindFailure();
+                }
 
                 if (isFormClosing)
                     return;
@@ -1736,19 +2306,28 @@ namespace rmApplication
 
                 remoteToolStripButton.Text = "REMOTE";
                 IsRemote = false;
+                ui = new GuiInteraction();
 
             }
 
+        }
+
+        private void ReportRemoteBindFailure()
+        {
+            if (!exitOnRemoteBindFailure)
+                return;
+
+            Program.WriteConsole(
+                "RM Classic: FAILED to open the remote server on " + Config.ServerAddress + ":" + Config.ServerPort + " " +
+                "(the address/port may already be in use by another instance). Exiting.");
+            Environment.Exit(1);
         }
 
         private async void commToolStripButton_Click(object sender, EventArgs e)
         {
             if (IsCustomizingMode)
             {
-                MessageBox.Show("Quit custmizing mode.",
-                                    "Caution",
-                                    MessageBoxButtons.OK,
-                                    MessageBoxIcon.Warning);
+                ui.Notify("Quit custmizing mode.", InteractionSeverity.Warning);
 
                 return;
             }
@@ -1764,7 +2343,10 @@ namespace rmApplication
             }
             else
             {
-                ReloadMapFileIfUpdated(requireConfirmation: true);
+                // Suppressed while remote: a remote/AI client gets no event for this silent
+                // resync, so `resyncmap` is the explicit substitute (see its doc-comment above).
+                if (!IsRemote)
+                    ReloadMapFileIfUpdated(requireConfirmation: true);
 
                 IsCommunicationActive = true;
 
@@ -1798,10 +2380,8 @@ namespace rmApplication
                 }
                 else
                 {
-                    MessageBox.Show("The current view's configuration is either empty or invalid.",
-                                        "Caution",
-                                        MessageBoxButtons.OK,
-                                        MessageBoxIcon.Warning);
+                    ui.Notify("The current view's configuration is either empty or invalid.",
+                              InteractionSeverity.Warning);
                 }
 
                 if (isFormClosing)
@@ -2482,10 +3062,7 @@ namespace rmApplication
             if ((viewPageComboBox.Items.Count == 1) &&
                 (viewPageComboBox.SelectedIndex == 0))
             {
-                MessageBox.Show("Can not delete.",
-                "Caution",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
+                ui.Notify("Can not delete.", InteractionSeverity.Warning);
 
                 return;
             }
@@ -2494,13 +3071,8 @@ namespace rmApplication
 
             if (index != -1)
             {
-                DialogResult result = MessageBox.Show("Do you want to delete this page?",
-                                                        "Question",
-                                                        MessageBoxButtons.YesNo,
-                                                        MessageBoxIcon.Exclamation,
-                                                        MessageBoxDefaultButton.Button2);
-
-                if (result == DialogResult.Yes)
+                // Destructive: remote default = No.
+                if (ui.Confirm("Do you want to delete this page?", remoteDefault: false))
                 {
                     ViewSettingList.RemoveAt(index);
                     viewPageComboBox.Items.RemoveAt(index);
@@ -2518,13 +3090,7 @@ namespace rmApplication
 
         private void OnInsertPageButtonPressed(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Do you want to insert a page?",
-                            "Question",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Exclamation,
-                            MessageBoxDefaultButton.Button2);
-
-            if (result == DialogResult.Yes)
+            if (ui.Confirm("Do you want to insert a page?", remoteDefault: false))
             {
                 var index = viewPageComboBox.SelectedIndex;
                 string groupName = "x:Sample";
@@ -2553,13 +3119,7 @@ namespace rmApplication
             if (ViewSettingList.Count <= 0)
                 return;
 
-            DialogResult result = MessageBox.Show("Do you want to duplicate this page?",
-                            "Question",
-                            MessageBoxButtons.YesNo,
-                            MessageBoxIcon.Exclamation,
-                            MessageBoxDefaultButton.Button2);
-
-            if (result == DialogResult.Yes)
+            if (ui.Confirm("Do you want to duplicate this page?", remoteDefault: false))
             {
                 var index = viewPageComboBox.SelectedIndex;
                 string groupName = "x:Sample";

@@ -59,7 +59,7 @@ namespace rmApplication
                     {
                         var name = splietsplitLine[2];
 
-                        if (i < textArray.Length)
+                        if (i + 1 < textArray.Length)
                             i++;
                         else
                             break;

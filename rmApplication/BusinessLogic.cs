@@ -71,6 +71,8 @@ namespace rmApplication
 
         public CommunicationTasks TaskState { get; private set; }
 
+        public bool IsPortOpen => commMainCtrl.IsOpen;
+
         private ConcurrentQueue<CommunicationTasks> taskQueue;
 
         private uint passNumber;
@@ -78,7 +80,12 @@ namespace rmApplication
         private CommMainCtrl commMainCtrl;
         private CommInstructions commInstructions;
 
-        private int currentMillisStep;
+        // Defaults to TimeStepDefault (not 0) because LoggingAsync divides by this to
+        // estimate a lost frame's timestamp - a session that never calls timestep before
+        // logstart (e.g. one focused on dump/debugData capture rather than continuous
+        // logread polling) would otherwise hit a DivideByZeroException the first time a
+        // frame is marked lost.
+        private int currentMillisStep = TimeStepDefault;
 
         private CancellationTokenSource logicCancellationTokenSource;
         private CancellationTokenSource taskCancellationTokenSource;
@@ -179,66 +186,8 @@ namespace rmApplication
                     taskCancellationTokenSource = new CancellationTokenSource();
 
                     TaskState = request;
-                    var info = new TaskCompletionInformation();
-                    info.Status = TaskCompletionStatus.Failure;
 
-                    switch (request)
-                    {
-                        case CommunicationTasks.Open:
-                            System.Diagnostics.Debug.WriteLine("--Open--");
-                            bool isSuccess = await commMainCtrl.OpenAsync(taskCancellationTokenSource.Token);
-                            if (isSuccess)
-                                info.Status = TaskCompletionStatus.Success;
-                            break;
-
-                        case CommunicationTasks.Close:
-                            System.Diagnostics.Debug.WriteLine("--Close--");
-                            commMainCtrl.Close();
-                            info.Status = TaskCompletionStatus.Success;
-                            break;
-
-                        case CommunicationTasks.Initialize:
-                            System.Diagnostics.Debug.WriteLine("--Initialize--");
-                            info = await InitializeAsync(passNumber, taskCancellationTokenSource.Token);
-
-                            if(info.EchoDetected)
-                                info.Status = TaskCompletionStatus.Failure;
-
-                            break;
-
-                        case CommunicationTasks.TimeStep:
-                            System.Diagnostics.Debug.WriteLine("--TimeStep--");
-                            info = await SetTimeStepAsync(LogTimeStep, taskCancellationTokenSource.Token);
-                            break;
-
-                        case CommunicationTasks.Config:
-                            System.Diagnostics.Debug.WriteLine("--Config--");
-                            info = await ConfigLogDataAsync(LogConfigParameter, taskCancellationTokenSource.Token);
-                            break;
-
-                        case CommunicationTasks.StartLog:
-                            System.Diagnostics.Debug.WriteLine("--StartLog--");
-                            info = await StartLogAsync(taskCancellationTokenSource.Token);
-                            if (info.Status == TaskCompletionStatus.Success)
-                                EnqueueTask(CommunicationTasks.Logging);
-                            break;
-
-                        case CommunicationTasks.Logging:
-                            System.Diagnostics.Debug.WriteLine("--Logging--");
-                            info = await LoggingAsync(taskCancellationTokenSource.Token);
-                            break;
-
-                        case CommunicationTasks.StopLog:
-                            System.Diagnostics.Debug.WriteLine("--StopLog--");
-                            info = await StopLogAsync(taskCancellationTokenSource.Token);
-                            break;
-
-                        case CommunicationTasks.Dump:
-                            System.Diagnostics.Debug.WriteLine("--Dump--");
-                            info = await CollectDumpDataAsync(DumpConfigParameter, taskCancellationTokenSource.Token);
-                            break;
-
-                    }
+                    var info = await ExecuteTaskAsync(request);
 
                     if (info.Status == TaskCompletionStatus.Failure)
                         ClearWaitingTasks();
@@ -262,8 +211,20 @@ namespace rmApplication
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine(ex);
+                // Debug.WriteLine alone is invisible in every Release/--remote run.
+                // TaskState still holds whichever task was executing when this fired
+                // (set at the top of the loop) - included for that reason, before it
+                // gets reset below.
+                ErrorLog.Write("BusinessLogic.RunAsync task loop (TaskState=" + TaskState + ")", ex);
 
             }
+
+            // Reset regardless of how the loop above exited (cancellation or an
+            // unexpected exception) - otherwise TaskState is only ever reset at the top
+            // of the next iteration, which never happens once the loop is gone, leaving
+            // it frozen (e.g. stuck at Logging) even though IsCommunicationActive
+            // correctly goes false once this method returns.
+            TaskState = CommunicationTasks.Nothing;
 
             commMainCtrl.Close();
 
@@ -271,6 +232,93 @@ namespace rmApplication
             logicCancellationTokenSource = null;
 
             return;
+        }
+
+        private async Task<TaskCompletionInformation> ExecuteTaskAsync(CommunicationTasks request)
+        {
+            var info = new TaskCompletionInformation();
+            info.Status = TaskCompletionStatus.Failure;
+
+            try
+            {
+                switch (request)
+                {
+                    case CommunicationTasks.Open:
+                        System.Diagnostics.Debug.WriteLine("--Open--");
+                        bool isSuccess = await commMainCtrl.OpenAsync(taskCancellationTokenSource.Token);
+                        if (isSuccess)
+                            info.Status = TaskCompletionStatus.Success;
+                        break;
+
+                    case CommunicationTasks.Close:
+                        System.Diagnostics.Debug.WriteLine("--Close--");
+                        commMainCtrl.Close();
+                        info.Status = TaskCompletionStatus.Success;
+                        break;
+
+                    case CommunicationTasks.Initialize:
+                        System.Diagnostics.Debug.WriteLine("--Initialize--");
+                        info = await InitializeAsync(passNumber, taskCancellationTokenSource.Token);
+
+                        if(info.EchoDetected)
+                            info.Status = TaskCompletionStatus.Failure;
+
+                        break;
+
+                    case CommunicationTasks.TimeStep:
+                        System.Diagnostics.Debug.WriteLine("--TimeStep--");
+                        info = await SetTimeStepAsync(LogTimeStep, taskCancellationTokenSource.Token);
+                        break;
+
+                    case CommunicationTasks.Config:
+                        System.Diagnostics.Debug.WriteLine("--Config--");
+                        info = await ConfigLogDataAsync(LogConfigParameter, taskCancellationTokenSource.Token);
+                        break;
+
+                    case CommunicationTasks.StartLog:
+                        System.Diagnostics.Debug.WriteLine("--StartLog--");
+                        info = await StartLogAsync(taskCancellationTokenSource.Token);
+                        if (info.Status == TaskCompletionStatus.Success)
+                            EnqueueTask(CommunicationTasks.Logging);
+                        break;
+
+                    case CommunicationTasks.Logging:
+                        System.Diagnostics.Debug.WriteLine("--Logging--");
+                        info = await LoggingAsync(taskCancellationTokenSource.Token);
+                        break;
+
+                    case CommunicationTasks.StopLog:
+                        System.Diagnostics.Debug.WriteLine("--StopLog--");
+                        info = await StopLogAsync(taskCancellationTokenSource.Token);
+                        break;
+
+                    case CommunicationTasks.Dump:
+                        System.Diagnostics.Debug.WriteLine("--Dump--");
+                        info = await CollectDumpDataAsync(DumpConfigParameter, taskCancellationTokenSource.Token);
+                        break;
+
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // A genuine cancellation (not an application bug) - let RunAsync's own
+                // try/catch handle it as the normal Terminate() shutdown path.
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Anything else (e.g. SerialPort.Open()/Write()/Read() throwing on
+                // a bad port, a lost USB device, etc.) fails just this one task
+                // instead of ending the whole loop - the caller sees a normal
+                // {"status":"error","reason":"failed"} and can retry, rather than
+                // every subsequent command (including connect) breaking until the
+                // process is restarted.
+                System.Diagnostics.Debug.WriteLine(ex);
+                ErrorLog.Write("BusinessLogic.RunAsync (" + request + ")", ex);
+                info.Status = TaskCompletionStatus.Failure;
+            }
+
+            return info;
         }
 
         private async Task<TaskCompletionInformation> QueryAsync(byte[] txFrame, CancellationToken ct, int retry = 1)

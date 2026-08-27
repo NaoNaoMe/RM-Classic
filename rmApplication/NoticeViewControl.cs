@@ -19,6 +19,7 @@ namespace rmApplication
 
         [Browsable(true)]
         [Description("label")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public string Label
         {
             get
@@ -33,6 +34,7 @@ namespace rmApplication
 
         [Browsable(true)]
         [Description("textbox")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public string TextBox
         {
             get
@@ -47,6 +49,7 @@ namespace rmApplication
 
         [Browsable(true)]
         [Description("textEnabled")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public bool TextEnabled
         {
             get

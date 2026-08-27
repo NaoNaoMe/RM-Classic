@@ -55,6 +55,31 @@ namespace rmApplication
         public static readonly int MaxPayloadSize = 128;
         public static readonly int MaxElementNum = 32;
 
+        /// <summary>
+        /// Estimates how long one SLIP-framed log frame takes to transmit at <paramref name="baudRate"/>,
+        /// given <paramref name="payloadSize"/> bytes of log data. Pure function, no instance state.
+        /// Frame layout: SlipCode(1) + (MSCnt(1) + payload + CRC(1)) + SlipCode(1); the max bound
+        /// doubles the MSCnt+payload+CRC portion to account for worst-case SLIP byte-stuffing.
+        /// <paramref name="minMs"/>/<paramref name="maxMs"/> are 0 when either input is non-positive
+        /// (nothing configured yet, or the baud rate isn't known).
+        /// </summary>
+        public static void EstimateLogFrameTxTimeMs(int payloadSize, int baudRate, out double minMs, out double maxMs)
+        {
+            if (payloadSize <= 0 || baudRate <= 0)
+            {
+                minMs = 0;
+                maxMs = 0;
+                return;
+            }
+
+            double frameMinSize = 1 + (1 + payloadSize + 1) + 1;
+            double frameMaxSize = 1 + (1 + payloadSize + 1) * 2 + 1;
+            double byteTxTimeMs = (1.0 / baudRate) * 10 * 1000;
+
+            minMs = frameMinSize * byteTxTimeMs;
+            maxMs = frameMaxSize * byteTxTimeMs;
+        }
+
         public enum RmAddr
         {
             Byte2 = 0,

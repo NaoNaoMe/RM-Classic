@@ -68,11 +68,22 @@ namespace rmApplication
             if (factors.Count() < 4)
                 return false;
 
+            // Accept the pass key as hex (0x...) or decimal. The firmware password is
+            // conventionally written in hex (e.g. 0x0000FFFF), so requiring decimal here
+            // is a trap; take both.
             uint passNumber;
-            if (uint.TryParse(factors[0], out passNumber))
-                config.PassNumber = passNumber;
-            else
+            string passText = factors[0].Trim();
+            try
+            {
+                passNumber = passText.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                    ? Convert.ToUInt32(passText, 16)
+                    : Convert.ToUInt32(passText, 10);
+            }
+            catch (Exception)
+            {
                 return false;
+            }
+            config.PassNumber = passNumber;
 
             CommMainCtrl.CommunicationMode mode;
             if (Enum.TryParse<CommMainCtrl.CommunicationMode>(factors[1], out mode))

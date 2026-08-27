@@ -36,6 +36,21 @@ namespace rmApplication
             }
         }
 
+        private string AssemblyCopyright
+        {
+            get
+            {
+                object[] attributes = Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false);
+                if (attributes.Length == 0)
+                {
+                    return string.Empty;
+                }
+                return ((AssemblyCopyrightAttribute)attributes[0]).Copyright;
+            }
+        }
+
+        private const string RepositoryUrl = "https://github.com/NaoNaoMe/RM-Classic";
+
         private SubViewControl subViewCtrl;
         private string pathViewFileName;
         private string pathMapFileName;
@@ -45,6 +60,7 @@ namespace rmApplication
             InitializeComponent();
 
             this.Text = AssemblyProduct;
+            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
             subViewCtrl = new SubViewControl();
 
@@ -532,8 +548,20 @@ namespace rmApplication
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            AboutBox newAboutBox = new AboutBox();
-            newAboutBox.ShowDialog();
+            var page = new TaskDialogPage
+            {
+                Caption = "About",
+                Heading = $"{AssemblyProduct} {AssemblyVersion}",
+                Text = $"{AssemblyCopyright}\n{RepositoryUrl}",
+                Icon = TaskDialogIcon.Information,
+                Buttons = { TaskDialogButton.Close }
+            };
+
+            var copyUrlButton = new TaskDialogButton("Copy URL") { AllowCloseDialog = false };
+            copyUrlButton.Click += (s, args) => Clipboard.SetText(RepositoryUrl);
+            page.Buttons.Add(copyUrlButton);
+
+            TaskDialog.ShowDialog(this, page);
         }
 
         private bool loadViewFile(string path)

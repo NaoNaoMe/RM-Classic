@@ -1,211 +1,47 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- ===== Common Properties ===== -->
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">Any CPU</Platform>
-    <ProductVersion>8.0.30703</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{92BE67A4-2494-46A2-ADE9-5BF6502AC2D1}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>rmApplication</RootNamespace>
-    <AssemblyName>rmApplication</AssemblyName>
-    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <AssemblyName>RM-Classic</AssemblyName>
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
+    <Product>RM Classic</Product>
+    <Copyright>Copyright © 2026 - Naoya Imai</Copyright>
+    <Version>2.0.0</Version>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>none</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-  </PropertyGroup>
-  <!-- ===== Assembly References ===== -->
+
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Deployment" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.0" />
   </ItemGroup>
-  <!-- ===== Compile Items ===== -->
+
   <ItemGroup>
-    <!-- Forms -->
-    <Compile Include="AboutBox.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="AboutBox.Designer.cs">
-      <DependentUpon>AboutBox.cs</DependentUpon>
-    </Compile>
-    <Compile Include="DumpForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="DumpForm.Designer.cs">
-      <DependentUpon>DumpForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="MainForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MainForm.Designer.cs">
-      <DependentUpon>MainForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="NmMap.cs" />
-    <Compile Include="OptionForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="OptionForm.Designer.cs">
-      <DependentUpon>OptionForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="RemoteSettingForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="RemoteSettingForm.Designer.cs">
-      <DependentUpon>RemoteSettingForm.cs</DependentUpon>
-    </Compile>
-    <Compile Include="TerminalForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="TerminalForm.Designer.cs">
-      <DependentUpon>TerminalForm.cs</DependentUpon>
-    </Compile>
-    <!-- UserControls -->
-    <Compile Include="HexBoxControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="HexBoxControl.Designer.cs">
-      <DependentUpon>HexBoxControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="NoticeViewControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="NoticeViewControl.Designer.cs">
-      <DependentUpon>NoticeViewControl.cs</DependentUpon>
-    </Compile>
-    <Compile Include="SubViewControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="SubViewControl.Designer.cs">
-      <DependentUpon>SubViewControl.cs</DependentUpon>
-    </Compile>
-    <!-- Business Logic and Utilities -->
-    <Compile Include="BusinessLogic.cs" />
-    <Compile Include="CommInstructions.cs" />
-    <Compile Include="CommMainCtrl.cs" />
-    <Compile Include="CommProtocol.cs" />
-    <Compile Include="Configuration.cs" />
-    <Compile Include="GCCLinkerMap.cs" />
-    <Compile Include="PeriodAveraging.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="ReadELFMap.cs" />
-    <Compile Include="RemoteControl.cs" />
-    <Compile Include="RmAddressMap.cs" />
-    <Compile Include="SerialPortResource.cs" />
-    <Compile Include="SymbolFactor.cs" />
-    <Compile Include="TCPClientResource.cs" />
-    <Compile Include="TCPListenerResource.cs" />
-    <Compile Include="UserTypeConverter.cs" />
-    <Compile Include="ValidationHelper.cs" />
-    <Compile Include="ViewFileName.cs" />
-    <Compile Include="ViewSetting.cs" />
-    <!-- Properties -->
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Properties\Resources.Designer.cs">
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
-      <DesignTime>True</DesignTime>
     </Compile>
-    <Compile Include="Properties\Settings.Designer.cs">
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
   </ItemGroup>
-  <!-- ===== Embedded Resources (.resx) ===== -->
+
   <ItemGroup>
-    <EmbeddedResource Include="AboutBox.resx">
-      <DependentUpon>AboutBox.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="DumpForm.resx">
-      <DependentUpon>DumpForm.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="HexBoxControl.resx">
-      <DependentUpon>HexBoxControl.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="MainForm.resx">
-      <DependentUpon>MainForm.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="NoticeViewControl.resx">
-      <DependentUpon>NoticeViewControl.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="OptionForm.resx">
-      <DependentUpon>OptionForm.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="RemoteSettingForm.resx">
-      <DependentUpon>RemoteSettingForm.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="SubViewControl.resx">
-      <DependentUpon>SubViewControl.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="TerminalForm.resx">
-      <DependentUpon>TerminalForm.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.resx">
+    <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
-  <!-- ===== Miscellaneous Files ===== -->
+
   <ItemGroup>
-    <None Include="app.config" />
-    <None Include="Properties\app.manifest" />
-    <None Include="Properties\Settings.settings">
+    <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
-  <!-- ===== Resource Images ===== -->
-  <ItemGroup>
-    <None Include="Resources\Clearwindowcontent_6304.png" />
-    <None Include="Resources\Copy.png" />
-    <None Include="Resources\Flagthread_black.png" />
-    <None Include="Resources\FlagThread_red.png" />
-    <None Include="Resources\FlagThread_white.png" />
-    <None Include="Resources\Monitor_Screen_16xLG.png" />
-    <None Include="Resources\Remote.png" />
-    <None Include="Resources\StatusAnnotations_Complete_and_ok_16xLG.png" />
-    <None Include="Resources\StatusAnnotations_Complete_and_ok_16xLG_color.png" />
-    <None Include="Resources\VirtualMachine_16xLG.png" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+
 </Project>

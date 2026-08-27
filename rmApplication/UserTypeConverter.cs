@@ -28,6 +28,13 @@ namespace rmApplication
 
             text = text.Replace(" ", "");
 
+            // Accept an optional 0x prefix on hex values: the convention everywhere
+            // (firmware, docs) is to write hex like 0x01, so requiring a bare literal
+            // is a trap. Only Hex type takes a leading 0x.
+            if (type == UserType.Hex &&
+                (text.StartsWith("0x") || text.StartsWith("0X")))
+                text = text.Substring(2);
+
             if (!Regex.IsMatch(text, @"^[0-9a-fA-F.-]+$"))
                 return false;
 

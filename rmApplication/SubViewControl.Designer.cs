@@ -28,300 +28,286 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            components = new System.ComponentModel.Container();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SubViewControl));
-            this.mainDataGridView = new System.Windows.Forms.DataGridView();
-            this.mainStatusStrip = new System.Windows.Forms.StatusStrip();
-            this.userToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.area1ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.area2ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.rxPeriodToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
-            this.activityToolStripProgressBar = new System.Windows.Forms.ToolStripProgressBar();
-            this.mainToolStrip = new System.Windows.Forms.ToolStrip();
-            this.toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
-            this.viewPageComboBox = new System.Windows.Forms.ToolStripComboBox();
-            this.customizeToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
-            this.timeStepToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
-            this.commToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.dumpToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.toolStripLabel3 = new System.Windows.Forms.ToolStripLabel();
-            this.logLengthToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
-            this.copyLogToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.terminalToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.remoteToolStripButton = new System.Windows.Forms.ToolStripButton();
-            this.mainTimer = new System.Windows.Forms.Timer(this.components);
-            this.targetVersionViewControl = new rmApplication.NoticeViewControl();
-            this.receivedVersionViewControl = new rmApplication.NoticeViewControl();
-            ((System.ComponentModel.ISupportInitialize)(this.mainDataGridView)).BeginInit();
-            this.mainStatusStrip.SuspendLayout();
-            this.mainToolStrip.SuspendLayout();
-            this.SuspendLayout();
+            mainDataGridView = new System.Windows.Forms.DataGridView();
+            mainStatusStrip = new System.Windows.Forms.StatusStrip();
+            userToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            area1ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            area2ToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            rxPeriodToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            activityToolStripProgressBar = new System.Windows.Forms.ToolStripProgressBar();
+            mainToolStrip = new System.Windows.Forms.ToolStrip();
+            toolStripLabel1 = new System.Windows.Forms.ToolStripLabel();
+            viewPageComboBox = new System.Windows.Forms.ToolStripComboBox();
+            customizeToolStripButton = new System.Windows.Forms.ToolStripButton();
+            toolStripLabel2 = new System.Windows.Forms.ToolStripLabel();
+            timeStepToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
+            commToolStripButton = new System.Windows.Forms.ToolStripButton();
+            dumpToolStripButton = new System.Windows.Forms.ToolStripButton();
+            toolStripLabel3 = new System.Windows.Forms.ToolStripLabel();
+            logLengthToolStripTextBox = new System.Windows.Forms.ToolStripTextBox();
+            copyLogToolStripButton = new System.Windows.Forms.ToolStripButton();
+            terminalToolStripButton = new System.Windows.Forms.ToolStripButton();
+            remoteToolStripButton = new System.Windows.Forms.ToolStripButton();
+            mainTimer = new System.Windows.Forms.Timer(components);
+            targetVersionViewControl = new NoticeViewControl();
+            receivedVersionViewControl = new NoticeViewControl();
+            ((System.ComponentModel.ISupportInitialize)mainDataGridView).BeginInit();
+            mainStatusStrip.SuspendLayout();
+            mainToolStrip.SuspendLayout();
+            SuspendLayout();
             // 
             // mainDataGridView
             // 
-            this.mainDataGridView.AllowUserToAddRows = false;
+            mainDataGridView.AllowUserToAddRows = false;
             dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 128);
             dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
             dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
             dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.mainDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
-            this.mainDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            mainDataGridView.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            mainDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle2.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 128);
             dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
             dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
             dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.mainDataGridView.DefaultCellStyle = dataGridViewCellStyle2;
-            this.mainDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.mainDataGridView.Location = new System.Drawing.Point(0, 63);
-            this.mainDataGridView.Name = "mainDataGridView";
+            mainDataGridView.DefaultCellStyle = dataGridViewCellStyle2;
+            mainDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
+            mainDataGridView.Location = new System.Drawing.Point(0, 63);
+            mainDataGridView.Margin = new System.Windows.Forms.Padding(4);
+            mainDataGridView.Name = "mainDataGridView";
             dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(128)));
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("MS UI Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 128);
             dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
             dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
             dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
             dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.mainDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
-            this.mainDataGridView.RowTemplate.Height = 21;
-            this.mainDataGridView.Size = new System.Drawing.Size(1100, 297);
-            this.mainDataGridView.TabIndex = 0;
-            this.mainDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellContentClick);
-            this.mainDataGridView.CellEndEdit += new System.Windows.Forms.DataGridViewCellEventHandler(this.mainDataGridView_CellEndEdit);
-            this.mainDataGridView.CellValidating += new System.Windows.Forms.DataGridViewCellValidatingEventHandler(this.mainDataGridView_CellValidating);
-            this.mainDataGridView.EditingControlShowing += new System.Windows.Forms.DataGridViewEditingControlShowingEventHandler(this.mainDataGridView_EditingControlShowing);
-            this.mainDataGridView.RowPostPaint += new System.Windows.Forms.DataGridViewRowPostPaintEventHandler(this.mainDataGridView_RowPostPaint);
-            this.mainDataGridView.KeyDown += new System.Windows.Forms.KeyEventHandler(this.mainDataGridView_KeyDown);
+            mainDataGridView.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
+            mainDataGridView.RowTemplate.Height = 21;
+            mainDataGridView.Size = new System.Drawing.Size(1283, 391);
+            mainDataGridView.TabIndex = 0;
+            mainDataGridView.CellContentClick += mainDataGridView_CellContentClick;
+            mainDataGridView.CellEndEdit += mainDataGridView_CellEndEdit;
+            mainDataGridView.CellValidating += mainDataGridView_CellValidating;
+            mainDataGridView.EditingControlShowing += mainDataGridView_EditingControlShowing;
+            mainDataGridView.RowPostPaint += mainDataGridView_RowPostPaint;
+            mainDataGridView.KeyDown += mainDataGridView_KeyDown;
             // 
             // mainStatusStrip
             // 
-            this.mainStatusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
-            this.mainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.userToolStripStatusLabel,
-            this.area1ToolStripStatusLabel,
-            this.area2ToolStripStatusLabel,
-            this.rxPeriodToolStripStatusLabel,
-            this.activityToolStripProgressBar});
-            this.mainStatusStrip.Location = new System.Drawing.Point(0, 360);
-            this.mainStatusStrip.Name = "mainStatusStrip";
-            this.mainStatusStrip.Size = new System.Drawing.Size(1100, 25);
-            this.mainStatusStrip.TabIndex = 9;
-            this.mainStatusStrip.Text = "mainStatusStrip";
+            mainStatusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+            mainStatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { userToolStripStatusLabel, area1ToolStripStatusLabel, area2ToolStripStatusLabel, rxPeriodToolStripStatusLabel, activityToolStripProgressBar });
+            mainStatusStrip.Location = new System.Drawing.Point(0, 454);
+            mainStatusStrip.Name = "mainStatusStrip";
+            mainStatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 16, 0);
+            mainStatusStrip.Size = new System.Drawing.Size(1283, 27);
+            mainStatusStrip.TabIndex = 9;
+            mainStatusStrip.Text = "mainStatusStrip";
             // 
             // userToolStripStatusLabel
             // 
-            this.userToolStripStatusLabel.AutoSize = false;
-            this.userToolStripStatusLabel.Name = "userToolStripStatusLabel";
-            this.userToolStripStatusLabel.Size = new System.Drawing.Size(100, 20);
+            userToolStripStatusLabel.AutoSize = false;
+            userToolStripStatusLabel.Name = "userToolStripStatusLabel";
+            userToolStripStatusLabel.Size = new System.Drawing.Size(100, 22);
             // 
             // area1ToolStripStatusLabel
             // 
-            this.area1ToolStripStatusLabel.Name = "area1ToolStripStatusLabel";
-            this.area1ToolStripStatusLabel.Size = new System.Drawing.Size(411, 20);
-            this.area1ToolStripStatusLabel.Spring = true;
-            this.area1ToolStripStatusLabel.Text = "-";
+            area1ToolStripStatusLabel.Name = "area1ToolStripStatusLabel";
+            area1ToolStripStatusLabel.Size = new System.Drawing.Size(498, 22);
+            area1ToolStripStatusLabel.Spring = true;
+            area1ToolStripStatusLabel.Text = "-";
             // 
             // area2ToolStripStatusLabel
             // 
-            this.area2ToolStripStatusLabel.Name = "area2ToolStripStatusLabel";
-            this.area2ToolStripStatusLabel.Size = new System.Drawing.Size(411, 20);
-            this.area2ToolStripStatusLabel.Spring = true;
-            this.area2ToolStripStatusLabel.Text = "-";
-            this.area2ToolStripStatusLabel.Click += new System.EventHandler(this.area2ToolStripStatusLabel_Click);
+            area2ToolStripStatusLabel.Name = "area2ToolStripStatusLabel";
+            area2ToolStripStatusLabel.Size = new System.Drawing.Size(498, 22);
+            area2ToolStripStatusLabel.Spring = true;
+            area2ToolStripStatusLabel.Text = "-";
+            area2ToolStripStatusLabel.Click += area2ToolStripStatusLabel_Click;
             // 
             // rxPeriodToolStripStatusLabel
             // 
-            this.rxPeriodToolStripStatusLabel.AutoSize = false;
-            this.rxPeriodToolStripStatusLabel.Name = "rxPeriodToolStripStatusLabel";
-            this.rxPeriodToolStripStatusLabel.Size = new System.Drawing.Size(120, 20);
-            this.rxPeriodToolStripStatusLabel.Text = "-";
+            rxPeriodToolStripStatusLabel.AutoSize = false;
+            rxPeriodToolStripStatusLabel.Name = "rxPeriodToolStripStatusLabel";
+            rxPeriodToolStripStatusLabel.Size = new System.Drawing.Size(120, 22);
+            rxPeriodToolStripStatusLabel.Text = "-";
             // 
             // activityToolStripProgressBar
             // 
-            this.activityToolStripProgressBar.AutoSize = false;
-            this.activityToolStripProgressBar.Name = "activityToolStripProgressBar";
-            this.activityToolStripProgressBar.Size = new System.Drawing.Size(40, 19);
+            activityToolStripProgressBar.AutoSize = false;
+            activityToolStripProgressBar.Name = "activityToolStripProgressBar";
+            activityToolStripProgressBar.Size = new System.Drawing.Size(47, 21);
             // 
             // mainToolStrip
             // 
-            this.mainToolStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
-            this.mainToolStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
-            this.mainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripLabel1,
-            this.viewPageComboBox,
-            this.customizeToolStripButton,
-            this.toolStripLabel2,
-            this.timeStepToolStripTextBox,
-            this.commToolStripButton,
-            this.dumpToolStripButton,
-            this.toolStripLabel3,
-            this.logLengthToolStripTextBox,
-            this.copyLogToolStripButton,
-            this.terminalToolStripButton,
-            this.remoteToolStripButton});
-            this.mainToolStrip.Location = new System.Drawing.Point(0, 0);
-            this.mainToolStrip.Name = "mainToolStrip";
-            this.mainToolStrip.Size = new System.Drawing.Size(1100, 27);
-            this.mainToolStrip.TabIndex = 10;
-            this.mainToolStrip.Text = "toolStrip1";
+            mainToolStrip.GripStyle = System.Windows.Forms.ToolStripGripStyle.Hidden;
+            mainToolStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
+            mainToolStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { toolStripLabel1, viewPageComboBox, customizeToolStripButton, toolStripLabel2, timeStepToolStripTextBox, commToolStripButton, dumpToolStripButton, toolStripLabel3, logLengthToolStripTextBox, copyLogToolStripButton, terminalToolStripButton, remoteToolStripButton });
+            mainToolStrip.Location = new System.Drawing.Point(0, 0);
+            mainToolStrip.Name = "mainToolStrip";
+            mainToolStrip.Size = new System.Drawing.Size(1283, 27);
+            mainToolStrip.TabIndex = 10;
+            mainToolStrip.Text = "toolStrip1";
             // 
             // toolStripLabel1
             // 
-            this.toolStripLabel1.Name = "toolStripLabel1";
-            this.toolStripLabel1.Size = new System.Drawing.Size(36, 24);
-            this.toolStripLabel1.Text = "Page:";
+            toolStripLabel1.Name = "toolStripLabel1";
+            toolStripLabel1.Size = new System.Drawing.Size(36, 24);
+            toolStripLabel1.Text = "Page:";
             // 
             // viewPageComboBox
             // 
-            this.viewPageComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.viewPageComboBox.Name = "viewPageComboBox";
-            this.viewPageComboBox.Size = new System.Drawing.Size(180, 27);
-            this.viewPageComboBox.SelectedIndexChanged += new System.EventHandler(this.viewPageComboBox_SelectedIndexChanged);
+            viewPageComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            viewPageComboBox.Name = "viewPageComboBox";
+            viewPageComboBox.Size = new System.Drawing.Size(195, 27);
+            viewPageComboBox.SelectedIndexChanged += viewPageComboBox_SelectedIndexChanged;
             // 
             // customizeToolStripButton
             // 
-            this.customizeToolStripButton.AutoSize = false;
-            this.customizeToolStripButton.Image = global::rmApplication.Properties.Resources.Complete_and_ok_gray;
-            this.customizeToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.customizeToolStripButton.Name = "customizeToolStripButton";
-            this.customizeToolStripButton.Size = new System.Drawing.Size(100, 24);
-            this.customizeToolStripButton.Text = "Customize";
-            this.customizeToolStripButton.Click += new System.EventHandler(this.customizeToolStripButton_Click);
+            customizeToolStripButton.AutoSize = false;
+            customizeToolStripButton.Image = Properties.Resources.Complete_and_ok_gray;
+            customizeToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            customizeToolStripButton.Name = "customizeToolStripButton";
+            customizeToolStripButton.Size = new System.Drawing.Size(100, 24);
+            customizeToolStripButton.Text = "Customize";
+            customizeToolStripButton.Click += customizeToolStripButton_Click;
             // 
             // toolStripLabel2
             // 
-            this.toolStripLabel2.AutoSize = false;
-            this.toolStripLabel2.Name = "toolStripLabel2";
-            this.toolStripLabel2.Size = new System.Drawing.Size(98, 24);
-            this.toolStripLabel2.Text = "Time Step(ms):";
+            toolStripLabel2.AutoSize = false;
+            toolStripLabel2.Name = "toolStripLabel2";
+            toolStripLabel2.Size = new System.Drawing.Size(98, 24);
+            toolStripLabel2.Text = "Time Step(ms):";
             // 
             // timeStepToolStripTextBox
             // 
-            this.timeStepToolStripTextBox.AutoSize = false;
-            this.timeStepToolStripTextBox.Font = new System.Drawing.Font("Yu Gothic UI", 9F);
-            this.timeStepToolStripTextBox.Name = "timeStepToolStripTextBox";
-            this.timeStepToolStripTextBox.Size = new System.Drawing.Size(50, 27);
-            this.timeStepToolStripTextBox.Leave += new System.EventHandler(this.timeStepToolStripTextBox_Leave);
-            this.timeStepToolStripTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.timeStepToolStripTextBox_KeyPress);
+            timeStepToolStripTextBox.AutoSize = false;
+            timeStepToolStripTextBox.Font = new System.Drawing.Font("Yu Gothic UI", 9F);
+            timeStepToolStripTextBox.Name = "timeStepToolStripTextBox";
+            timeStepToolStripTextBox.Size = new System.Drawing.Size(58, 23);
+            timeStepToolStripTextBox.Leave += timeStepToolStripTextBox_Leave;
+            timeStepToolStripTextBox.KeyPress += timeStepToolStripTextBox_KeyPress;
             // 
             // commToolStripButton
             // 
-            this.commToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this.commToolStripButton.AutoSize = false;
-            this.commToolStripButton.Image = global::rmApplication.Properties.Resources.FlagThread_white;
-            this.commToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.commToolStripButton.Name = "commToolStripButton";
-            this.commToolStripButton.Size = new System.Drawing.Size(106, 24);
-            this.commToolStripButton.Text = "Comm Open";
-            this.commToolStripButton.Click += new System.EventHandler(this.commToolStripButton_Click);
+            commToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            commToolStripButton.AutoSize = false;
+            commToolStripButton.Image = Properties.Resources.FlagThread_white;
+            commToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            commToolStripButton.Name = "commToolStripButton";
+            commToolStripButton.Size = new System.Drawing.Size(106, 24);
+            commToolStripButton.Text = "Comm Open";
+            commToolStripButton.Click += commToolStripButton_Click;
             // 
             // dumpToolStripButton
             // 
-            this.dumpToolStripButton.AutoSize = false;
-            this.dumpToolStripButton.Image = global::rmApplication.Properties.Resources.VirtualMachine;
-            this.dumpToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.dumpToolStripButton.Name = "dumpToolStripButton";
-            this.dumpToolStripButton.Size = new System.Drawing.Size(65, 24);
-            this.dumpToolStripButton.Text = "Dump";
-            this.dumpToolStripButton.Click += new System.EventHandler(this.dumpToolStripButton_Click);
+            dumpToolStripButton.AutoSize = false;
+            dumpToolStripButton.Image = Properties.Resources.VirtualMachine;
+            dumpToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            dumpToolStripButton.Name = "dumpToolStripButton";
+            dumpToolStripButton.Size = new System.Drawing.Size(65, 24);
+            dumpToolStripButton.Text = "Dump";
+            dumpToolStripButton.Click += dumpToolStripButton_Click;
             // 
             // toolStripLabel3
             // 
-            this.toolStripLabel3.Name = "toolStripLabel3";
-            this.toolStripLabel3.Size = new System.Drawing.Size(70, 24);
-            this.toolStripLabel3.Text = "Log Length:";
+            toolStripLabel3.Name = "toolStripLabel3";
+            toolStripLabel3.Size = new System.Drawing.Size(70, 24);
+            toolStripLabel3.Text = "Log Length:";
             // 
             // logLengthToolStripTextBox
             // 
-            this.logLengthToolStripTextBox.Font = new System.Drawing.Font("Yu Gothic UI", 9F);
-            this.logLengthToolStripTextBox.Name = "logLengthToolStripTextBox";
-            this.logLengthToolStripTextBox.Size = new System.Drawing.Size(50, 27);
-            this.logLengthToolStripTextBox.Leave += new System.EventHandler(this.logLengthToolStripTextBox_Leave);
-            this.logLengthToolStripTextBox.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.logLengthToolStripTextBox_KeyPress);
+            logLengthToolStripTextBox.Font = new System.Drawing.Font("Yu Gothic UI", 9F);
+            logLengthToolStripTextBox.Name = "logLengthToolStripTextBox";
+            logLengthToolStripTextBox.Size = new System.Drawing.Size(58, 27);
+            logLengthToolStripTextBox.Leave += logLengthToolStripTextBox_Leave;
+            logLengthToolStripTextBox.KeyPress += logLengthToolStripTextBox_KeyPress;
             // 
             // copyLogToolStripButton
             // 
-            this.copyLogToolStripButton.Image = ((System.Drawing.Image)(resources.GetObject("copyLogToolStripButton.Image")));
-            this.copyLogToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.copyLogToolStripButton.Name = "copyLogToolStripButton";
-            this.copyLogToolStripButton.Size = new System.Drawing.Size(81, 24);
-            this.copyLogToolStripButton.Text = "Copy Log";
-            this.copyLogToolStripButton.Click += new System.EventHandler(this.copyLogToolStripButton_Click);
+            copyLogToolStripButton.Image = (System.Drawing.Image)resources.GetObject("copyLogToolStripButton.Image");
+            copyLogToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            copyLogToolStripButton.Name = "copyLogToolStripButton";
+            copyLogToolStripButton.Size = new System.Drawing.Size(82, 24);
+            copyLogToolStripButton.Text = "Copy Log";
+            copyLogToolStripButton.Click += copyLogToolStripButton_Click;
             // 
             // terminalToolStripButton
             // 
-            this.terminalToolStripButton.Image = global::rmApplication.Properties.Resources.Monitor_Screen_16xLG;
-            this.terminalToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.terminalToolStripButton.Name = "terminalToolStripButton";
-            this.terminalToolStripButton.Size = new System.Drawing.Size(75, 24);
-            this.terminalToolStripButton.Text = "Terminal";
-            this.terminalToolStripButton.Click += new System.EventHandler(this.terminalToolStripButton_Click);
+            terminalToolStripButton.Image = Properties.Resources.Monitor_Screen_16xLG;
+            terminalToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            terminalToolStripButton.Name = "terminalToolStripButton";
+            terminalToolStripButton.Size = new System.Drawing.Size(77, 24);
+            terminalToolStripButton.Text = "Terminal";
+            terminalToolStripButton.Click += terminalToolStripButton_Click;
             // 
             // remoteToolStripButton
             // 
-            this.remoteToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
-            this.remoteToolStripButton.Image = global::rmApplication.Properties.Resources.Remote;
-            this.remoteToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.remoteToolStripButton.Name = "remoteToolStripButton";
-            this.remoteToolStripButton.Size = new System.Drawing.Size(76, 24);
-            this.remoteToolStripButton.Text = "REMOTE";
-            this.remoteToolStripButton.Click += new System.EventHandler(this.remoteToolStripButton_Click);
+            remoteToolStripButton.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            remoteToolStripButton.Image = Properties.Resources.Remote;
+            remoteToolStripButton.ImageTransparentColor = System.Drawing.Color.Magenta;
+            remoteToolStripButton.Name = "remoteToolStripButton";
+            remoteToolStripButton.Size = new System.Drawing.Size(76, 24);
+            remoteToolStripButton.Text = "REMOTE";
+            remoteToolStripButton.Click += remoteToolStripButton_Click;
             // 
             // mainTimer
             // 
-            this.mainTimer.Tick += new System.EventHandler(this.mainTimer_Tick);
+            mainTimer.Tick += mainTimer_Tick;
             // 
             // targetVersionViewControl
             // 
-            this.targetVersionViewControl.Dock = System.Windows.Forms.DockStyle.Top;
-            this.targetVersionViewControl.Label = "Target Version";
-            this.targetVersionViewControl.Location = new System.Drawing.Point(0, 45);
-            this.targetVersionViewControl.Margin = new System.Windows.Forms.Padding(2);
-            this.targetVersionViewControl.Name = "targetVersionViewControl";
-            this.targetVersionViewControl.Size = new System.Drawing.Size(1100, 18);
-            this.targetVersionViewControl.TabIndex = 12;
-            this.targetVersionViewControl.TextBox = "";
-            this.targetVersionViewControl.TextEnabled = false;
+            targetVersionViewControl.Dock = System.Windows.Forms.DockStyle.Top;
+            targetVersionViewControl.Label = "Target Version";
+            targetVersionViewControl.Location = new System.Drawing.Point(0, 45);
+            targetVersionViewControl.Margin = new System.Windows.Forms.Padding(2);
+            targetVersionViewControl.Name = "targetVersionViewControl";
+            targetVersionViewControl.Size = new System.Drawing.Size(1283, 18);
+            targetVersionViewControl.TabIndex = 12;
+            targetVersionViewControl.TextBox = "";
+            targetVersionViewControl.TextEnabled = false;
             // 
             // receivedVersionViewControl
             // 
-            this.receivedVersionViewControl.Dock = System.Windows.Forms.DockStyle.Top;
-            this.receivedVersionViewControl.Label = "Received Version";
-            this.receivedVersionViewControl.Location = new System.Drawing.Point(0, 27);
-            this.receivedVersionViewControl.Margin = new System.Windows.Forms.Padding(2);
-            this.receivedVersionViewControl.Name = "receivedVersionViewControl";
-            this.receivedVersionViewControl.Size = new System.Drawing.Size(1100, 18);
-            this.receivedVersionViewControl.TabIndex = 11;
-            this.receivedVersionViewControl.TextBox = "";
-            this.receivedVersionViewControl.TextEnabled = false;
+            receivedVersionViewControl.Dock = System.Windows.Forms.DockStyle.Top;
+            receivedVersionViewControl.Label = "Received Version";
+            receivedVersionViewControl.Location = new System.Drawing.Point(0, 27);
+            receivedVersionViewControl.Margin = new System.Windows.Forms.Padding(2);
+            receivedVersionViewControl.Name = "receivedVersionViewControl";
+            receivedVersionViewControl.Size = new System.Drawing.Size(1283, 18);
+            receivedVersionViewControl.TabIndex = 11;
+            receivedVersionViewControl.TextBox = "";
+            receivedVersionViewControl.TextEnabled = false;
             // 
             // SubViewControl
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.mainDataGridView);
-            this.Controls.Add(this.targetVersionViewControl);
-            this.Controls.Add(this.receivedVersionViewControl);
-            this.Controls.Add(this.mainStatusStrip);
-            this.Controls.Add(this.mainToolStrip);
-            this.Name = "SubViewControl";
-            this.Size = new System.Drawing.Size(1100, 385);
-            ((System.ComponentModel.ISupportInitialize)(this.mainDataGridView)).EndInit();
-            this.mainStatusStrip.ResumeLayout(false);
-            this.mainStatusStrip.PerformLayout();
-            this.mainToolStrip.ResumeLayout(false);
-            this.mainToolStrip.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            Controls.Add(mainDataGridView);
+            Controls.Add(targetVersionViewControl);
+            Controls.Add(receivedVersionViewControl);
+            Controls.Add(mainStatusStrip);
+            Controls.Add(mainToolStrip);
+            Margin = new System.Windows.Forms.Padding(4);
+            Name = "SubViewControl";
+            Size = new System.Drawing.Size(1283, 481);
+            ((System.ComponentModel.ISupportInitialize)mainDataGridView).EndInit();
+            mainStatusStrip.ResumeLayout(false);
+            mainStatusStrip.PerformLayout();
+            mainToolStrip.ResumeLayout(false);
+            mainToolStrip.PerformLayout();
+            ResumeLayout(false);
+            PerformLayout();
 
         }
 

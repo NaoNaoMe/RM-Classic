@@ -11,7 +11,7 @@ namespace rmApplication
     {
         public static bool Interpret(string[] textArray, List<SymbolFactor> symbolList)
         {
-            for (int i = 1; i < textArray.Length; i++)
+            for (int i = 0; i < textArray.Length; i++)
             {
                 string[] splitLine = textArray[i].Split(',');
 

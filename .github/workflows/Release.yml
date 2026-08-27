@@ -5,8 +5,11 @@ on:
     tags:
       - 'v*'   # Trigger on tags like v2.0.0
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  release:
     runs-on: windows-latest
 
     steps:
@@ -14,46 +17,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Setup MSBuild
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      # 2. Setup .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
 
-      # 3. Extract version number from tag (v2.0.0 -> 2.0.0)
-      - name: Extract version from tag
-        id: version
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $version = $tag.TrimStart('v')
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+      # 3. Restore
+      - name: Restore
+        run: dotnet restore rmApplication.sln
+
+      # 4. Build
+      - name: Build
+        run: dotnet build rmApplication.sln -c Release --no-restore
+
+      # 5. Publish self-contained single-file Release build
+      - name: Publish
+        run: dotnet publish rmApplication/rmApplication.csproj -c Release -p:PublishProfile=win-x64
+
+      # 6. Package artifact
+      - name: Package artifact
         shell: pwsh
-
-      # 4. Update AssemblyInfo.cs with the version from tag
-      - name: Update AssemblyInfo.cs
         run: |
-          $version = "${{ steps.version.outputs.VERSION }}"
-          $filePath = "rmApplication\Properties\AssemblyInfo.cs"
-          $content = Get-Content $filePath -Raw
-          $content = $content -replace 'AssemblyVersion\(".*?"\)', "AssemblyVersion(`"$version.0`")"
-          $content = $content -replace 'AssemblyFileVersion\(".*?"\)', "AssemblyFileVersion(`"$version.0`")"
-          Set-Content $filePath $content
-        shell: pwsh
+          $zip = "RM-Classic-${{ github.ref_name }}-win-x64.zip"
+          $publishDir = "rmApplication/bin/Release/net10.0-windows7.0/publish/win-x64"
+          $files = Get-ChildItem -Path $publishDir -File | Where-Object { $_.Extension -notin ".pdb", ".xml" }
+          Compress-Archive -Path $files.FullName -DestinationPath $zip
 
-      # 5. Build Release
-      - name: Build Release
-        run: msbuild rmApplication.sln /p:Configuration=Release /p:Platform="Any CPU"
-
-      # 6. Generate SHA256 hash and save to file
-      - name: Generate SHA256
-        run: |
-          $hash = Get-FileHash "rmApplication\bin\Release\rmApplication.exe" -Algorithm SHA256
-          "rmApplication.exe  $($hash.Hash)" | Out-File -FilePath "rmApplication\bin\Release\sha256.txt" -Encoding utf8
-        shell: pwsh
-
-      # 7. Attach exe and sha256.txt to GitHub Release
+      # 7. Create GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "v${{ steps.version.outputs.VERSION }}"
-          files: |
-            rmApplication\bin\Release\rmApplication.exe
-            rmApplication\bin\Release\sha256.txt
+          name: "${{ github.ref_name }}"
+          files: RM-Classic-*.zip
+          generate_release_notes: true
