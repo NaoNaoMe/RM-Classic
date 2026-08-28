@@ -9,8 +9,17 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
     <ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
     <Product>RM Classic</Product>
-    <Copyright>Copyright © 2026 - Naoya Imai</Copyright>
     <Version>2.0.0</Version>
+  </PropertyGroup>
+
+  <!-- Release artifact: framework-dependent, single file. -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <AllowedReferenceRelatedFileExtensions>none</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>
 
   <ItemGroup>

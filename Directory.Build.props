@@ -1,0 +1,12 @@
+<Project>
+
+  <!-- Shared by every project in the solution; see LICENSE. -->
+  <PropertyGroup>
+    <Authors>Naoya Imai</Authors>
+    <Copyright>Copyright © 2026 Naoya Imai</Copyright>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

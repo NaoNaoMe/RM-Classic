@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  APP_NAME: RM-Classic
+  SOLUTION: rmApplication.sln
+  PROJECT: rmApplication/rmApplication.csproj
+  DOTNET_VERSION: '10.0.x'
+  RID: win-x64
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Tag 'v1.2.3' -> Version '1.2.3'. Overrides <Version> in the .csproj.
+      # Manual runs are dry runs: they build and upload an artifact, but publish nothing.
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $v = '${{ github.ref_name }}' -replace '^v', ''
+          } else {
+            $v = '0.0.0-dev'
+          }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Restore
+        run: dotnet restore ${{ env.SOLUTION }}
+
+      - name: Build
+        run: dotnet build ${{ env.SOLUTION }} -c Release --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $hasTest = Get-ChildItem -Recurse -Filter *.csproj |
+            Where-Object { (Get-Content $_.FullName -Raw) -match 'IsTestProject|MSTest|xunit|NUnit' }
+          if ($hasTest) { dotnet test $env:SOLUTION -c Release --no-build }
+          else { Write-Host 'No test project found - skipped.' }
+
+      # Publish settings (single file, framework-dependent) live in the .csproj.
+      - name: Publish
+        run: >
+          dotnet publish ${{ env.PROJECT }}
+          -c Release
+          -p:Version=${{ steps.ver.outputs.version }}
+          -p:DebugType=none
+          -o publish
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $zip = "$env:APP_NAME-v${{ steps.ver.outputs.version }}-$env:RID.zip"
+          Compress-Archive -Path publish/* -DestinationPath $zip
+
+      - name: Upload artifact (dry run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_NAME }}-${{ env.RID }}
+          path: '*.zip'
+          retention-days: 7
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          files: '*.zip'
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
